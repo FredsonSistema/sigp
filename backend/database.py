@@ -351,6 +351,9 @@ def init_db() -> None:
     )
     conn.commit()
     conn.close()
+    # Perfis e permissões (backend/acesso.py): tabelas e grupos padrão.
+    from backend import acesso
+    acesso.garantir_tabelas()
 
 
 def _now() -> str:

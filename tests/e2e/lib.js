@@ -56,7 +56,7 @@ function check(results, name, ok, detail = '') {
 }
 
 // Cria o acesso de teste (navegador novo), informa a chave da API de teste e espera o app abrir.
-async function loginFresh(page) {
+async function loginFresh(page, chave = API_TEST_KEY) {
   await page.goto(APP_URL);
   await page.waitForSelector('#authScreen');
   await page.fill('#su_user', 'teste');
@@ -64,7 +64,7 @@ async function loginFresh(page) {
   await page.fill('#su_pass2', 'senha1234');
   await page.click('#setupForm button[type=submit]');
   await page.waitForFunction(() => /recusou/i.test(document.getElementById('apiKeySetupStatus').textContent), null, { timeout: 15000 });
-  await page.fill('#apiKeySetupInput', API_TEST_KEY);
+  await page.fill('#apiKeySetupInput', chave);
   await page.click('#apiKeySetupForm button[type=submit]');
   await page.waitForFunction(() => getComputedStyle(document.querySelector('#appRoot')).display !== 'none', null, { timeout: 20000 });
 }

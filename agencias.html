@@ -638,6 +638,21 @@
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(-4px); }
 
   #importFile{ display:none; }
+  /* Perfis e permissões */
+  .perfil-chip{ margin-left:auto; align-self:center; font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid var(--accent-dim); color:var(--accent); white-space:nowrap; }
+  .perm-lista{ display:grid; gap:6px; }
+  .perm-item{ display:flex; gap:8px; align-items:baseline; font-size:13px; }
+  .perm-item input{ width:auto; }
+  .perm-ajuste{ display:grid; grid-template-columns:18px minmax(0,1fr) 260px; gap:8px; align-items:center; font-size:13px; }
+  .perm-sim{ color:var(--accent); font-weight:700; }
+  .perm-nao{ color:var(--warn); }
+  .perm-fixo, .perm-novo{ border:1px dashed var(--line); border-radius:8px; padding:10px 12px; }
+  .perm-check{ display:flex; gap:6px; align-items:center; padding-top:22px; }
+  .perm-check input{ width:auto; }
+  .perm-chave{ border:1px solid var(--warn); border-radius:8px; padding:10px 12px; margin-top:10px; }
+  .perm-chave code{ font-family:var(--mono); font-size:13px; user-select:all; }
+  .perm-tabela td:nth-child(n+3), .perm-tabela th:nth-child(n+3){ text-align:center; }
+  @media (max-width:760px){ .perm-ajuste{ grid-template-columns:18px minmax(0,1fr); } .perm-ajuste select{ grid-column:2; } }
   /* Configurações > Integração: grupos recolhíveis, campos e balões de ajuda */
   .cfg-corpo{ padding:4px 14px 14px; display:grid; gap:12px; }
   .cfg-campo > .hint, .cfg-grupo > summary .hint, .cfg-corpo > .hint{ font-size:12px; color:var(--text-dim); }
@@ -752,10 +767,10 @@
       <div class="switch">Esqueceu a senha? <a id="linkReset">Redefinir acesso</a></div>
     </form>
     <section id="apiKeySetup" style="display:none; margin-top:20px; text-align:left">
-      <div class="section-divider">Conexão com a API SIGp</div>
-      <p class="hint">A chave é a variável SIGP_API_KEY do arquivo .env. Ela será validada e salva somente neste navegador. Não envie a chave por e-mail ou chat.</p>
+      <div class="section-divider">Chave de acesso</div>
+      <p class="hint">Informe a sua chave de acesso, entregue pelo administrador (Configurações &gt; Perfis e permissões). O administrador usa a SIGP_API_KEY do arquivo .env. A chave é validada e salva só neste navegador. Não envie a chave por e-mail ou chat.</p>
       <form id="apiKeySetupForm" style="display:flex; flex-direction:column; gap:10px">
-        <label for="apiKeySetupInput">Chave da API (X-API-Key)</label>
+        <label for="apiKeySetupInput">Chave de acesso (X-API-Key)</label>
         <input class="f" id="apiKeySetupInput" type="password" autocomplete="off" required>
         <button class="ghost" type="submit">Validar e salvar chave</button>
       </form>
@@ -1483,8 +1498,9 @@
 
 <script src="sigp-env.js"></script>
 <script src="frontend/modules/config-integracao.js?v=20261115"></script>
-<script src="frontend/modules/api-client.js?v=20261115-config"></script>
+<script src="frontend/modules/api-client.js?v=20261115-perfis"></script>
 <script src="frontend/modules/config-integracao-tela.js?v=20261115"></script>
+<script src="frontend/modules/perfis-permissoes.js?v=20261115"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -2430,6 +2446,8 @@ function renderConfigTab(){
       <button class="primary small" id="btnSalvarEmpresaOS">Salvar dados da empresa</button>
     </div>
 
+    <div class="section-divider">Perfis e permissões <span class="hint">quem acessa o quê · grupos, usuários e ajustes individuais · vale na API</span></div>
+    <div id="cfgPermissoes"><div class="dash-empty">Carregando perfis e permissões…</div></div>
     <div class="section-divider">Integração <span class="hint">endereços, chaves e webhooks · nada fica no código · clique em ? para ajuda</span></div>
     <div id="cfgIntegracao"><div class="dash-empty">Carregando a integração…</div></div>
     <div id="cfgContasHolder" hidden>
@@ -2693,6 +2711,7 @@ function renderConfigTab(){
 
   renderWebhookPainel();
   window.SIGP_CONFIG_TELA.render('cfgIntegracao');
+  window.SIGP_PERMISSOES.render('cfgPermissoes');
 
   if(document.getElementById('nfseLista')){
   const renderNFSELista = async ()=>{
@@ -5654,6 +5673,8 @@ async function showApp(){
   }
   document.getElementById('apiKeySetup')?.remove();
   document.getElementById('authScreen').style.display = 'none';
+  // Perfis e permissões: mostra o perfil ativo e esconde as abas sem permissão (a regra vale na API).
+  window.SIGP_PERMISSOES?.aplicar();
   document.getElementById('appRoot').style.display = 'block';
   loadConfig();
   loadLog();

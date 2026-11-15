@@ -39,7 +39,8 @@
     const url = typeof input === 'string' ? input : input?.url || '';
     const method = String(init.method || (typeof input === 'object' && input?.method) || 'GET').toUpperCase();
     const apiKey = window.SIGP_CONFIG.get('apiKey');
-    if (apiKey && method !== 'GET' && backendUrl() && url.startsWith(backendUrl())) {
+    // A chave vai em toda chamada à API (leituras também): é ela que diz o perfil de quem está usando.
+    if (apiKey && backendUrl() && url.startsWith(backendUrl())) {
       const headers = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined) || {});
       if (!headers.has('X-API-Key')) headers.set('X-API-Key', apiKey);
       return originalFetch(input, { ...init, headers });
@@ -115,6 +116,11 @@
 
   function reportPersistenceError(label, error) {
     console.error(`SIGp: falha ao persistir ${label} no SQLite:`, error);
+    if (error && error.status === 403 && typeof window.toast === 'function') {
+      // Perfil sem permissão: a mudança não foi gravada; na próxima abertura vale o que está no servidor.
+      window.toast(`${error.message} A alteração não foi salva.`, 6000);
+      return;
+    }
     if (typeof window.toast === 'function') {
       window.toast(`Não foi possível salvar ${label} no SQLite. Os dados continuam neste navegador; verifique a API e tente novamente.`);
     }
@@ -174,7 +180,13 @@
           merged.set(key, { ...(merged.get(key) || {}), ...item });
         });
         selected = [...merged.values()];
-        await putLocationItems(storageKey, selected);
+        try {
+          await putLocationItems(storageKey, selected);
+        } catch (error) {
+          // Perfil sem permissão de editar locais: fica com o que está no servidor (nada se perde lá).
+          if (error.status !== 403) throw error;
+          selected = activeDbItems;
+        }
         setPending(storageKey, false);
       }
       originalSetItem.call(localStorage, storageKey, JSON.stringify(selected));
@@ -222,11 +234,18 @@
     for (const key of APP_STATE_KEYS) {
       const raw = localStorage.getItem(key);
       if (pending.has(key) || !Object.prototype.hasOwnProperty.call(result.items, key)) {
-        if (raw !== null) {
-          await putAppState(key, parseStoredValue(raw));
+        try {
+          if (raw !== null) {
+            await putAppState(key, parseStoredValue(raw));
+            setPending(key, false);
+          } else if (pending.has(key)) {
+            await syncAppState(key);
+          }
+        } catch (error) {
+          // Perfil sem permissão para estes dados da tela: usa o valor do servidor e segue.
+          if (error.status !== 403) throw error;
           setPending(key, false);
-        } else if (pending.has(key)) {
-          await syncAppState(key);
+          if (Object.prototype.hasOwnProperty.call(result.items, key)) originalSetItem.call(localStorage, key, JSON.stringify(result.items[key]));
         }
       } else {
         originalSetItem.call(localStorage, key, JSON.stringify(result.items[key]));

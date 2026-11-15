@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import avisos_provedor, fatura_esperada, identificadores, metricas_llm, saude_banco
+from backend import acesso, avisos_provedor, fatura_esperada, identificadores, metricas_llm, saude_banco
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -93,15 +93,49 @@ def normalize_company_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", without_accents)
 
 
+EXIGIR_CHAVE_LEITURA = os.environ.get("SIGP_EXIGIR_CHAVE_LEITURA", "0").strip() == "1"
+
+
 @app.before_request
 def require_api_key():
-    """Com SIGP_API_KEY definida, toda escrita exige o cabeçalho X-API-Key (n8n, integrações e interface)."""
-    if not API_KEY or request.method in {"GET", "HEAD", "OPTIONS"}:
+    """Perfis e permissões (backend/acesso.py). Chave do .env (SIGP_API_KEY) = administrador (tudo; é a do n8n).
+    Chave de usuário = permissões do grupo + ajustes individuais. Sem chave: leitura liberada (salvo
+    SIGP_EXIGIR_CHAVE_LEITURA=1) e escrita recusada. Sem SIGP_API_KEY definida (desenvolvimento), nada é exigido."""
+    if request.method == "OPTIONS" or not API_KEY or request.url_rule is None or not request.path.startswith("/api/"):
         return None
+    regra = request.url_rule.rule
+    funcionalidade = acesso.funcionalidade_da_rota(request.method, regra, (request.view_args or {}).get("state_key", ""))
     supplied = request.headers.get("X-API-Key", "")
-    if not hmac.compare_digest(supplied.encode(), API_KEY.encode()):
+    if not supplied:
+        if funcionalidade is None or (request.method in ("GET", "HEAD") and not EXIGIR_CHAVE_LEITURA and funcionalidade != "admin"):
+            return None
         return jsonify({"ok": False, "error": "Chave de API ausente ou inválida (cabeçalho X-API-Key)."}), 401
-    return None
+    quem = acesso.identificar(supplied, API_KEY)
+    if not quem and request.method in ("GET", "HEAD") and not EXIGIR_CHAVE_LEITURA and funcionalidade != "admin":
+        # Leitura com chave inválida (ex.: chave antiga guardada no navegador) vale como "sem chave": a tela abre
+        # e pede a chave nova. Gravação com chave inválida continua recusada.
+        return None
+    if not quem:
+        acesso.registrar("chave inválida", request.method, regra, funcionalidade or "", "recusado", 401)
+        return jsonify({"ok": False, "error": "Chave de API ausente ou inválida (cabeçalho X-API-Key)."}), 401
+    g.acesso = quem
+    g.acesso_funcionalidade = funcionalidade or ""
+    if funcionalidade is None or quem["perfil"] == acesso.ADMIN or funcionalidade in quem["permissoes"]:
+        return None
+    nome = "administrar perfis e permissões" if funcionalidade == "admin" else acesso.FUNCIONALIDADES[funcionalidade]["nome"].lower()
+    acesso.registrar(quem["nome"], request.method, regra, funcionalidade, "negado", 403)
+    return jsonify({"ok": False, "error": f"Seu perfil ({quem['grupo']}) não tem permissão para {nome}.",
+                    "permissao": funcionalidade}), 403
+
+
+@app.after_request
+def auditar_acesso(response):
+    # Toda gravação com chave fica na auditoria (quem, o quê, quando, resultado); leituras não, pelo volume.
+    quem = getattr(g, "acesso", None)
+    if quem and request.method not in ("GET", "HEAD", "OPTIONS") and response.status_code != 403:
+        acesso.registrar(quem["nome"], request.method, request.url_rule.rule if request.url_rule else request.path,
+                         getattr(g, "acesso_funcionalidade", ""), "permitido" if response.status_code < 400 else "erro", response.status_code)
+    return response
 
 
 @app.after_request
@@ -150,7 +184,104 @@ def health():
 
 @app.post("/api/auth/verify")
 def verify_api_key():
-    return jsonify({"ok": True})
+    """Confere a chave informada na tela e devolve o perfil (administrador ou usuário)."""
+    if not API_KEY:
+        return jsonify({"ok": True, "perfil": acesso.ADMIN, "nome": "Administrador", "grupo": "Administrador"})
+    quem = acesso.identificar(request.headers.get("X-API-Key", ""), API_KEY)
+    if not quem:
+        return jsonify({"ok": False, "error": "Chave de API ausente ou inválida (cabeçalho X-API-Key)."}), 401
+    return jsonify({"ok": True, "perfil": quem["perfil"], "nome": quem["nome"], "grupo": quem["grupo"]})
+
+
+@app.get("/api/acesso/eu")
+def acesso_eu_route():
+    """Quem está usando a tela: perfil, permissões e abas liberadas (a tela esconde o resto)."""
+    chave = request.headers.get("X-API-Key", "")
+    quem = (acesso.identificar(chave, API_KEY) if chave else None) if API_KEY else \
+        {"perfil": acesso.ADMIN, "nome": "Administrador", "grupo": "Administrador", "permissoes": acesso.TODAS}
+    if not quem:
+        return jsonify({"ok": True, "perfil": "anonimo", "nome": "", "grupo": "", "permissoes": [], "abas": None})
+    return jsonify({"ok": True, **{k: quem[k] for k in ("perfil", "nome", "grupo", "permissoes")},
+                    "abas": None if quem["perfil"] == acesso.ADMIN else acesso.abas_permitidas(quem["permissoes"])})
+
+
+def _erro_acesso(erro: Exception):
+    return jsonify({"ok": False, "error": str(erro)}), 404 if isinstance(erro, LookupError) else 400
+
+
+@app.get("/api/acesso/catalogo")
+def acesso_catalogo_route():
+    return jsonify({"ok": True, "areas": acesso.catalogo_publico()})
+
+
+@app.get("/api/acesso/grupos")
+def acesso_grupos_route():
+    return jsonify({"ok": True, "items": acesso.listar_grupos()})
+
+
+@app.post("/api/acesso/grupos")
+def acesso_criar_grupo_route():
+    try:
+        return jsonify({"ok": True, "item": acesso.salvar_grupo(request.get_json(silent=True) or {})}), 201
+    except (ValueError, LookupError) as erro:
+        return _erro_acesso(erro)
+
+
+@app.put("/api/acesso/grupos/<grupo_id>")
+def acesso_editar_grupo_route(grupo_id: str):
+    try:
+        return jsonify({"ok": True, "item": acesso.salvar_grupo(request.get_json(silent=True) or {}, grupo_id)})
+    except (ValueError, LookupError) as erro:
+        return _erro_acesso(erro)
+
+
+@app.delete("/api/acesso/grupos/<grupo_id>")
+def acesso_excluir_grupo_route(grupo_id: str):
+    try:
+        acesso.excluir_grupo(grupo_id)
+        return jsonify({"ok": True})
+    except (ValueError, LookupError) as erro:
+        return _erro_acesso(erro)
+
+
+@app.get("/api/acesso/usuarios")
+def acesso_usuarios_route():
+    return jsonify({"ok": True, "items": acesso.listar_usuarios()})
+
+
+@app.post("/api/acesso/usuarios")
+def acesso_criar_usuario_route():
+    try:
+        usuario, chave = acesso.criar_usuario(request.get_json(silent=True) or {})
+        return jsonify({"ok": True, "item": usuario, "chave": chave}), 201
+    except (ValueError, LookupError) as erro:
+        return _erro_acesso(erro)
+
+
+@app.put("/api/acesso/usuarios/<usuario_id>")
+def acesso_editar_usuario_route(usuario_id: str):
+    try:
+        return jsonify({"ok": True, "item": acesso.atualizar_usuario(usuario_id, request.get_json(silent=True) or {})})
+    except (ValueError, LookupError) as erro:
+        return _erro_acesso(erro)
+
+
+@app.post("/api/acesso/usuarios/<usuario_id>/nova-chave")
+def acesso_nova_chave_route(usuario_id: str):
+    try:
+        usuario, chave = acesso.trocar_chave(usuario_id)
+        return jsonify({"ok": True, "item": usuario, "chave": chave})
+    except (ValueError, LookupError) as erro:
+        return _erro_acesso(erro)
+
+
+@app.get("/api/acesso/auditoria")
+def acesso_auditoria_route():
+    try:
+        limite = min(max(int(request.args.get("limite") or 200), 1), 1000)
+    except ValueError:
+        limite = 200
+    return jsonify({"ok": True, "items": acesso.auditoria(limite)})
 
 
 @app.get("/api/notas/lancadas")
