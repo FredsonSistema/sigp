@@ -1,0 +1,13 @@
+.git
+.venv*
+**/__pycache__
+logs
+backend/data
+*.db
+*.pdf
+*.png
+*.xml
+.env
+.vscode
+.qodo
+tests

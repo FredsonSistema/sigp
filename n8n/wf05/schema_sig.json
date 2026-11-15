@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "conclusao": { "type": "string", "enum": ["confere", "diverge", "revisar"] },
+    "resumo": { "type": "string" },
+    "pontosDeAtencao": { "type": "array", "items": { "type": "string" } },
+    "acaoSugerida": { "type": "string" },
+    "confianca": { "type": "number" }
+  },
+  "required": ["conclusao", "resumo", "pontosDeAtencao", "acaoSugerida", "confianca"]
+}

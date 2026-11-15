@@ -1,0 +1,124 @@
+{
+  "id": "sigpWF07DecisoesManual",
+  "name": "SIGp - Tomada de decisão manual",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sigp-tomada-decisao",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "sigp_wf07_webhook",
+      "name": "Receber decisão manual",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "sigp-tomada-decisao"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://sie:5000/api/sig/decisoes",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body || {}) }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "sigp_wf07_persist",
+      "name": "Registrar decisão e auditoria no SIG",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body || $json) }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode || 200 }}"
+        }
+      },
+      "id": "sigp_wf07_respond",
+      "name": "Retornar resultado da decisão",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ok:false,error:'Não foi possível gravar a decisão no SIG.'}) }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "sigp_wf07_error",
+      "name": "Informar falha ao gravar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        760,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Receber decisão manual": {
+      "main": [
+        [
+          {
+            "node": "Registrar decisão e auditoria no SIG",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar decisão e auditoria no SIG": {
+      "main": [
+        [
+          {
+            "node": "Retornar resultado da decisão",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Informar falha ao gravar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "sigp-wf07-decisao-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

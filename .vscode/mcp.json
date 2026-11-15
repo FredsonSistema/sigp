@@ -1,0 +1,19 @@
+{
+"servers": {
+    "n8n": {
+      "type": "http",
+      "url": "http://127.0.0.1:5678/mcp-server/http",
+      "headers": {
+        "Authorization": "Bearer ${input:n8n_access_token}"
+      }
+    }
+  },
+  "inputs": [
+   {
+    "type": "promptString",
+      "id": "n8n_access_token",
+     "description": "Enter your n8n access token",
+     "password": true
+  }
+]
+  }

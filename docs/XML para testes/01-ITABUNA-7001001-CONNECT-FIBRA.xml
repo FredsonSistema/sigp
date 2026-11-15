@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompNfse>
+  <Nfse>
+    <InfNfse Id="NFS29108001234567800019000000700100170000001">
+      <Numero>7001001</Numero>
+      <CodigoVerificacao>00000017001001</CodigoVerificacao>
+      <DataEmissao>2026-11-10T09:30:00-03:00</DataEmissao>
+      <DataVencimento>2026-11-20T00:00:00-03:00</DataVencimento>
+      <OutrasInformacoes>Mensalidade fibra 300MB - Referencia 11/2026 - Venc 20/11/2026</OutrasInformacoes>
+      <ValoresNfse><BaseCalculo>89.90</BaseCalculo><Aliquota>2.00</Aliquota><ValorIss>1.80</ValorIss><ValorLiquidoNfse>89.90</ValorLiquidoNfse></ValoresNfse>
+      <PrestadorServico>
+        <IdentificacaoPrestador><CpfCnpj><Cnpj>12345678000190</Cnpj></CpfCnpj><InscricaoMunicipal>445123</InscricaoMunicipal></IdentificacaoPrestador>
+        <RazaoSocial>CONNECT FIBRA TELECOM LTDA</RazaoSocial><NomeFantasia>CONNECT FIBRA</NomeFantasia>
+        <Endereco><Endereco>RUA ADELIA LORENS, 150</Endereco><Bairro>CENTRO</Bairro><CodigoMunicipio>2910800</CodigoMunicipio><Uf>BA</Uf><Cep>45600-000</Cep></Endereco>
+      </PrestadorServico>
+      <DeclaracaoPrestacaoServico>
+        <InfDeclaracaoPrestacaoServico>
+          <Rps><IdentificacaoRps><Numero>7000001</Numero><Serie>1</Serie><Tipo>1</Tipo></IdentificacaoRps><DataEmissao>2026-11-10T09:30:00-03:00</DataEmissao></Rps>
+          <Competencia>2026-11-10</Competencia>
+          <Servico>
+            <Valores><ValorServicos>89.90</ValorServicos></Valores>
+            <ItemListaServico>010701</ItemListaServico>
+            <ItensServico><Codigo>010701</Codigo><Descricao>SERVICO DE ACESSO A INTERNET FIBRA OPTICA 300MBPS - MENSALIDADE</Descricao><Quantidade>1</Quantidade><ValorUnitario>89.90</ValorUnitario><ValorTotal>89.90</ValorTotal></ItensServico>
+          </Servico>
+        </InfDeclaracaoPrestacaoServico>
+      </DeclaracaoPrestacaoServico>
+      <CamposTreinamento>
+        <ChaveNota>29108001234567800019000000700100170000001</ChaveNota>
+        <NumeroNota>7001001</NumeroNota>
+        <Serie>1</Serie>
+        <Provedor>CONNECT FIBRA TELECOM LTDA</Provedor>
+        <Local>ITABUNA - 2910800</Local>
+        <Cidade>ITABUNA</Cidade>
+        <ValorTotal>89.90</ValorTotal>
+        <Emissao>2026-11-10T09:30:00-03:00</Emissao>
+        <Vencimento>2026-11-20</Vencimento>
+        <Observacao>Mensalidade fibra 300MB - Referencia 11/2026</Observacao>
+        <TipoServico>INTERNET</TipoServico>
+      </CamposTreinamento>
+    </InfNfse>
+  </Nfse>
+</CompNfse>

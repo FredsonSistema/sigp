@@ -1,0 +1,628 @@
+{
+  "id": "sigpWF05Eventos0",
+  "name": "SIGp - WF-05 Eventos: análise LLM local, SIG (gerente) e SIE (executivo)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sigp-eventos",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "43af9b95-f768-563e-b93e-6c9f7cc3a5f4",
+      "name": "Eventos da API SIGp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "sigp-eventos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Eventos automáticos de conciliação e solicitações manuais enviadas pela interface.\nconst evento = $input.first().json.body || {};\nconst d = evento.dados || {};\nconst status = d.status || 'PENDENTE';\nif (!['analise_manual', 'conciliacao_atualizada'].includes(evento.evento)) return [];\nif (!['MATCH', 'DIVERGENCIA', 'AGUARDANDO_FATURA', 'PAGO_PARCIAL', 'PENDENTE'].includes(status)) return [];\nconst nl = d.notaLancada || {};\nconst np = d.notaPaga || {};\nconst fatura = (d.fatura || {}).dados || {};\nconst tipos = { agencia: 'Agência', rodoviaria: 'Rodoviária', garagem: 'Garagem' };\nconst localNome = (d.local || {}).nome || nl.local_nome || nl.entidade_id || '';\nconst local = `${tipos[nl.entidade_tipo] || 'Local'} ${localNome}`.trim();\nconst brl = (v) => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');\n// Fase C: toda análise vai primeiro ao SIG (gerente); a SIE recebe só o que o gerente validar.\nconst escopo = 'SIG';\nconst rotulos = {\n  MATCH: `Ciclo fechado · ${local} · NF ${nl.numero || nl.id}`,\n  DIVERGENCIA: `Divergência · ${local} · NF ${nl.numero || nl.id}`,\n  AGUARDANDO_FATURA: `Aguardando fatura · ${local} · NF ${nl.numero || nl.id}`,\n  PAGO_PARCIAL: `Pagamento parcial · ${local} · NF ${nl.numero || nl.id}`,\n  PENDENTE: `Análise pendente · ${local} · NF ${nl.numero || nl.id}`,\n};\nconst titulo = `${evento.evento === 'analise_manual' ? 'Análise manual · ' : ''}${rotulos[status]}`;\nconst resumo = {\n  chave: nl.chave || nl.id || '', numero: nl.numero || '', serie: nl.serie || '',\n  localTipo: nl.entidade_tipo || '', localNome, localCidade: (d.local || {}).cidade || nl.local_cidade || '',\n  local, provedor: nl.provedor_nome || '', emissao: nl.data_emissao || '', vencimento: nl.data_vencimento || '',\n  valorLancado: Number(nl.valor_total || 0), valorPagoAcumulado: Number(d.valorPagoAcumulado || np.valor_pago || 0),\n  dataPagamento: np.data_pagamento || '',\n  fatura: d.fatura ? { id: d.fatura.id || d.fatura.fatura_id || \"\", valor: fatura.valorTotal, vencimento: fatura.dataVencimento, emissor: fatura.emissorNome } : null,\n  comparacao: d.comparacao || {}, observacao: d.observacao || '',\n  aceitaDivergencia: Boolean(d.aceitaDivergencia), origem: evento.evento,\n};\nconst textoBase = [\n  titulo,\n  `Provedor: ${resumo.provedor || '-'} · Valor lançado: ${brl(resumo.valorLancado)} · Pago: ${brl(resumo.valorPagoAcumulado)}`,\n  `Emissão ${resumo.emissao || '-'} · Vencimento ${resumo.vencimento || '-'} · Pagamento ${resumo.dataPagamento || '-'}`,\n  resumo.fatura ? `Fatura: ${brl(resumo.fatura.valor)} · vencimento ${resumo.fatura.vencimento || '-'}` : 'Fatura: ainda não disponível',\n  `Situação: ${resumo.observacao || status}${resumo.aceitaDivergencia ? ' · divergência aceita para análise manual, sem aprovação automática' : ''}`,\n].join('\\n');\nconst prompt = `Você apoia a gestão de custos de provedores de internet/telefonia de agências, rodoviárias e garagens.\nEscreva em português do Brasil, em no máximo 6 linhas, ${escopo === 'SIE'\n  ? 'um resumo executivo para a diretoria sobre este ciclo fechado (nota lançada, pagamento e fatura conferidos): custo, prazo de pagamento e qualquer ponto de atenção.'\n  : 'uma análise gerencial explicando a pendência ou divergência abaixo e qual ação manual o time deve tomar.'}\nUse só os dados fornecidos; não invente valores.\nDados: ${JSON.stringify(resumo)}`;\nreturn [{ json: { escopo, status, titulo, referencia: nl.id || nl.chave || '', textoBase, prompt, dados: { ...resumo, status, requerValidacao: ['MATCH', 'DIVERGENCIA'].includes(status), etapa: 'gerente' } } }];"
+      },
+      "id": "b127eed4-9876-50d8-991c-6de95994b331",
+      "name": "Montar análise",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://sie:5000/api/conciliacoes",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chave: $json.dados.chave || $json.referencia, numero: $json.dados.numero, serie: $json.dados.serie, provedorNome: $json.dados.provedor, localTipo: $json.dados.localTipo, localNome: $json.dados.localNome, localCidade: $json.dados.localCidade, valor: $json.dados.valorLancado, valorPago: $json.dados.valorPagoAcumulado, dataEmissao: $json.dados.emissao, dataVencimento: $json.dados.vencimento, status: $json.status === 'MATCH' ? 'PAGA' : $json.status === 'DIVERGENCIA' ? 'DIVERGENCIA_CADASTRAL' : $json.status === 'AGUARDANDO_FATURA' ? 'PENDENTE' : $json.status, observacao: $json.dados.observacao || $json.titulo, faturaId: ($json.dados.fatura || {}).id || \"\", faturaValor: ($json.dados.fatura || {}).valor, faturaVencimento: ($json.dados.fatura || {}).vencimento || \"\", faturaEmissor: ($json.dados.fatura || {}).emissor || \"\" }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "a9000000-0000-4000-8000-000000000005",
+      "name": "Atualizar conciliação no SIE legado",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        520
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://academic-ai:5010/api/analyze",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.SIGP_ACADEMIC_AI_KEY || '' }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { invoice: $json.aiInvoice } }}",
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "neverError": true
+            }
+          }
+        }
+      },
+      "id": "f2cc9f70-64ef-56c2-bf80-ede32bd301b3",
+      "name": "Parecer acadêmico (Qwen + RAG)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $input.first().json;\nconst event = $('Eventos da API SIGp').first().json.body || {};\nconst d = event.dados || {};\nconst nl = d.notaLancada || {};\nconst invoice = (d.fatura || {}).dados || {};\nconst descriptions = [\n  ...(Array.isArray(nl.servicos) ? nl.servicos.map((service) => service.descricao) : []),\n  nl.descricao,\n  invoice.descricao,\n  invoice.descricaoServico,\n  invoice.servico,\n].map((value) => String(value || '').trim()).filter(Boolean);\nconst rawAmount = invoice.valorTotal;\nconst rawAmountText = String(rawAmount ?? '').trim();\nconst normalizedAmount = rawAmountText.includes(',')\n  ? rawAmountText.replace(/[.]/g, '').replace(',', '.')\n  : rawAmountText;\nconst amount = rawAmountText ? Number(normalizedAmount) : NaN;\nconst aiInvoice = {\n  provider: String(invoice.emissorNome || nl.provedor_nome || '').trim().slice(0, 80),\n  description: [...new Set(descriptions)].join('; ').slice(0, 1000),\n  amount,\n  due_date: String(invoice.dataVencimento || nl.data_vencimento || '').trim(),\n};\nconst aiEligible = Boolean(d.fatura)\n  && Boolean(aiInvoice.provider)\n  && Boolean(aiInvoice.description)\n  && Number.isFinite(aiInvoice.amount)\n  && aiInvoice.amount >= 0;\nconst aiSkipReason = !d.fatura\n  ? 'Fatura ainda não disponível.'\n  : !aiInvoice.provider\n    ? 'Provedor não identificado na fatura ou nota.'\n    : !aiInvoice.description\n      ? 'Descrição de serviço não identificada.'\n      : !Number.isFinite(aiInvoice.amount) || aiInvoice.amount < 0\n        ? 'Valor da fatura não identificado ou inválido.'\n        : '';\nreturn [{ json: { ...base, aiInvoice, aiEligible, aiSkipReason } }];"
+      },
+      "id": "61e98875-ccf9-4cec-968b-34858b8a4001",
+      "name": "Preparar entrada acadêmica",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.aiEligible }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      },
+      "id": "61e98875-ccf9-4cec-968b-34858b8a4002",
+      "name": "Fatura pronta para parecer?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        820,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Preparar entrada acadêmica').first().json;\nconst input = $input.first().json || {};\nconst result = input.body && typeof input.body === 'object' ? input.body : input;\nconst classification = ['CONTRATADO', 'DIVERGENTE', 'REVISAR'].includes(result.classification)\n  ? result.classification\n  : '';\nconst modelClassification = ['CONTRATADO', 'DIVERGENTE', 'REVISAR'].includes(result.model_classification)\n  ? result.model_classification\n  : '';\nconst generated = result.ok === true && classification && modelClassification;\nconst failure = input.error?.message || result.error || result.message || 'A API acadêmica não retornou um parecer válido.';\nconst parecerIA = generated\n  ? {\n      status: 'gerado',\n      classification,\n      reason: String(result.reason || ''),\n      model_classification: modelClassification,\n      model_agreement: result.model_agreement === true,\n      model_is_authoritative: false,\n      model: String(result.model || ''),\n      model_profile: String(result.model_profile || ''),\n      prompt_version: String(result.prompt_version || ''),\n      prompt_sha256: String(result.prompt_sha256 || ''),\n      source_ids: Array.isArray(result.source_ids) ? result.source_ids : [],\n      correlation_id: String(result.correlation_id || ''),\n      latency_ms: Number(result.latency_ms || 0),\n      aviso: 'Corpus acadêmico demonstrativo; não valida contratos reais e não altera conciliação ou pagamento.',\n    }\n  : {\n      status: base.aiEligible ? 'nao_gerado' : 'sem_dados',\n      reason: String(base.aiSkipReason || failure).slice(0, 300),\n      model_is_authoritative: false,\n      aviso: 'A análise determinística do SIGp permanece inalterada.',\n    };\nconst linhasParecer = generated\n  ? [\n      '',\n      'Parecer experimental RAG/Qwen (não autoritativo):',\n      `Classificação estruturada acadêmica: ${classification}.`,\n      `Classificação proposta pelo modelo: ${modelClassification}.`,\n      `Motivo: ${parecerIA.reason || 'não informado pela API acadêmica'}`,\n      `Fontes demonstrativas: ${parecerIA.source_ids.join(', ') || 'nenhuma'}.`,\n      parecerIA.aviso,\n    ]\n  : [\n      '',\n      `Parecer experimental RAG/Qwen não gerado: ${parecerIA.reason}`,\n      parecerIA.aviso,\n    ];\nconst conteudo = `${base.textoBase}\\n${linhasParecer.join('\\n')}`;\nconst modelo = generated\n  ? `SIGp determinístico + Qwen experimental (${parecerIA.model_profile || parecerIA.model || 'perfil não informado'})`\n  : 'SIGp determinístico; parecer Qwen não gerado';\nreturn [{ json: {\n  ...base,\n  dados: { ...base.dados, parecerIA },\n  conteudo,\n  modelo,\n} }];"
+      },
+      "id": "5c73c980-d30a-51d4-bd28-cadffb8da44b",
+      "name": "Escolher texto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SIGP_API_URL }}/api/analises",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.SIGP_API_KEY || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ escopo: $json.escopo, titulo: $json.titulo, referencia: $json.referencia, conteudo: $json.conteudo, modelo: $json.modelo, dados: $json.dados, origem: 'n8n' }) }}"
+      },
+      "id": "b52a4131-334e-51b5-b91c-bc0bdc786725",
+      "name": "Gravar análise na API (SIG)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Notifica ciclos fechados e divergências a partir do que foi gravado (já com a análise da LLM).\nconst r = $input.first().json || {};\nconst item = (r.body || r).item || {};\nif (!['MATCH', 'DIVERGENCIA'].includes((item.dados || {}).status)) return [];\nreturn [{ json: { assunto: `SIGp · ${item.titulo}`, texto: `${item.titulo}\\n\\n${item.conteudo}` } }];\n"
+      },
+      "id": "81081cc9-86a6-5816-8c54-6715ab38b513",
+      "name": "Montar mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2180,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "send",
+        "sendTo": "={{ $env.SIGP_RELATORIO_EMAIL }}",
+        "subject": "={{ $json.assunto }}",
+        "emailType": "text",
+        "message": "={{ $json.texto }}",
+        "options": {}
+      },
+      "id": "8bd26826-988a-5d94-8c4d-538390599209",
+      "name": "Gmail - relatório",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        2420,
+        140
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.SIGP_TELEGRAM_CHAT_ID }}",
+        "text": "={{ $json.texto }}",
+        "additionalFields": {}
+      },
+      "id": "5fcd0404-11e5-512d-b060-0ddd9b7d6edc",
+      "name": "Telegram - alerta",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2420,
+        300
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SIGP_WHATSAPP_URL }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "={{ $env.SIGP_WHATSAPP_APIKEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $env.SIGP_WHATSAPP_NUMERO, text:  $json.texto }) }}",
+        "options": {}
+      },
+      "id": "7b6ca5de-f0d4-5b3b-b9cd-1bda5270d161",
+      "name": "WhatsApp - alerta (Evolution API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2420,
+        460
+      ],
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// A LLM local analisa os ciclos fechados (MATCH = 3 evidências) e as divergências (D14). Os demais status\n// seguem com o texto da regra. A regra do SIGp continua sendo a decisão oficial (D13).\nconst base = $input.first().json;\nconst precisaLLM = ['MATCH', 'DIVERGENCIA'].includes(base.status);\nconst { parecerIA, ...dadosDoCiclo } = base.dados || {};\n// Fatos calculados aqui (a LLM pequena erra contas de data e valor): ela só redige a partir deles.\nconst brl = (v) => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');\nconst dataBR = (iso) => (/^\\d{4}-\\d{2}-\\d{2}/.test(String(iso || '')) ? String(iso).slice(0, 10).split('-').reverse().join('/') : 'não informado');\nconst dias = (a, b) => Math.round((Date.parse(String(a).slice(0, 10)) - Date.parse(String(b).slice(0, 10))) / 86400000);\nconst fatos = [];\nconst lancado = Number(dadosDoCiclo.valorLancado || 0);\nconst pago = Number(dadosDoCiclo.valorPagoAcumulado || 0);\nconst valorFatura = Number(dadosDoCiclo.fatura?.valor || 0);\nfatos.push(`Valor lançado: ${brl(lancado)}. Valor pago: ${pago ? brl(pago) : 'nenhum pagamento'}.`\n  + (pago ? (Math.abs(lancado - pago) < 0.01 ? ' Pago igual ao lançado.' : ` Diferença: ${brl(pago - lancado)} (${pago < lancado ? 'pago a menos' : 'pago a mais'}).`) : ''));\nfatos.push(dadosDoCiclo.fatura\n  ? `Fatura: ${brl(valorFatura)}, vencimento ${dataBR(dadosDoCiclo.fatura.vencimento)}.` + (Math.abs(valorFatura - lancado) < 0.01 ? ' Fatura igual ao lançado.' : ` Diferença fatura x lançado: ${brl(valorFatura - lancado)}.`)\n  : 'Fatura: ainda não disponível.');\nif (dadosDoCiclo.dataPagamento && dadosDoCiclo.vencimento) {\n  const d = dias(dadosDoCiclo.dataPagamento, dadosDoCiclo.vencimento);\n  fatos.push(`Pagamento em ${dataBR(dadosDoCiclo.dataPagamento)}, vencimento em ${dataBR(dadosDoCiclo.vencimento)}: `\n    + (d === 0 ? 'pago no dia do vencimento (no prazo).' : d < 0 ? `pago ${-d} dia(s) ANTES do vencimento (no prazo).` : `pago ${d} dia(s) DEPOIS do vencimento (em atraso).`));\n} else {\n  fatos.push(`Vencimento: ${dataBR(dadosDoCiclo.vencimento)}. Data de pagamento: não informada.`);\n}\nif (dadosDoCiclo.fatura && dadosDoCiclo.fatura.emissor && dadosDoCiclo.provedor) fatos.push(`Provedor da nota: ${dadosDoCiclo.provedor}. Emissor da fatura: ${dadosDoCiclo.fatura.emissor}.`);\nif (dadosDoCiclo.observacao) fatos.push(`Observação da regra: ${dadosDoCiclo.observacao}`);\nconst usuario = [\n  `Status calculado pela regra do sistema (oficial): ${base.status}`,\n  `Local: ${dadosDoCiclo.local || dadosDoCiclo.localNome || 'não informado'}. Nota: ${dadosDoCiclo.numero || 'não informada'}.`,\n  'FATOS CALCULADOS (corretos; use exatamente estes, não refaça contas):',\n  ...fatos.map((f) => `- ${f}`),\n].join('\\n');\nconst ollamaBody = {\n  model: $env.SIGP_OLLAMA_MODEL || 'qwen2.5:3b',\n  stream: false,\n  options: { temperature: 0, num_ctx: 4096 },\n  format: {\"type\": \"object\", \"properties\": {\"conclusao\": {\"type\": \"string\", \"enum\": [\"confere\", \"diverge\", \"revisar\"]}, \"resumo\": {\"type\": \"string\"}, \"pontosDeAtencao\": {\"type\": \"array\", \"items\": {\"type\": \"string\"}}, \"acaoSugerida\": {\"type\": \"string\"}, \"confianca\": {\"type\": \"number\"}}, \"required\": [\"conclusao\", \"resumo\", \"pontosDeAtencao\", \"acaoSugerida\", \"confianca\"]},\n  messages: [\n    { role: 'system', content: \"Você é o analista de contas de internet de um grupo de transporte rodoviário (agências, rodoviárias e garagens).\\nEscreva para o GERENTE, em português do Brasil, com frases curtas, claras e profissionais.\\n\\nRegras de linguagem:\\n- Use somente os dados fornecidos. Nunca invente valores, datas, nomes ou números de nota.\\n- Valores em reais com vírgula: R$ 119,90. Datas no formato dd/mm/aaaa.\\n- Dado ausente: escreva \\\"não informado\\\".\\n- Termos: \\\"nota lançada\\\" (registrada para pagamento), \\\"nota paga\\\" (pagamento confirmado), \\\"fatura\\\" (PDF do provedor), \\\"ciclo fechado\\\" (as três conferem), \\\"competência\\\" (mês da cobrança).\\n- Sem jargão técnico, sem inglês, sem emojis.\\n\\nRegras de fidelidade:\\n- Os FATOS CALCULADOS estão corretos: copie números, datas e prazos deles; nunca refaça contas.\\n- Só aponte um problema se ele estiver nos fatos. Não suponha erros que os fatos não mostram.\\n\\nRegras de decisão:\\n- O STATUS calculado pela regra do sistema é a decisão oficial. Você analisa, explica e aponta riscos; não muda o status.\\n- conclusao = \\\"confere\\\" quando lançado, pago e fatura batem em valor, vencimento, provedor e local.\\n- conclusao = \\\"diverge\\\" quando há diferença em valor, vencimento, provedor, local ou serviço.\\n- conclusao = \\\"revisar\\\" quando faltam dados para concluir.\\n- resumo: no máximo 3 frases, começando pelo que importa (confere ou não, e por quê).\\n- pontosDeAtencao: até 4 itens curtos e concretos (ex.: \\\"Pago 2 dias após o vencimento.\\\"). Lista vazia se não houver.\\n- acaoSugerida: uma frase com a próxima ação do gerente (ex.: \\\"Validar o ciclo.\\\" ou \\\"Pedir a fatura corrigida ao provedor.\\\").\\n- confianca: de 0 a 1, sua certeza na conclusão.\\nResponda somente com o JSON do schema.\" },\n    { role: 'user', content: usuario },\n  ],\n};\nreturn [{ json: { ...base, precisaLLM, ollamaBody } }];\n"
+      },
+      "id": "659ade4c-8f5c-4470-b34a-200d6a351d8a",
+      "name": "Preparar pedido à LLM (SIG)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        300
+      ],
+      "notes": "MATCH (3 evidências) e DIVERGENCIA vão à LLM; os demais seguem com a regra."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.precisaLLM }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ]
+        }
+      },
+      "id": "5e989824-8c17-446c-833c-99c270562f09",
+      "name": "Analisar com a LLM local?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.SIGP_OLLAMA_URL || 'http://ollama:11434') + '/api/chat' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json.ollamaBody) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "0d414888-ee23-48a1-94cc-a96c9da71c9d",
+      "name": "LLM local — análise gerencial (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1520,
+        180
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "LLM local (Ollama na rede Docker). Nenhum dado sai da rede. Falha ou demora: segue com o texto da regra."
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Preparar pedido à LLM (SIG)').first().json;\nconst resposta = $input.first().json || {};\nconst ROTULO = { confere: 'confere', diverge: 'diverge', revisar: 'precisa de revisão' };\nlet llm = null;\nlet erro = '';\ntry {\n  const conteudo = JSON.parse(resposta.message?.content || '');\n  if (!ROTULO[conteudo.conclusao] || !String(conteudo.resumo || '').trim()) throw new Error('resposta fora do formato');\n  llm = conteudo;\n} catch (e) {\n  erro = String(resposta.error?.message || resposta.error || e.message || 'sem resposta do Ollama').slice(0, 300);\n}\nconst { ollamaBody, precisaLLM, ...resto } = base;\nif (!llm) {\n  // Sem LLM (fora do ar, lenta ou resposta inválida): grava a análise da regra e registra o motivo.\n  return [{ json: { ...resto, dados: { ...resto.dados, analiseLLM: { status: 'nao_gerada', motivo: erro } } } }];\n}\nconst discorda = (base.status === 'MATCH' && llm.conclusao !== 'confere')\n  || (base.status === 'DIVERGENCIA' && llm.conclusao === 'confere');\nconst linhas = [\n  `Análise da LLM local: ${ROTULO[llm.conclusao]}.`,\n  String(llm.resumo).trim(),\n  ...(Array.isArray(llm.pontosDeAtencao) ? llm.pontosDeAtencao : []).slice(0, 4).map((p) => `• ${String(p).trim()}`),\n  llm.acaoSugerida ? `Ação sugerida: ${String(llm.acaoSugerida).trim()}` : null,\n  discorda ? `Atenção: a LLM discorda da regra do sistema (${base.status}). O status oficial é o da regra; confira antes de validar.` : null,\n  '',\n  'Dados do sistema:',\n  String(resto.conteudo || ''),\n].filter((linha) => linha !== null);\nreturn [{ json: {\n  ...resto,\n  conteudo: linhas.join('\\n'),\n  modelo: `LLM local ${ollamaBody.model} + regra do SIGp`,\n  dados: { ...resto.dados, analiseLLM: { status: 'gerada', ...llm, discordaDaRegra: discorda, modelo: ollamaBody.model } },\n} }];\n"
+      },
+      "id": "3668b2ad-ca23-4e3f-b14f-5318d5754395",
+      "name": "Juntar análise da LLM",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1740,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Decisão do gerente (evento \"decisao_gerente\" enviado pelo SIGp). Só VALIDADA ou CORRIGIDA seguem para a SIE.\nconst evento = $input.first().json.body || {};\nif (evento.evento !== 'decisao_gerente') return [];\nconst dados = evento.dados || {};\nconst decisao = dados.decisao || {};\nconst analise = dados.analise || {};\nif (!['VALIDADA', 'CORRIGIDA'].includes(decisao.status)) return [];\nconst textoValidado = decisao.status === 'CORRIGIDA' && decisao.conteudo_corrigido ? decisao.conteudo_corrigido : analise.conteudo;\nconst { analiseLLM, parecerIA, ...resumo } = dados.resumo || {};\nconst brl = (v) => 'R$ ' + Number(v || 0).toFixed(2).replace('.', ',');\nconst dataBR = (iso) => (/^\\d{4}-\\d{2}-\\d{2}/.test(String(iso || '')) ? String(iso).slice(0, 10).split('-').reverse().join('/') : 'não informado');\nconst diasPag = resumo.dataPagamento && resumo.vencimento\n  ? Math.round((Date.parse(String(resumo.dataPagamento).slice(0, 10)) - Date.parse(String(resumo.vencimento).slice(0, 10))) / 86400000)\n  : null;\nconst fatos = [\n  `Local: ${resumo.local || resumo.localNome || 'não informado'}. Provedor: ${resumo.provedor || 'não informado'}.`,\n  `Custo do ciclo (valor lançado): ${brl(resumo.valorLancado)}. Pago: ${brl(resumo.valorPagoAcumulado)}.`,\n  diasPag === null ? 'Prazo: não informado.'\n    : diasPag <= 0 ? `Prazo: pago no prazo (${diasPag === 0 ? 'no dia do vencimento' : `${-diasPag} dia(s) antes`}, vencimento ${dataBR(resumo.vencimento)}).`\n      : `Prazo: pago com ${diasPag} dia(s) de atraso (vencimento ${dataBR(resumo.vencimento)}).`,\n];\nconst usuario = [\n  'FATOS CALCULADOS (corretos; use exatamente estes, não refaça contas):',\n  ...fatos.map((f) => `- ${f}`),\n  '',\n  `Decisão do gerente: ${decisao.status === 'CORRIGIDA' ? 'validada com correção' : 'validada'} por ${decisao.usuario || 'gerente'}`\n    + (decisao.justificativa ? ` (motivo: ${decisao.justificativa})` : ''),\n  '',\n  'Análise validada pelo gerente:',\n  String(textoValidado || '').split('\\nDados do sistema:')[0].trim(),\n].join('\\n');\nconst ollamaBody = {\n  model: $env.SIGP_OLLAMA_MODEL || 'qwen2.5:3b',\n  stream: false,\n  options: { temperature: 0, num_ctx: 4096 },\n  format: {\"type\": \"object\", \"properties\": {\"resumoExecutivo\": {\"type\": \"string\"}, \"impacto\": {\"type\": \"string\", \"enum\": [\"nenhum\", \"baixo\", \"medio\", \"alto\"]}, \"recomendacao\": {\"type\": \"string\"}}, \"required\": [\"resumoExecutivo\", \"impacto\", \"recomendacao\"]},\n  messages: [\n    { role: 'system', content: \"Você redige o RESUMO EXECUTIVO para a diretoria de um grupo de transporte rodoviário, sobre os custos de internet\\nde agências, rodoviárias e garagens. A análise abaixo já foi VALIDADA pelo gerente.\\nEscreva em português do Brasil, tom executivo: direto, sem detalhes operacionais, sem jargão, sem emojis.\\n\\nRegras:\\n- Use somente os FATOS CALCULADOS e a análise validada; copie valores e prazos dos fatos, nunca refaça contas.\\n- Sempre cite o custo do ciclo em reais.\\n- Se o gerente corrigiu a análise, a versão corrigida é a correta.\\n- Valores em reais com vírgula (R$ 119,90); datas dd/mm/aaaa.\\n- resumoExecutivo: 2 a 4 frases. Diga o local e o provedor, o custo do ciclo, se foi pago no prazo e o principal ponto de atenção, se houver.\\n- impacto: \\\"nenhum\\\", \\\"baixo\\\", \\\"medio\\\" ou \\\"alto\\\" (risco financeiro ou operacional para a empresa).\\n- recomendacao: uma frase para a diretoria (pode ser \\\"Nenhuma ação necessária.\\\").\\nResponda somente com o JSON do schema.\" },\n    { role: 'user', content: usuario },\n  ],\n};\nreturn [{ json: {\n  titulo: String(analise.titulo || 'Ciclo').replace(/^Análise manual · /, ''),\n  referencia: analise.referencia || '',\n  analiseOrigemId: analise.id || '',\n  decisao,\n  resumo,\n  textoValidado,\n  ollamaBody,\n} }];\n"
+      },
+      "id": "2f768817-bd60-4a40-97c6-53913b325e17",
+      "name": "Montar etapa executiva",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        760
+      ],
+      "notes": "Evento decisao_gerente do SIGp. Só VALIDADA/CORRIGIDA seguem para a SIE."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ ($env.SIGP_OLLAMA_URL || 'http://ollama:11434') + '/api/chat' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "contentType": "json",
+        "jsonBody": "={{ JSON.stringify($json.ollamaBody) }}",
+        "options": {
+          "timeout": 300000
+        }
+      },
+      "id": "36c9c812-3727-430b-9860-f7d44c65ae1a",
+      "name": "LLM local — resumo executivo (Ollama)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        640,
+        760
+      ],
+      "onError": "continueRegularOutput",
+      "notes": "LLM local (Ollama na rede Docker). Nenhum dado sai da rede. Falha ou demora: segue com o texto da regra."
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Montar etapa executiva').first().json;\nconst resposta = $input.first().json || {};\nlet llm = null;\nlet erro = '';\ntry {\n  const conteudo = JSON.parse(resposta.message?.content || '');\n  if (!String(conteudo.resumoExecutivo || '').trim()) throw new Error('resposta fora do formato');\n  llm = conteudo;\n} catch (e) {\n  erro = String(resposta.error?.message || resposta.error || e.message || 'sem resposta do Ollama').slice(0, 300);\n}\nconst IMPACTO = { nenhum: 'nenhum', baixo: 'baixo', medio: 'médio', alto: 'alto' };\nconst validacao = `Validado por ${base.decisao.usuario || 'gerente'} em ${new Date(base.decisao.created_at || Date.now()).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`\n  + (base.decisao.status === 'CORRIGIDA' ? ' (com correção)' : '') + '.';\nconst conteudo = llm\n  ? [String(llm.resumoExecutivo).trim(), `Impacto: ${IMPACTO[llm.impacto] || 'não informado'}.`,\n     llm.recomendacao ? `Recomendação: ${String(llm.recomendacao).trim()}` : '', validacao].filter(Boolean).join('\\n')\n  : [String(base.textoValidado || '').trim(), validacao].join('\\n\\n');\nreturn [{ json: {\n  escopo: 'SIE',\n  titulo: base.titulo,\n  referencia: base.referencia,\n  conteudo,\n  modelo: llm ? `LLM local ${base.ollamaBody.model}` : 'Análise validada pelo gerente (LLM indisponível)',\n  dados: {\n    ...base.resumo,\n    analiseOrigemId: base.analiseOrigemId,\n    decisaoGerente: base.decisao,\n    resumoExecutivoLLM: llm ? { status: 'gerado', ...llm } : { status: 'nao_gerado', motivo: erro },\n  },\n} }];\n"
+      },
+      "id": "8cc847ff-571d-4dbf-aaaa-2ad3f71cbd0c",
+      "name": "Juntar resumo executivo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        760
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SIGP_API_URL }}/api/analises",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.SIGP_API_KEY || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ escopo: $json.escopo, titulo: $json.titulo, referencia: $json.referencia, conteudo: $json.conteudo, modelo: $json.modelo, dados: $json.dados, origem: 'n8n' }) }}"
+      },
+      "id": "517408a0-92ed-4ceb-a886-f69923f61e03",
+      "name": "Gravar análise executiva (SIE)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1080,
+        760
+      ]
+    }
+  ],
+  "connections": {
+    "Eventos da API SIGp": {
+      "main": [
+        [
+          {
+            "node": "Montar análise",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Montar etapa executiva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar análise": {
+      "main": [
+        [
+          {
+            "node": "Preparar entrada acadêmica",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Atualizar conciliação no SIE legado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar entrada acadêmica": {
+      "main": [
+        [
+          {
+            "node": "Fatura pronta para parecer?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fatura pronta para parecer?": {
+      "main": [
+        [
+          {
+            "node": "Parecer acadêmico (Qwen + RAG)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Escolher texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parecer acadêmico (Qwen + RAG)": {
+      "main": [
+        [
+          {
+            "node": "Escolher texto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Escolher texto": {
+      "main": [
+        [
+          {
+            "node": "Preparar pedido à LLM (SIG)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar mensagem": {
+      "main": [
+        [
+          {
+            "node": "Gmail - relatório",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Telegram - alerta",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "WhatsApp - alerta (Evolution API)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar análise na API (SIG)": {
+      "main": [
+        [
+          {
+            "node": "Montar mensagem",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar pedido à LLM (SIG)": {
+      "main": [
+        [
+          {
+            "node": "Analisar com a LLM local?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analisar com a LLM local?": {
+      "main": [
+        [
+          {
+            "node": "LLM local — análise gerencial (Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Gravar análise na API (SIG)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM local — análise gerencial (Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Juntar análise da LLM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar análise da LLM": {
+      "main": [
+        [
+          {
+            "node": "Gravar análise na API (SIG)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Montar etapa executiva": {
+      "main": [
+        [
+          {
+            "node": "LLM local — resumo executivo (Ollama)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM local — resumo executivo (Ollama)": {
+      "main": [
+        [
+          {
+            "node": "Juntar resumo executivo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar resumo executivo": {
+      "main": [
+        [
+          {
+            "node": "Gravar análise executiva (SIE)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "errorWorkflow": "sigpWF99Erros000"
+  },
+  "active": true,
+  "pinData": {},
+  "tags": []
+}

@@ -1,0 +1,492 @@
+{
+  "name": "SIGp - Notas API + SIE Webhook",
+  "id": "sigpNFSE20261006",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sigp-notas",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook_sigp",
+      "webhookId": "sigp-notas",
+      "name": "Webhook SIGp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        120,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json || {}; const dados = body.dados || {}; const documento = body.documento || dados.documento || dados || body; const evento = body.evento || documento.status || 'nfse_lancada'; const itens = Array.isArray(body.itens) ? body.itens : [{ localTipo: documento.localTipo || 'agencia', localNome: documento.localNome || '', localCidade: documento.localCidade || '', valor: Number(documento.valorTotal || documento.valor || 0), status: documento.status || 'PENDENTE' }]; return { json: { evento, timestamp: body.timestamp || new Date().toISOString(), documento, itens, status: dados.status || body.status || documento.status || 'PENDENTE', conciliacao: dados.conciliacao || body.conciliacao || {}, comparacao: dados.comparacao || body.comparacao || {} } };"
+      },
+      "id": "normalize_payload",
+      "name": "Normalizar payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{$json.evento}}",
+              "rightValue": "nfse_lancada",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if_nfse_lancada",
+      "name": "Evento = nfse_lancada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        620,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{$json.evento}}",
+              "rightValue": "nota_paga",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "leftValue": "={{$json.status}}",
+              "rightValue": "MATCH",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if_nota_paga",
+      "name": "Evento = nota_paga conciliada?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        620,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://sie:5000/api/notas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "payload",
+              "value": "={{JSON.stringify($json)}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http_post_nota",
+      "name": "Persistir nota pela API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://sie:5000/api/notas/consulta",
+        "sendHeaders": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "chave",
+              "value": "={{$json.documento.chave || $json.documento.id || ''}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http_consulta_nota",
+      "name": "Consultar nota pela API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1160,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.item.json || {}; const item = response.item || {}; const documento = $json.documento || {}; const valorEsperado = Number(documento.valorTotal || documento.valor || 0); const valorReal = Number(item.valor_total || item.valor || 0); const status = valorReal > 0 && valorReal !== valorEsperado ? 'DIVERGENCIA_CADASTRAL' : 'RECEBIDA'; return { json: { ...$json, status, valorEsperado, valorReal, validacao: status === 'RECEBIDA' } };"
+      },
+      "id": "code_validar_nota",
+      "name": "Validar nota e status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://sie:5000/api/conciliacoes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chave",
+              "value": "={{$json.documento.chave || $json.documento.id || ''}}"
+            },
+            {
+              "name": "valor",
+              "value": "={{$json.documento.valorTotal || $json.documento.valor || 0}}"
+            },
+            {
+              "name": "status",
+              "value": "={{$json.status || 'PENDENTE'}}"
+            },
+            {
+              "name": "provedorNome",
+              "value": "={{$json.documento.provedorNome || ''}}"
+            },
+            {
+              "name": "localNome",
+              "value": "={{$json.documento.localNome || ''}}"
+            },
+            {
+              "name": "localCidade",
+              "value": "={{$json.documento.localCidade || ''}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http_post_conciliacao",
+      "name": "Persistir no backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://sie:5000/api/sie/webhook",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "evento",
+              "value": "={{$node['Normalizar payload'].json.evento === 'nota_paga' ? 'nfse_conciliada' : ($node['Normalizar payload'].json.evento || 'status_atualizado')}}"
+            },
+            {
+              "name": "documentoId",
+              "value": "={{$node['Normalizar payload'].json.documento.id || $node['Normalizar payload'].json.documento.chave || ''}}"
+            },
+            {
+              "name": "status",
+              "value": "={{$node['Normalizar payload'].json.status || 'PENDENTE'}}"
+            },
+            {
+              "name": "valorTotal",
+              "value": "={{$node['Normalizar payload'].json.documento.valorTotal || $node['Normalizar payload'].json.documento.valor || 0}}"
+            },
+            {
+              "name": "provedorNome",
+              "value": "={{$node['Normalizar payload'].json.documento.provedorNome || ''}}"
+            },
+            {
+              "name": "localNome",
+              "value": "={{$node['Normalizar payload'].json.documento.localNome || ''}}"
+            },
+            {
+              "name": "chave",
+              "value": "={{$node['Normalizar payload'].json.documento.chave || ''}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http_webhook_sie",
+      "name": "Enviar evento para o SIE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://sie:5000/api/conciliacoes",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chave",
+              "value": "={{$json.documento.chave || ''}}"
+            },
+            {
+              "name": "numero",
+              "value": "={{$json.documento.numero || ''}}"
+            },
+            {
+              "name": "serie",
+              "value": "={{$json.documento.serie || ''}}"
+            },
+            {
+              "name": "provedorNome",
+              "value": "={{$json.documento.provedorNome || ''}}"
+            },
+            {
+              "name": "localTipo",
+              "value": "={{$json.documento.localTipo || 'agencia'}}"
+            },
+            {
+              "name": "localNome",
+              "value": "={{$json.documento.localNome || ''}}"
+            },
+            {
+              "name": "localCidade",
+              "value": "={{$json.documento.localCidade || ''}}"
+            },
+            {
+              "name": "valor",
+              "value": "={{$json.documento.valorTotal || $json.documento.valor || 0}}"
+            },
+            {
+              "name": "valorPago",
+              "value": "={{$json.documento.valorPago || $json.documento.valorTotal || $json.documento.valor || 0}}"
+            },
+            {
+              "name": "status",
+              "value": "PAGA"
+            },
+            {
+              "name": "dataEmissao",
+              "value": "={{$json.documento.dataEmissao || ''}}"
+            },
+            {
+              "name": "dataVencimento",
+              "value": "={{$json.documento.dataVencimento || ''}}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "http_update_pagamento",
+      "name": "Atualizar status de pagamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        900,
+        420
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook SIGp": {
+      "main": [
+        [
+          {
+            "node": "Normalizar payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalizar payload": {
+      "main": [
+        [
+          {
+            "node": "Evento = nfse_lancada?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Evento = nota_paga conciliada?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evento = nfse_lancada?": {
+      "main": [
+        [
+          {
+            "node": "Persistir nota pela API",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Persistir nota pela API": {
+      "main": [
+        [
+          {
+            "node": "Consultar nota pela API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consultar nota pela API": {
+      "main": [
+        [
+          {
+            "node": "Validar nota e status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar nota e status": {
+      "main": [
+        [
+          {
+            "node": "Persistir no backend",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar evento para o SIE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Persistir no backend": {
+      "main": [
+        [
+          {
+            "node": "Enviar evento para o SIE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evento = nota_paga conciliada?": {
+      "main": [
+        [
+          {
+            "node": "Atualizar status de pagamento",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Atualizar status de pagamento": {
+      "main": [
+        [
+          {
+            "node": "Enviar evento para o SIE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

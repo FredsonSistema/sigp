@@ -1,0 +1,22 @@
+{
+  "recorded_at_utc": "2026-11-04T13:10:11.1965332Z",
+  "workflow": "SIGp Acadêmico - RAG e Análise",
+  "workflow_id": "R7lKILedIMV89Jay",
+  "published": true,
+  "webhook": {
+    "method": "POST",
+    "path": "/webhook/sigp-academic-ai"
+  },
+  "case_id": "IA-001",
+  "input_data": "Fictícia e sintética",
+  "result": {
+    "http_status": 200,
+    "ok": true,
+    "classification": "CONTRATADO",
+    "model": "Qwen2.5-0.5B-Instruct+SIGp-LoRA",
+    "model_profile": "experimental-lora",
+    "decision_method": "structured_evidence_rules_v1",
+    "automatic_payment": false,
+    "correlation_id": "977b9c4d-e2ce-4d3d-a618-0add569d13dd"
+  }
+}

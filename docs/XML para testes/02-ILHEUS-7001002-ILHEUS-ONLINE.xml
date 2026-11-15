@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infNFSe Id="NFS29136062345678900010100000700100270000002">
+    <xLocEmi>ILHEUS</xLocEmi><xLocPrestacao>ILHEUS</xLocPrestacao>
+    <nNFSe>7001002</nNFSe><cLocIncid>2913606</cLocIncid>
+    <chNFSe>29136062345678900010100000700100270000002</chNFSe>
+    <nDPS>7000002</nDPS><serie>2</serie><competencia>2026-11-08</competencia>
+    <dhEmi>2026-11-08T14:00:00-03:00</dhEmi><dtVenc>2026-11-18</dtVenc>
+    <xTribNac>LINK DEDICADO CORPORATIVO 500MBPS FULL DUPLEX + IP FIXO</xTribNac>
+    <emit><CNPJ>23456789000101</CNPJ><IM>221987</IM><xNome>ILHEUS ONLINE TELECOM LTDA</xNome><xFant>ILHEUS ONLINE</xFant></emit>
+    <valores><vBC>349.90</vBC><vISSQN>7.00</vISSQN><vLiq>349.90</vLiq></valores>
+    <CamposTreinamento>
+      <ChaveNota>29136062345678900010100000700100270000002</ChaveNota>
+      <NumeroNota>7001002</NumeroNota>
+      <Serie>2</Serie>
+      <Provedor>ILHEUS ONLINE TELECOM LTDA</Provedor>
+      <Local>ILHEUS - 2913606</Local>
+      <Cidade>ILHEUS</Cidade>
+      <ValorTotal>349.90</ValorTotal>
+      <Emissao>2026-11-08T14:00:00-03:00</Emissao>
+      <Vencimento>2026-11-18</Vencimento>
+      <Observacao>Link dedicado 500MB + VoIP - Contrato 12 meses</Observacao>
+      <TipoServico>LINK_DEDICADO_VOIP</TipoServico>
+      <Itens>
+        <Item><cTribNac>010702</cTribNac><xDesc>LINK DEDICADO CORPORATIVO 500MBPS FULL DUPLEX + IP FIXO</xDesc><qtd>1</qtd><vUnit>299.90</vUnit><vTotal>299.90</vTotal></Item>
+        <Item><cTribNac>010301</cTribNac><xDesc>SERVICO DE VOZ SOBRE IP - VOIP - 10 RAMAIS ILIMITADO</xDesc><qtd>1</qtd><vUnit>50.00</vUnit><vTotal>50.00</vTotal></Item>
+      </Itens>
+    </CamposTreinamento>
+  </infNFSe>
+</NFSe>

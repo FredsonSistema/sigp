@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompNfse>
+  <Nfse>
+    <InfNfse Id="NFS29108009012345600017800000700100970000009">
+      <Numero>7001009</Numero>
+      <CodigoVerificacao>00000097001009</CodigoVerificacao>
+      <DataEmissao>2026-11-12T16:00:00-03:00</DataEmissao>
+      <DataVencimento>2026-11-22T00:00:00-03:00</DataVencimento>
+      <OutrasInformacoes>CFTV + Internet condominio - Venc 22/11/2026</OutrasInformacoes>
+      <ValoresNfse><BaseCalculo>450.00</BaseCalculo><Aliquota>2.00</Aliquota><ValorIss>9.00</ValorIss><ValorLiquidoNfse>450.00</ValorLiquidoNfse></ValoresNfse>
+      <PrestadorServico>
+        <IdentificacaoPrestador><CpfCnpj><Cnpj>90123456000178</Cnpj></CpfCnpj><InscricaoMunicipal>445125</InscricaoMunicipal></IdentificacaoPrestador>
+        <RazaoSocial>NAVEGUE TELECOM SEGURANCA DIGITAL LTDA</RazaoSocial><NomeFantasia>NAVEGUE SEGURANCA</NomeFantasia>
+      </PrestadorServico>
+      <CamposTreinamento>
+        <ChaveNota>29108009012345600017800000700100970000009</ChaveNota>
+        <NumeroNota>7001009</NumeroNota>
+        <Serie>1</Serie>
+        <Provedor>NAVEGUE TELECOM SEGURANCA DIGITAL LTDA</Provedor>
+        <Local>ITABUNA - 2910800</Local>
+        <Cidade>ITABUNA</Cidade>
+        <ValorTotal>450.00</ValorTotal>
+        <Emissao>2026-11-12T16:00:00-03:00</Emissao>
+        <Vencimento>2026-11-22</Vencimento>
+        <Observacao>CFTV + Internet condominio - Venc 22/11/2026</Observacao>
+        <TipoServico>CFTV_MULTIMIDIA</TipoServico>
+        <Itens>
+          <Item><Codigo>010701</Codigo><Descricao>CFTV IP EM NUVEM - 16 CAMERAS + ARMAZENAMENTO 30 DIAS</Descricao><Quantidade>1</Quantidade><ValorUnitario>250.00</ValorUnitario><ValorTotal>250.00</ValorTotal></Item>
+          <Item><Codigo>010701</Codigo><Descricao>INTERNET DEDICADA CONDOMINIO 600MBPS</Descricao><Quantidade>1</Quantidade><ValorUnitario>200.00</ValorUnitario><ValorTotal>200.00</ValorTotal></Item>
+        </Itens>
+      </CamposTreinamento>
+    </InfNfse>
+  </Nfse>
+</CompNfse>

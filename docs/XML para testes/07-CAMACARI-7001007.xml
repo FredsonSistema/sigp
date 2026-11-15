@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompNfse>
+  <Nfse>
+    <InfNfse Id="NFS29057017890123400015600000700100770000007">
+      <Numero>7001007</Numero>
+      <CodigoVerificacao>00000077001007</CodigoVerificacao>
+      <DataEmissao>2026-11-11T08:30:00-03:00</DataEmissao>
+      <DataVencimento>2026-11-21T00:00:00-03:00</DataVencimento>
+      <OutrasInformacoes>Link dedicado industrial - Contrato 24 meses - Venc 21/11/2026</OutrasInformacoes>
+      <ValoresNfse><BaseCalculo>1299.90</BaseCalculo><Aliquota>2.00</Aliquota><ValorIss>26.00</ValorIss><ValorLiquidoNfse>1299.90</ValorLiquidoNfse></ValoresNfse>
+      <PrestadorServico>
+        <IdentificacaoPrestador><CpfCnpj><Cnpj>78901234000156</Cnpj></CpfCnpj><InscricaoMunicipal>556790</InscricaoMunicipal></IdentificacaoPrestador>
+        <RazaoSocial>CAMACARI ONLINE TELECOM INDUSTRIAL LTDA</RazaoSocial><NomeFantasia>CAMACARI ONLINE</NomeFantasia>
+      </PrestadorServico>
+      <CamposTreinamento>
+        <ChaveNota>29057017890123400015600000700100770000007</ChaveNota>
+        <NumeroNota>7001007</NumeroNota>
+        <Serie>2</Serie>
+        <Provedor>CAMACARI ONLINE TELECOM INDUSTRIAL LTDA</Provedor>
+        <Local>CAMACARI - 2905701</Local>
+        <Cidade>CAMACARI</Cidade>
+        <ValorTotal>1299.90</ValorTotal>
+        <Emissao>2026-11-11T08:30:00-03:00</Emissao>
+        <Vencimento>2026-11-21</Vencimento>
+        <Observacao>Link dedicado industrial - Contrato 24 meses</Observacao>
+        <TipoServico>LINK_INDUSTRIAL</TipoServico>
+        <Itens>
+          <Item><Codigo>010702</Codigo><Descricao>LINK DEDICADO 1GBPS FULL - IP FIXO /30 + SLA 99,8%</Descricao><Quantidade>1</Quantidade><ValorUnitario>1299.90</ValorUnitario><ValorTotal>1299.90</ValorTotal></Item>
+        </Itens>
+      </CamposTreinamento>
+    </InfNfse>
+  </Nfse>
+</CompNfse>

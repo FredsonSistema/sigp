@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infNFSe Id="NFS29180014567890100012300000700100470000004">
+    <xLocEmi>JEQUIE</xLocEmi><xLocPrestacao>JEQUIE</xLocPrestacao>
+    <nNFSe>7001004</nNFSe><cLocIncid>2918001</cLocIncid>
+    <chNFSe>29180014567890100012300000700100470000004</chNFSe>
+    <nDPS>7000004</nDPS><serie>1</serie><competencia>2026-11-05</competencia>
+    <dhEmi>2026-11-05T11:20:00-03:00</dhEmi><dtVenc>2026-11-15</dtVenc>
+    <valores><vBC>119.90</vBC><vISSQN>2.40</vISSQN><vLiq>119.90</vLiq></valores>
+    <emit><CNPJ>45678901000123</CNPJ><xNome>JET FIBRA PROVEDOR LTDA</xNome><xFant>JET FIBRA</xFant></emit>
+    <CamposTreinamento>
+      <ChaveNota>29180014567890100012300000700100470000004</ChaveNota>
+      <NumeroNota>7001004</NumeroNota>
+      <Serie>1</Serie>
+      <Provedor>JET FIBRA PROVEDOR LTDA</Provedor>
+      <Local>JEQUIE - 2918001</Local>
+      <Cidade>JEQUIE</Cidade>
+      <ValorTotal>119.90</ValorTotal>
+      <Emissao>2026-11-05T11:20:00-03:00</Emissao>
+      <Vencimento>2026-11-15</Vencimento>
+      <Observacao>Fibra 200MB + locacao equipamentos - Venc 15/11/2026</Observacao>
+      <TipoServico>FIBRA_LOCACAO</TipoServico>
+      <Itens>
+        <Item><Codigo>010701</Codigo><Descricao>FIBRA RESIDENCIAL 200MBPS - MENSALIDADE</Descricao><Quantidade>1</Quantidade><ValorUnitario>79.90</ValorUnitario><ValorTotal>79.90</ValorTotal></Item>
+        <Item><Codigo>140200</Codigo><Descricao>LOCACAO DE EQUIPAMENTOS - ROTEADOR WIFI 6 + ONU</Descricao><Quantidade>1</Quantidade><ValorUnitario>25.00</ValorUnitario><ValorTotal>25.00</ValorTotal></Item>
+        <Item><Codigo>140200</Codigo><Descricao>SERVICO DE MENSALIDADE MESH EXTRA - 1 PONTO</Descricao><Quantidade>1</Quantidade><ValorUnitario>15.00</ValorUnitario><ValorTotal>15.00</ValorTotal></Item>
+      </Itens>
+    </CamposTreinamento>
+  </infNFSe>
+</NFSe>

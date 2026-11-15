@@ -1,0 +1,36 @@
+{
+  "registrado_em_utc": "2026-11-14T16:42:57.6481010Z",
+  "caminho": "n8n (webhook sigp-academic-ai) -> API academica -> SQL Server/RLS -> RAG -> qwen2.5:0.5b",
+  "entrada": "IP adicional mensal, R$ 35,00 (Conecta Alfa Ficticia)",
+  "esperado": "DIVERGENTE",
+  "http": 200,
+  "latencia_total_ms": 27769,
+  "resposta": {
+    "automatic_payment": false,
+    "classification": "DIVERGENTE",
+    "context_rows": 20,
+    "correlation_id": "996e0a87-e9fd-442a-a7ab-f2ea147e7909",
+    "decision_method": "structured_evidence_rules_v1",
+    "latency_ms": 27705.33,
+    "local_id": "LOC-001",
+    "model": "qwen2.5:0.5b",
+    "model_agreement": false,
+    "model_classification": "REVISAR",
+    "model_is_authoritative": false,
+    "model_profile": "baseline",
+    "ok": true,
+    "prompt_sha256": "66c524b438f96d34577324875fc2927a56112c76f86dea42a9183fc21dc48fac",
+    "prompt_version": "3.0",
+    "provider_id": "PROV-001",
+    "reason": "Uma fonte aplicável exclui explicitamente o serviço cobrado.",
+    "requester": "n8n-demo",
+    "retrieved_documents": 5,
+    "source_ids": [
+      "DOC-ALFA-01",
+      "DOC-ALFA-03",
+      "DOC-POL-07",
+      "DOC-ALFA-02",
+      "DOC-POL-12"
+    ]
+  }
+}

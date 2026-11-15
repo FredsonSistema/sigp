@@ -1,0 +1,31 @@
+Changed database context to 'SIGpAcademic'.
+== Colunas mascaradas
+tabela|coluna|masking_function
+------|------|----------------
+app.Notas|chave_fiscal|partial(4, "****************", 4)
+app.Pagamentos|referencia|partial(3, "*****", 0)
+== Teste 1: aplicação (sigp_api_test, sem UNMASK) -> chave mascarada
+usuario|id|local_id|chave_fiscal
+-------|--|--------|------------
+sigp_api_test|1|LOC-001|SINT****************-001
+sigp_api_test|2|LOC-002|SINT****************-002
+sigp_api_test|3|LOC-003|SINT****************-003
+usuario|nota_id|referencia
+-------|-------|----------
+sigp_api_test|2|SIM*****
+sigp_api_test|4|SIM*****
+== Teste 2: fiscal (sigp_fiscal_test, com UNMASK; escopo só LOC-001) -> chave real
+usuario|id|local_id|chave_fiscal
+-------|--|--------|------------
+sigp_fiscal_test|1|LOC-001|SINTETICA-CHAVE-001
+sigp_fiscal_test|4|LOC-001|SINTETICA-CHAVE-004
+sigp_fiscal_test|7|LOC-001|SINTETICA-CHAVE-007
+usuario|local_id|linhas_visiveis
+-------|--------|---------------
+sigp_fiscal_test|LOC-001|33341
+== Teste 3: auditor (sigp_auditor_test) não lê a tabela de notas
+NEGADO: The SELECT permission was denied on the object 'Notas', database 'SIGpAcademic', schema 'app'.
+== Teste 4: a view usada pela IA não expõe a chave fiscal
+colunas_chave_na_view_da_ia
+---------------------------
+0

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infNFSe Id="NFS29253038901234500016700000700100870000008">
+    <xLocEmi>PORTO SEGURO</xLocEmi><xLocPrestacao>PORTO SEGURO</xLocPrestacao>
+    <nNFSe>7001008</nNFSe><cLocIncid>2925303</cLocIncid>
+    <chNFSe>29253038901234500016700000700100870000008</chNFSe>
+    <nDPS>7000008</nDPS><serie>1</serie><competencia>2026-11-13</competencia>
+    <dhEmi>2026-11-13T10:00:00-03:00</dhEmi><dtVenc>2026-11-23</dtVenc>
+    <valores><vBC>259.80</vBC><vISSQN>5.20</vISSQN><vLiq>259.80</vLiq></valores>
+    <emit><CNPJ>89012345000167</CNPJ><xNome>PORTO FIBRA CONECTA E STREAMING LTDA</xNome><xFant>PORTO FIBRA</xFant></emit>
+    <CamposTreinamento>
+      <ChaveNota>29253038901234500016700000700100870000008</ChaveNota>
+      <NumeroNota>7001008</NumeroNota>
+      <Serie>1</Serie>
+      <Provedor>PORTO FIBRA CONECTA E STREAMING LTDA</Provedor>
+      <Local>PORTO SEGURO - 2925303</Local>
+      <Cidade>PORTO SEGURO</Cidade>
+      <ValorTotal>259.80</ValorTotal>
+      <Emissao>2026-11-13T10:00:00-03:00</Emissao>
+      <Vencimento>2026-11-23</Vencimento>
+      <Observacao>Internet Hotel + TV + Captive Portal - Venc 23/11/2026</Observacao>
+      <TipoServico>HOTEL_STREAMING</TipoServico>
+      <Itens>
+        <Item><Codigo>010701</Codigo><Descricao>FIBRA HOTEL 500MBPS + 10 PONTOS WI-FI</Descricao><Quantidade>1</Quantidade><ValorUnitario>139.90</ValorUnitario><ValorTotal>139.90</ValorTotal></Item>
+        <Item><Codigo>140101</Codigo><Descricao>SERVICO DE STREAMING CORPORATIVO - TV HOTEL 50 QUARTOS</Descricao><Quantidade>1</Quantidade><ValorUnitario>79.90</ValorUnitario><ValorTotal>79.90</ValorTotal></Item>
+        <Item><Codigo>010901</Codigo><Descricao>PORTAL DE CAPTIVE PORTAL + MARKETING WIFI</Descricao><Quantidade>1</Quantidade><ValorUnitario>40.00</ValorUnitario><ValorTotal>40.00</ValorTotal></Item>
+      </Itens>
+    </CamposTreinamento>
+  </infNFSe>
+</NFSe>

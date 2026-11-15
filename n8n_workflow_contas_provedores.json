@@ -1,0 +1,351 @@
+{
+  "name": "SIGp - Contas de Provedores",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "contas-provedores",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook1",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        140,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst d = body.dados || {};\nconst statusPorEvento = {\n  conta_criada: 'ativo',\n  conta_atualizada: 'ativo',\n  conta_paga: 'pago',\n  conta_excluida: 'excluido'\n};\nreturn {\n  json: {\n    evento: body.evento,\n    versao: body.versao,\n    timestamp: body.timestamp,\n    provedorId: d.provedorId,\n    localTipo: d.localTipo,\n    localNome: d.localNome,\n    localCidade: d.localCidade,\n    nome: d.nome,\n    valor: d.valor,\n    diaVencimento: d.diaVencimento,\n    pagoAte: d.pagoAte,\n    origemConta: d.origemConta,\n    origemPagamento: d.origemPagamento,\n    status: statusPorEvento[body.evento] || 'ativo',\n    atrasado: d.diaVencimento ? (new Date().getDate() > d.diaVencimento && !d.pagoAte) : false\n  }\n};"
+      },
+      "id": "function1",
+      "name": "Validar e enriquecer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "value": "COLE_AQUI_O_ID_DA_PLANILHA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "Contas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "provedorId"
+          ],
+          "value": {
+            "provedorId": "={{$json.provedorId}}",
+            "localTipo": "={{$json.localTipo}}",
+            "localNome": "={{$json.localNome}}",
+            "localCidade": "={{$json.localCidade}}",
+            "nome": "={{$json.nome}}",
+            "valor": "={{$json.valor}}",
+            "diaVencimento": "={{$json.diaVencimento}}",
+            "pagoAte": "={{$json.pagoAte}}",
+            "status": "={{$json.status}}",
+            "atrasado": "={{$json.atrasado}}",
+            "atualizadoEm": "={{$json.timestamp}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets1",
+      "name": "Upsert na planilha (Contas)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        600,
+        200
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CONFIGURAR_CREDENCIAL_GOOGLE",
+          "name": "Google Sheets - SIGp"
+        }
+      },
+      "notes": "Estado atual de cada conta. Aba 'Contas', cabecalho com essas mesmas colunas."
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "value": "COLE_AQUI_O_ID_DA_PLANILHA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "value": "Historico",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{$json.timestamp}}",
+            "evento": "={{$json.evento}}",
+            "provedorId": "={{$json.provedorId}}",
+            "localNome": "={{$json.localNome}}",
+            "nome": "={{$json.nome}}",
+            "valor": "={{$json.valor}}",
+            "status": "={{$json.status}}"
+          }
+        },
+        "options": {}
+      },
+      "id": "sheets2",
+      "name": "Append no Histórico (BI)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        600,
+        480
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CONFIGURAR_CREDENCIAL_GOOGLE",
+          "name": "Google Sheets - SIGp"
+        }
+      },
+      "notes": "Log imutavel, uma linha por evento. E daqui que SIG/SAD/SIE consultam depois."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{$json.evento}}",
+              "rightValue": "conta_paga",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ]
+        }
+      },
+      "id": "if1",
+      "name": "Foi pago?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        840,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $json;\nconst html = `<h2>Comprovante de pagamento</h2>\n<p><b>Provedor:</b> ${d.nome}</p>\n<p><b>Local:</b> ${d.localNome} (${d.localTipo})</p>\n<p><b>Valor:</b> R$ ${d.valor}</p>\n<p><b>Pago ate:</b> ${d.pagoAte}</p>\n<p><b>Confirmado em:</b> ${d.timestamp}</p>`;\nreturn { json: { ...d, comprovanteHtml: html } };"
+      },
+      "id": "code_comprovante",
+      "name": "Montar comprovante (HTML)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1060,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "comprovanteHtml",
+        "options": {
+          "fileName": "index.html"
+        }
+      },
+      "id": "convert_pdf",
+      "name": "Preparar HTML (index.html)",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1280,
+        100
+      ],
+      "notes": "Nome do arquivo fixo 'index.html' porque o Gotenberg exige esse nome na rota /forms/chromium/convert/html."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://SEU_SERVIDOR_EVOLUTION/message/sendText/SEU_INSTANCE",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "COLE_AQUI_A_APIKEY_EVOLUTION"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "COLE_AQUI_O_NUMERO_WHATSAPP"
+            },
+            {
+              "name": "text",
+              "value": "=✅ Pagamento confirmado: {{$json.nome}} ({{$json.localNome}}) - R$ {{$json.valor}}, pago ate {{$json.pagoAte}}."
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http_whatsapp",
+      "name": "Notificar WhatsApp (Evolution API)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1060,
+        300
+      ],
+      "notes": "Preencher URL do servidor Evolution, instance, apikey e numero de destino."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://SEU_GOTENBERG:3000/forms/chromium/convert/html",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "http_gotenberg",
+      "name": "Converter em PDF (Gotenberg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1500,
+        100
+      ],
+      "notes": "Requer um Gotenberg rodando (Docker: gotenberg/gotenberg:8). Troque SEU_GOTENBERG pelo host real."
+    },
+    {
+      "parameters": {},
+      "id": "noop_anexo",
+      "name": "TODO: anexar PDF na mensagem (Evolution sendMedia)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1720,
+        100
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar e enriquecer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar e enriquecer": {
+      "main": [
+        [
+          {
+            "node": "Upsert na planilha (Contas)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append no Histórico (BI)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert na planilha (Contas)": {
+      "main": [
+        [
+          {
+            "node": "Foi pago?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Foi pago?": {
+      "main": [
+        [
+          {
+            "node": "Montar comprovante (HTML)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notificar WhatsApp (Evolution API)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Montar comprovante (HTML)": {
+      "main": [
+        [
+          {
+            "node": "TODO: converter em PDF de verdade",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar HTML (index.html)": {
+      "main": [
+        [
+          {
+            "node": "Converter em PDF (Gotenberg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converter em PDF (Gotenberg)": {
+      "main": [
+        [
+          {
+            "node": "TODO: anexar PDF na mensagem (Evolution sendMedia)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

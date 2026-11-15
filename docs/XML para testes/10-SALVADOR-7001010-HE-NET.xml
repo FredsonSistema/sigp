@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infNFSe Id="NFS29050080906279300014800000700101070000010">
+    <xLocEmi>SALVADOR</xLocEmi><xLocPrestacao>CACULE</xLocPrestacao>
+    <nNFSe>7001010</nNFSe><cLocIncid>2905008</cLocIncid>
+    <chNFSe>29050080906279300014800000700101070000010</chNFSe>
+    <nDPS>7000010</nDPS><serie>3</serie><competencia>2026-11-13</competencia>
+    <dhEmi>2026-11-13T16:52:10-03:00</dhEmi><dtVenc>2026-11-23</dtVenc>
+    <xTribNac>Suporte tecnico em informatica, inclusive instalacao, configuracao e manutencao de programas</xTribNac>
+    <emit><CNPJ>09062793000148</CNPJ><IM>220263</IM><xNome>HE-NET MANUTENCAO E SERVICOS DIGITAIS LTDA</xNome><xFant>NAVEGUE TELECOM</xFant></emit>
+    <valores><vBC>95.20</vBC><vISSQN>1.90</vISSQN><vLiq>95.20</vLiq></valores>
+    <CamposTreinamento>
+      <ChaveNota>29050080906279300014800000700101070000010</ChaveNota>
+      <NumeroNota>7001010</NumeroNota>
+      <Serie>3</Serie>
+      <Provedor>HE-NET MANUTENCAO E SERVICOS DIGITAIS LTDA</Provedor>
+      <Local>SALVADOR - 2927408</Local>
+      <Cidade>SALVADOR</Cidade>
+      <ValorTotal>95.20</ValorTotal>
+      <Emissao>2026-11-13T16:52:10-03:00</Emissao>
+      <Vencimento>2026-11-23</Vencimento>
+      <Observacao>Suporte premium + locacao - Referencia original HE-NET - Venc 23/11/2026</Observacao>
+      <TipoServico>SUPORTE_PREMIUM_ORIGINAL</TipoServico>
+      <Itens>
+        <Item><Codigo>010701</Codigo><Descricao>ATENDIMENTO E SUPORTE PREMIUM</Descricao><Quantidade>1</Quantidade><ValorUnitario>30.20</ValorUnitario><ValorTotal>30.20</ValorTotal></Item>
+        <Item><Codigo>140200</Codigo><Descricao>LOCACAO DE EQUIPAMENTOS - ROTEADOR + ONU</Descricao><Quantidade>1</Quantidade><ValorUnitario>40.00</ValorUnitario><ValorTotal>40.00</ValorTotal></Item>
+        <Item><Codigo>010701</Codigo><Descricao>DESLOCAMENTO TECNICO E CONFIGURACAO</Descricao><Quantidade>1</Quantidade><ValorUnitario>25.00</ValorUnitario><ValorTotal>25.00</ValorTotal></Item>
+      </Itens>
+    </CamposTreinamento>
+  </infNFSe>
+</NFSe>

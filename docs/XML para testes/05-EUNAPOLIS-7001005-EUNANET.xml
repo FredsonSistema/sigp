@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompNfse>
+  <Nfse>
+    <InfNfse Id="NFS29107275678901200013400000700100570000005">
+      <Numero>7001005</Numero>
+      <CodigoVerificacao>00000057001005</CodigoVerificacao>
+      <DataEmissao>2026-11-07T09:00:00-03:00</DataEmissao>
+      <DataVencimento>2026-11-17T00:00:00-03:00</DataVencimento>
+      <OutrasInformacoes>Cloud VPS + Backup - Referencia 11/2026</OutrasInformacoes>
+      <ValoresNfse><BaseCalculo>199.00</BaseCalculo><Aliquota>2.00</Aliquota><ValorIss>3.98</ValorIss><ValorLiquidoNfse>199.00</ValorLiquidoNfse></ValoresNfse>
+      <PrestadorServico>
+        <IdentificacaoPrestador><CpfCnpj><Cnpj>56789012000134</Cnpj></CpfCnpj><InscricaoMunicipal>332457</InscricaoMunicipal></IdentificacaoPrestador>
+        <RazaoSocial>EUNANET TELECOM E CLOUD LTDA</RazaoSocial><NomeFantasia>EUNANET CLOUD</NomeFantasia>
+        <Endereco><Endereco>AV CONSELHEIRO LUIZ VIANA, 435</Endereco><Bairro>CENTRO</Bairro><CodigoMunicipio>2910727</CodigoMunicipio><Uf>BA</Uf></Endereco>
+      </PrestadorServico>
+      <CamposTreinamento>
+        <ChaveNota>29107275678901200013400000700100570000005</ChaveNota>
+        <NumeroNota>7001005</NumeroNota>
+        <Serie>3</Serie>
+        <Provedor>EUNANET TELECOM E CLOUD LTDA</Provedor>
+        <Local>EUNAPOLIS - 2910727</Local>
+        <Cidade>EUNAPOLIS</Cidade>
+        <ValorTotal>199.00</ValorTotal>
+        <Emissao>2026-11-07T09:00:00-03:00</Emissao>
+        <Vencimento>2026-11-17</Vencimento>
+        <Observacao>Cloud VPS + Backup - Referencia 11/2026</Observacao>
+        <TipoServico>CLOUD_HOSTING</TipoServico>
+        <Itens>
+          <Item><Codigo>010701</Codigo><Descricao>HOSPEDAGEM DE SERVIDOR EM DATA CENTER - CLOUD VPS 4VCPU 8GB</Descricao><Quantidade>1</Quantidade><ValorUnitario>149.00</ValorUnitario><ValorTotal>149.00</ValorTotal></Item>
+          <Item><Codigo>010701</Codigo><Descricao>SERVICO DE BACKUP EM NUVEM 500GB + MONITORAMENTO</Descricao><Quantidade>1</Quantidade><ValorUnitario>50.00</ValorUnitario><ValorTotal>50.00</ValorTotal></Item>
+        </Itens>
+      </CamposTreinamento>
+    </InfNfse>
+  </Nfse>
+</CompNfse>

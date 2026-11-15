@@ -1,0 +1,77 @@
+{
+  "id": "sigpWF08Reprocessa",
+  "name": "WF-08 utilitário - Liberar mensagens para reprocessar",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "wf08r_manual",
+      "name": "Executar manualmente",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [0, 300],
+      "notes": "Remove a etiqueta SIGp/Importado das mensagens que a têm. A próxima busca histórica do WF-08 as processa de novo; a API atualiza a extração das notas ainda não associadas."
+    },
+    {
+      "parameters": { "resource": "label", "operation": "getAll", "returnAll": true },
+      "id": "wf08r_labels",
+      "name": "Listar etiquetas Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [220, 300],
+      "credentials": { "gmailOAuth2": { "id": "6w8cHAuUwpPVa6tb", "name": "Gmail account" } }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const etiqueta = $input.all().map((i) => i.json).find((e) => e.name === 'SIGp/Importado');\nif (!etiqueta) throw new Error('A etiqueta SIGp/Importado não existe nesta conta.');\nreturn [{ json: { labelId: etiqueta.id } }];"
+      },
+      "id": "wf08r_find",
+      "name": "Encontrar SIGp/Importado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": true,
+        "simple": true,
+        "filters": { "q": "label:sigp-importado", "readStatus": "both" },
+        "options": {}
+      },
+      "id": "wf08r_messages",
+      "name": "Mensagens com SIGp/Importado",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [660, 300],
+      "credentials": { "gmailOAuth2": { "id": "6w8cHAuUwpPVa6tb", "name": "Gmail account" } },
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "removeLabels",
+        "messageId": "={{ $json.id }}",
+        "labelIds": ["={{ $('Encontrar SIGp/Importado').first().json.labelId }}"]
+      },
+      "id": "wf08r_remove",
+      "name": "Remover SIGp/Importado",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [880, 300],
+      "credentials": { "gmailOAuth2": { "id": "6w8cHAuUwpPVa6tb", "name": "Gmail account" } }
+    }
+  ],
+  "connections": {
+    "Executar manualmente": { "main": [[{ "node": "Listar etiquetas Gmail", "type": "main", "index": 0 }]] },
+    "Listar etiquetas Gmail": { "main": [[{ "node": "Encontrar SIGp/Importado", "type": "main", "index": 0 }]] },
+    "Encontrar SIGp/Importado": { "main": [[{ "node": "Mensagens com SIGp/Importado", "type": "main", "index": 0 }]] },
+    "Mensagens com SIGp/Importado": { "main": [[{ "node": "Remover SIGp/Importado", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "versionId": "wf08-reprocessar-v1",
+  "meta": { "templateCredsSetupCompleted": true },
+  "tags": []
+}

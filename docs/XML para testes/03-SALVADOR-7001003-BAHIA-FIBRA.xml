@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CompNfse>
+  <Nfse>
+    <InfNfse Id="NFS29274083456789000011200000700100370000003">
+      <Numero>7001003</Numero>
+      <CodigoVerificacao>00000037001003</CodigoVerificacao>
+      <DataEmissao>2026-11-09T10:15:00-03:00</DataEmissao>
+      <DataVencimento>2026-11-19T00:00:00-03:00</DataVencimento>
+      <OutrasInformacoes>Combo 3 em 1 - Internet + TV + Voz - Venc 19/11/2026</OutrasInformacoes>
+      <ValoresNfse><BaseCalculo>229.80</BaseCalculo><Aliquota>2.00</Aliquota><ValorIss>4.60</ValorIss><ValorLiquidoNfse>229.80</ValorLiquidoNfse></ValoresNfse>
+      <PrestadorServico>
+        <IdentificacaoPrestador><CpfCnpj><Cnpj>34567890000112</Cnpj></CpfCnpj><InscricaoMunicipal>778901</InscricaoMunicipal></IdentificacaoPrestador>
+        <RazaoSocial>BAHIA FIBRA TELECOM SERVICOS LTDA</RazaoSocial><NomeFantasia>BAHIA FIBRA</NomeFantasia>
+        <Endereco><Endereco>AV TANCREDO NEVES, 272 SALA 301</Endereco><Bairro>CAMINHO DAS ARVORES</Bairro><CodigoMunicipio>2927408</CodigoMunicipio><Uf>BA</Uf></Endereco>
+      </PrestadorServico>
+      <CamposTreinamento>
+        <ChaveNota>29274083456789000011200000700100370000003</ChaveNota>
+        <NumeroNota>7001003</NumeroNota>
+        <Serie>1</Serie>
+        <Provedor>BAHIA FIBRA TELECOM SERVICOS LTDA</Provedor>
+        <Local>SALVADOR - 2927408</Local>
+        <Cidade>SALVADOR</Cidade>
+        <ValorTotal>229.80</ValorTotal>
+        <Emissao>2026-11-09T10:15:00-03:00</Emissao>
+        <Vencimento>2026-11-19</Vencimento>
+        <Observacao>Combo 3 em 1 - Internet + TV + Voz</Observacao>
+        <TipoServico>COMBO_MULTIMIDIA</TipoServico>
+        <Itens>
+          <Item><Codigo>010701</Codigo><Descricao>INTERNET FIBRA 400MBPS + WI-FI MESH</Descricao><Quantidade>1</Quantidade><ValorUnitario>119.90</ValorUnitario><ValorTotal>119.90</ValorTotal></Item>
+          <Item><Codigo>140101</Codigo><Descricao>SERVICO DE TV POR ASSINATURA STREAMING + 80 CANAIS</Descricao><Quantidade>1</Quantidade><ValorUnitario>59.90</ValorUnitario><ValorTotal>59.90</ValorTotal></Item>
+          <Item><Codigo>010301</Codigo><Descricao>LINHA TELEFONICA FIXA ILIMITADA LOCAL</Descricao><Quantidade>1</Quantidade><ValorUnitario>50.00</ValorUnitario><ValorTotal>50.00</ValorTotal></Item>
+        </Itens>
+      </CamposTreinamento>
+    </InfNfse>
+  </Nfse>
+</CompNfse>

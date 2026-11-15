@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<NFSe xmlns="http://www.sped.fazenda.gov.br/nfse" versao="1.01">
+  <infNFSe Id="NFS29313506789012300014500000700100670000006">
+    <xLocEmi>TEIXEIRA DE FREITAS</xLocEmi><xLocPrestacao>TEIXEIRA DE FREITAS</xLocPrestacao>
+    <nNFSe>7001006</nNFSe><cLocIncid>2931350</cLocIncid>
+    <chNFSe>29313506789012300014500000700100670000006</chNFSe>
+    <nDPS>7000006</nDPS><serie>1</serie><competencia>2026-11-06</competencia>
+    <dhEmi>2026-11-06T15:45:00-03:00</dhEmi><dtVenc>2026-11-16</dtVenc>
+    <valores><vBC>230.00</vBC><vISSQN>4.60</vISSQN><vLiq>230.00</vLiq></valores>
+    <emit><CNPJ>67890123000145</CNPJ><xNome>TEIXEIRA FIBRA NET E SUPORTE LTDA</xNome><xFant>TEIXEIRA FIBRA</xFant></emit>
+    <CamposTreinamento>
+      <ChaveNota>29313506789012300014500000700100670000006</ChaveNota>
+      <NumeroNota>7001006</NumeroNota>
+      <Serie>1</Serie>
+      <Provedor>TEIXEIRA FIBRA NET E SUPORTE LTDA</Provedor>
+      <Local>TEIXEIRA DE FREITAS - 2931350</Local>
+      <Cidade>TEIXEIRA DE FREITAS</Cidade>
+      <ValorTotal>230.00</ValorTotal>
+      <Emissao>2026-11-06T15:45:00-03:00</Emissao>
+      <Vencimento>2026-11-16</Vencimento>
+      <Observacao>Suporte tecnico + instalacao rede - OS 1245</Observacao>
+      <TipoServico>SUPORTE_INSTALACAO</TipoServico>
+      <Itens>
+        <Item><Codigo>010701</Codigo><Descricao>SUPORTE TECNICO EM INFORMATICA - INSTALACAO E CONFIGURACAO DE REDE</Descricao><Quantidade>1</Quantidade><ValorUnitario>120.00</ValorUnitario><ValorTotal>120.00</ValorTotal></Item>
+        <Item><Codigo>010701</Codigo><Descricao>SERVICO DE MANUTENCAO PREVENTIVA DE REDE FIBRA + CABEAMENTO</Descricao><Quantidade>2</Quantidade><ValorUnitario>55.00</ValorUnitario><ValorTotal>110.00</ValorTotal></Item>
+      </Itens>
+    </CamposTreinamento>
+  </infNFSe>
+</NFSe>

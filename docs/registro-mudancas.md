@@ -1,0 +1,161 @@
+# Registro de mudanças — SIGp + n8n (antes e depois)
+
+> Documento para apresentação: o que foi feito, o que estava errado antes, como ficou e como foi verificado.
+> Atualizado a cada mudança. O detalhe técnico de cada versão fica em `docs/plano-correcoes.md` (seção "Histórico").
+> Período coberto: 12/11/2026 a 14/11/2026 (versões v1 a v20).
+
+## 1. Objetivos do projeto
+
+1. **Trabalho:** acompanhar as faturas de internet das localidades (agências, rodoviárias, garagens) e evitar contas vencidas.
+2. **Faculdade:** Projeto de IA (LLM local, extração, aprendizado com o uso) e Otimização e Segurança de Banco de Dados.
+
+## 2. Arquitetura: antes × depois
+
+| Aspecto | Antes | Depois |
+|---|---|---|
+| Orquestração | Regras espalhadas entre navegador, backend e n8n; três extratores diferentes | n8n orquestra; SIGp (SQLite) recebe as decisões e é a entrada manual; tudo por API/webhook (contrato v3, `docs/contrato-documentos.md`) |
+| Extração de campos | Regex próprias no WF-03, no WF-08 e no SIGp, com resultados diferentes | Uma biblioteca no n8n (`n8n/lib/extrator.js`) usada pelo WF-03 e pelo WF-08; o SIGp mantém a mesma regra como contingência; paridade testada (244/244 casos) |
+| LLM | Análise "pela IA" montava o prompt mas não chamava o modelo | Ollama local (`qwen2.5:3b`) no Docker, chamado pelo n8n; nenhum dado sai da rede; fatos (dias, diferenças de valor) calculados antes, a LLM só redige |
+| Fluxo de decisão | Não havia validação humana entre a análise e o executivo | Análise → SIG (gerente valida, corrige ou devolve) → SIE (só ciclos validados) |
+| XML da nota fiscal | Anexo XML do e-mail era descartado em silêncio | PDF e XML guardados juntos; XML tem prioridade nos campos fiscais |
+
+## 3. Correções e melhorias por tema
+
+### 3.1 Acesso e telas
+
+| Antes | Depois | Verificação |
+|---|---|---|
+| A chave da API era pedida a todo login (C1) | Bloco da chave só aparece quando falta a chave | Navegador: 11/11 |
+| Anexar fatura PDF ao provedor exigia salvar o nome e reabrir (C2) | Abrir modal → escolher PDF → extrair → validar → preenche nome, valor e vencimento do provedor | Navegador: 16/16 |
+| "+" para abrir linhas vazias | Linhas vazias já disponíveis | Navegador |
+| "Manter na caixa, sem associar" não gravava nada | "Deixar em análise": status `EM_ANALISE` com observação, filtro próprio, volta para a fila | Navegador: 7/7 |
+| Lista trocava de filtro e mostrava notas do filtro anterior | Só a resposta mais recente desenha a lista | Navegador |
+
+### 3.2 Regras dos campos da nota
+
+| Antes | Depois | Verificação |
+|---|---|---|
+| Número/chave vazios travavam a associação | Valor padrão `999999999` para número vazio ou inválido; nunca usado como identidade (conciliação, duplicidade, comparação) | Testes Python |
+| Chave fora de 44/50 dígitos virava padrão (v7–v19) | **Chave lida tem prioridade**; padrão só sem chave (decisão do usuário, v20) | Testes Python e node |
+| Valor, vencimento e emissor podiam ficar vazios | Obrigatórios; sem leitura, entrada manual | Testes Python |
+| Sem data de emissão no documento | Busca ampliada (emissão, data da fatura/documento, processamento); senão data de recebimento, com a origem registrada | Testes Python |
+
+### 3.3 Extração (OCR → campos)
+
+| Antes | Depois | Verificação |
+|---|---|---|
+| Três extratores com regras diferentes | Biblioteca única no n8n + contingência igual no SIGp | Paridade 244/244 |
+| "Nº documento: 2847941" no meio da linha não era lido (ITS ficava 999999999) | Lido | 72 textos reais |
+| "NOTA FISCAL Nº 16210" (DANFE-COM) e chave em grupos de 4 não eram lidos | Lidos; chave aceita só com dígito verificador módulo 11 | Nota real WKVE corrigida (auditada) |
+| Chave da NFS-e nacional (50 dígitos) cortada em 44 | Lida inteira | 7 chaves a mais nos textos reais |
+| Descrição do serviço pegava a linha seguinte ou "(+) Mora / Multa" | Só a mesma linha do rótulo, a linha de baixo do rótulo sozinho, "(+) Prestação de serviço…" e "Referente ao…"; rótulos de encargo ignorados | 72 textos reais, 0 rótulos |
+
+### 3.4 XML da nota fiscal
+
+| Antes | Depois | Verificação |
+|---|---|---|
+| WF-08 ignorava anexos XML | Lê NFS-e ABRASF, NFS-e nacional, NF-e e NFCom (`n8n/lib/xml_fiscal.js`), sem DOM e recusando DOCTYPE/ENTITY | 66/66 campos iguais ao gabarito dos 10 XML |
+| — | PDF e XML da mesma mensagem ligados (pelo número da nota quando há vários); XML sem PDF entra em Revisão | Simulação do nó |
+| — | Na associação: fatura PDF vai para o provedor, XML para "Notas fiscais do local" com os itens de serviço | Navegador: 17/17 |
+| Leitor de XML do navegador não conhecia a NFS-e nacional e usava o nome fantasia | Navegador usa a mesma lib do n8n (cópia conferida por teste) | Testes |
+| Download do XML pelo navegador trocava LF por CRLF | XML enviado como arquivo, byte a byte (assinatura preservada) | Navegador |
+
+### 3.5 Provedor do local e recorrência
+
+| Antes | Depois | Verificação |
+|---|---|---|
+| Associar nota não atualizava o provedor do local | Regra única em todos os fluxos: cria/atualiza provedor com nome, valor, dia e data de vencimento; não altera quando ambíguo; não regride para fatura mais antiga | Navegador e retroativo nos dados reais |
+| Mesma conta mensal virava várias notas | Mesmo local + mesma empresa + mesmo mês = mesma cobrança (atualiza e substitui) | Testes; OPIX unida com nº 302500 (auditada) |
+
+### 3.6 Conciliação, SIG e SIE
+
+| Antes | Depois | Verificação |
+|---|---|---|
+| "Enviar para análise" e "Marcar como pago" davam "Documento duplicado" (cópia do navegador com chave/série/data diferentes do banco) | Mesmo id = atualização do mesmo registro; vazio não apaga; só conflita com chave/número reais diferentes ou outro local | Navegador: ciclo fecha em MATCH; banco real |
+| Série vazia de um lado gerava divergência | Série vazia = "não informada" | Testes |
+| Pagamento vinha vazio no formulário | Primeiro pagamento já vem com número, série, valor e serviços da nota; classificação do serviço vale para os dois documentos | Navegador |
+| SIE contava todo ciclo | SIE conta só ciclos MATCH validados pelo gerente; card "Aguardando o gerente" | Navegador: 3/3 |
+| LLM errava antes/depois do vencimento | Fatos calculados no n8n; LLM só redige | Testes do WF-05 |
+
+### 3.7 Alertas
+
+| Antes | Depois |
+|---|---|
+| Alerta do provedor repetia o da nota; tipo repetido no rótulo; valores sem formato | Deduplicação nota × provedor; "Agência Itacaré"; "R$ 174,00"; tipo novo `pagamento` (`PAGO`, `PAGO_COM_ATRASO`); locais excluídos não geram alerta |
+
+### 3.8 Gmail e reprocessamento
+
+| Antes | Depois | Verificação |
+|---|---|---|
+| "Liberar" tirava SIGp/Importado de todas as mensagens (Minas Online ficou sem etiqueta) | "Reprocessar mensagens (sem tirar etiquetas)": busca escolhida → WF-08; nenhuma etiqueta removida | Minas Online reprocessada, etiqueta mantida |
+| — | "Reaplicar SIGp/Importado": etiqueta toda mensagem que já está no SIGp (manual e 06:00) | 56 mensagens, 0 falhas |
+
+### 3.9 Segurança e dados
+
+- Testes de navegador nunca tocam a API real (trava em `tests/e2e/lib.js`), depois de um vazamento de nota de teste (removida com backup).
+- Toda correção em dados reais: simulação primeiro, backup antes (`SIGp_n8n_backups/antes-*.db`), PATCH auditado (`correcoes`).
+- LLM só local; `ANTHROPIC_API_KEY` removida do n8n.
+- XML: limite de 2 MiB, sem DOCTYPE/ENTITY; nomes de arquivo saneados; download só pelo nome guardado.
+
+## 4. Indicadores de verificação (14/11/2026)
+
+| Item | Resultado |
+|---|---|
+| Testes Python (`unittest`) | 107 OK |
+| Testes node das libs do n8n | 17 OK (extrator 12, XML 5) |
+| Paridade extrator n8n × SIGp | 244/244 |
+| XML × gabarito | 66/66 campos |
+| Navegador (e2e, API de teste) | XML 17/17, Em análise 7/7, Notas recebidas 6/6, SIG 9/9, SIE 3/3, C1 11/11, C2 16/16, recorrência 6/6, NFS-e 4/4, associação 6/6 |
+
+## 5. Decisões do usuário que guiaram as mudanças
+
+- Padrão `999999999` só para número (e chave vazia); valor, vencimento e emissor obrigatórios.
+- Chave lida tem prioridade (14/11).
+- n8n orquestra; SIGp em SQLite; LLM local; integração por API.
+- A regra decide o status; a LLM analisa e sinaliza; o gerente valida (D13). LLM só em MATCH e DIVERGENCIA (D14).
+- Regra das três evidências mantida (nota lançada, pagamento, fatura PDF; serviço classificado).
+- XML e PDF são os dois obrigatórios; XML tem prioridade nos campos fiscais.
+
+## 6. Próximos passos registrados
+
+Ver `docs/plano-correcoes.md`, fase H (prioridades do usuário em 14/11/2026): importação CSV das localidades, níveis de permissão, segurança do banco, acessos criptografados, demonstração do fine-tune e da LLM por endpoints, links do painel legado no SIG/SIE.
+
+Ordem de execução acordada em 14/11/2026: ver `docs/plano-correcoes.md`, "Ordem de execução acordada" (11 etapas, da triagem pela LLM ao fine-tune).
+
+## 7. Entrega acadêmica — parte 2 (17/11/2026)
+
+| Antes | Depois | Evidência |
+|---|---|---|
+| Containers acadêmicos morriam por falta de memória (código 137) | `compose.leve.yml`: SQL Server limitado a 2 GB e IA acadêmica usando o Ollama principal (sem segundo Ollama) | Ambiente no ar junto com a produção |
+| 5 casos executados em 02/11 | Executados de novo de ponta a ponta (API → SQL Server/RLS → RAG → Qwen): decisões 5/5, concordância do modelo 3/5 | `sqlserver/evidence/parte2/ai-test-results.json` |
+| PDF anterior: isolamento da IA "não comprovado" (a view não filtra por local) | Testado: o usuário da IA não lê a view nem as tabelas; a procedure só entrega o local permitido; IA mal configurada para outro local recebe 503 sem dado; prompt injection responde REVISAR sem dado de outro local | `evidence/parte2/ia-permissao-e-injecao.json` (`testar-ia-permissao.ps1`) |
+| Auditoria da IA sem consulta de evidência | Cada chamada grava quem pediu, o que consultou (linhas, fontes RAG) e quando, inclusive a negação | `evidence/parte2/auditoria-ia.txt` |
+| Benchmark sem linha de base, sem repetição nem p95 | 3 configurações (A só chaves primárias, B candidatos de 02/11, C ajustados), 15 execuções cada. Consulta 2: mediana 33,1 → 16,4 ms, leituras 3.277+1.677 → 7+0. Consulta 1: 82,7 → 66,2 ms, leituras de Notas 3.277 → 380. Os candidatos de 02/11 não reduziam as leituras de Notas | `evidence/parte2/benchmark-tempos.txt`, `leituras-logicas.txt`, 6 planos `.sqlplan` (`benchmark-parte2.ps1`) |
+| Custo e latência não medidos | CPU, sem GPU, prompt curto, 10 chamadas: qwen2.5:0.5b mediana 305 ms (p95 381), 50 tok/s; qwen2.5:3b 1.191 ms (p95 2.329), 9 tok/s; API acadêmica de ponta a ponta 761 ms (p95 904). Sem cobrança por token; 1.000 usos = 5,1 min de CPU (0,5B) ou 19,9 min (3B). No WF-08 real, com o texto do OCR, o 3B leva cerca de 58 s por PDF (medido em 10/11) | `evidence/parte2/latencia-custo.json` (`ia/medir_latencia.py`) |
+| `.gitignore` deixava de fora os PDFs da entrega e incluía backups de workflow | PDFs da entrega incluídos; backups `n8n/**/backup_*.json` fora; segredos, banco e dados reais continuam fora | `.gitignore` |
+| Senhas dos usuários de banco da IA expostas numa sessão de trabalho | Trocadas por `trocar-senhas-ia.ps1` (geradas aleatoriamente, sem exibir nem registrar); senha antiga recusada; IA testada com a nova | Teste de login antigo negado |
+| Nenhuma técnica de proteção de dado sensível além do RLS | Mascaramento dinâmico em `chave_fiscal` e `referencia`; papel `sigp_fiscal` com `UNMASK` só nessas colunas; aplicação vê `SINT****************-001`, fiscal vê o valor real só do seu local; auditor e IA não leem a coluna | `evidence/parte2/mascaramento.txt` (`07_mascaramento_parte2.sql`) |
+| Prompts v1 a v3 só da API acadêmica | v4.0 documenta os três prompts de produção (triagem do Gmail, SIG, SIE) com texto, hash e schema, e a diferença para a v3 | `ia/prompts/v4.md`, `CHANGELOG.md` |
+| 5 casos com resultado só em JSON | Documento de casos (entrada, esperado, obtido) gerado das evidências: 5 da API, 2 de segurança e 10 de XML (40/40 campos) | `ia/casos-de-teste-parte2.md` (`gerar_casos_parte2.py`) |
+| Fluxo n8n acadêmico sem evidência recente | Webhook do n8n → API → SQL Server/RLS → RAG → Qwen: IP adicional R$ 35,00 → DIVERGENTE (esperado), só LOC-001, sem pagamento automático, 27,8 s (modelo carregado na hora) | `evidence/parte2/n8n-ponta-a-ponta.json` |
+| — | Pendência anotada: o workflow acadêmico tem nós duplicados (dois webhooks no mesmo caminho) | Limpar depois da entrega |
+
+## 8. Fluxo da empresa — etapa 1 (ganhos rápidos, 14/11/2026)
+
+| Antes | Depois | Verificação |
+|---|---|---|
+| Notas lidas por regras antigas (descrição "Mora / Multa", número 999999999) ficavam iguais para sempre; não havia como saber qual regra leu cada nota | Cada leitura guarda `versaoRegras` (SIGp, WF-03 e WF-08). O cartão avisa "Lida com regras antigas"; "Extrair dados do PDF" relê e **grava** a leitura nova (só nos campos lidos do PDF; XML, classificação da IA, análise e descarte ficam). Sem lote no n8n | 108 testes Python, paridade mantida, e2e 6/6, 17/17 |
+| Painel legado (porta 5000) sem acesso pelo SIGp e confundido com o SIG | Link "Painel de análises da IA (legado)" nas abas SIG e SIE, com aviso de que decisões lá não alteram o SIGp | e2e SIG 9/9, SIE 3/3 |
+| Documento que a IA considerava "não é cobrança" só recebia a etiqueta SIGp/Ignorado no Gmail e nunca chegava ao SIGp (sem revisão nem aprendizado) | **Triagem pela LLM:** o WF-08 grava todo documento no SIGp com o veredito da IA (`decisaoIA`, `triagem`: execução, motivo, confiança). Ignorados vão para a fila "Ignorados pela IA", fora da caixa; resumo por leitura ("3 documentos — 1 para a caixa, 2 ignorados"); confirmar (um ou em lote) ou resgatar; cada decisão vira exemplo rotulado (`ignorado_confirmado`, `ignorado_resgatado`). Ignorado não associa sem resgate | 111 Python; e2e triagem 5/5; regressões 6/6, 7/7, 17/17 |
+| Locais e sistemas do sistema antigo só entravam um a um (ou por backup JSON) | **Importar CSV** em Agências, Rodoviárias, Garagens e Sistemas de TI, no formato do "Exportar CSV" (+ Marcadores): prévia por linha (criar / atualizar / igual / erro) com avisos; atualizar só preenche vazios e acrescenta o que falta; valor e vencimento da fatura do provedor nunca mudam; reimportar o mesmo arquivo não altera nada; observação com cara de senha não é importada em Sistemas | node 9/9 (`tests/n8n/importar_csv.test.js`), e2e 4/4 (`importar_csv_ui.js`), 111 Python |
+| A LLM do WF-08 classificava cada documento sem saber o que o operador já tinha decidido em documentos parecidos (ex.: nota de hotel do mesmo remetente, já descartada, voltava como `nota_fiscal`) | **Memória de exemplos:** `GET /api/llm/exemplos` devolve até 4 decisões do operador (notas ASSOCIADAS e DESCARTADAS) parecidas com o documento: mesmo remetente +5, mesmo domínio +3, mesma empresa +3, palavras do assunto em comum até +2. Não envia chave, número, vencimento; texto cortado e numa linha só (defesa contra instruções embutidas). Novo nó "Buscar exemplos no SIGp" no WF-08 (se falhar, segue sem exemplos); prompt v4.1 com a seção de exemplos; cada leitura grava `classificacao.ia.exemplosUsados` | 113 Python; e2e 83/83; teste A/B com qwen2.5:3b: sem exemplos `nota_fiscal` (conf. 1), com exemplos `outro` (conf. 0,9) (`evidence/parte2/memoria-exemplos-ab.json`). Publicado em 14/11/2026, WF-08 ativo, rota conferida na API real |
+| A aba Notas recebidas mostrava todos os documentos como cartões abertos, um embaixo do outro, com todos os campos (chave, CNPJ, número) e todos os botões à vista; boletos de provedor e documentos que não são de internet ficavam misturados | **Listas recolhíveis:** "Prováveis cobranças de internet" (regra de internet, provedor no texto ou no remetente, termo de internet ou histórico do local, e a IA não diz "não é cobrança" com 80% ou mais), "Menor chance de ser internet" (recolhida por padrão), "Em análise", "Ignorados pela IA", "Associadas" e "Descartadas". Os e-mails de cada lista são um **accordion clássico** (um aberto por vez; cabeçalho com emissor, assunto, valor, vencimento, data e selo de confiança, sem chave nem CNPJ; setas, Home e End). Cada e-mail tem partes em **disclosure**: "Por que está nesta lista" (sinais a favor e contra), "Dados da nota (campos fiscais)" (abre sozinha se falta valor, vencimento ou emissor), "Associar a um local" (aberta), "Outras ações" e "Arquivos e e-mail ao financeiro". O que você abre continua aberto depois de atualizar. Só agrupa: status e regras não mudam | e2e novo `notas_listas_ui.js` 10/10; regressões 83/83 (testes passam a abrir a nota com `abrirNota`). Só frontend (nginx), no ar ao salvar |
+| PDFs com senha (Brisanet, Claro, Domínio) não eram lidos: o OCR respondia "não foi possível converter as páginas" e a IA recebia texto vazio (10 PDFs no banco) | O serviço OCR (`ocr/app.py`) detecta o PDF protegido e tenta as regras de senha: 4, 5, 6 e 8 primeiros dígitos das raízes de CNPJ do grupo (Rota, Viação Jequié, Expresso Brasileiro), configuradas em `SIGP_PDF_SENHA_CNPJS` (.env). A senha que abriu nunca é registrada nem devolvida; a resposta só diz `pdfProtegido`. Sem regra que abra: erro "PDF protegido por senha" | 7 testes (`tests/test_ocr_senha.py`); os 10 PDFs reais lidos (3.569 a 18.295 caracteres) |
+| A LLM só podia ignorar quando a regra era fraca (`REVISAO`); nota fiscal que não é de internet (Thomson Reuters/Domínio) ficava na caixa mesmo com a IA 100% segura | **Triagem em três níveis** (WF-08 `consolidar` + `probabilidadeFinal`): **alta** (sinal de internet, IA concorda, valor/vencimento/emissor preenchidos); **baixa** (texto lido, nenhum sinal de internet e IA "não é cobrança" com 80%+) vai para Ignorados pela IA; **inconclusivo** (PDF não lido ou menos de 200 caracteres, campos faltando, IA sem resposta, regra e IA discordam) nunca é ignorado. Remetente confirmado 3 vezes por pessoa como "não é cobrança" e sem cobrança associada: os próximos entram já descartados (operador `sigp-ia`, restauráveis; descarte automático não conta como confirmação). `classificar` devolve `remetente` com o histórico. Na tela: listas Alta / Inconclusivo / Baixa (com os ignorados, na mesma aba) / Em análise / Associadas / Descartadas | lib WF-08 (6 casos novos), 123 Python (`test_triagem_remetente.py`), e2e 94/94 (`notas_listas_ui` 11/11). Publicado; backup do banco e do WF-08 antes |
+| Não havia como saber quanto a LLM acerta, se aprende com os exemplos, quanto tempo leva ou quanta memória usa | **Painel da IA** (nova aba; `GET /api/llm/metricas`, `backend/metricas_llm.py`): acerto da triagem por mês (verdade = decisão do operador: associada/resgatada = cobrança; descartada por pessoa como "não é cobrança" = não; descarte automático e outros motivos ficam fora), falsos positivos e negativos, acerto com × sem exemplos, campos sem correção (emissor, número, chave, valor, vencimento), local sugerido certo, níveis alta/inconclusivo/baixa, descartes automáticos, tempo mediano e p95, memória do modelo carregado no Ollama. Para medir, o WF-08 passa a gravar `ia.duracaoMs` e `ia.tokens`, e a associação grava `sugestaoLocalId` | Primeira leitura real (3 meses): triagem 4 de 6 certos (67%, 2 falsos positivos), campos 10 de 10, 90 documentos. Tempo e local sugerido contam a partir de 14/11/2026 |
+| Backup do banco só manual (antes de cada publicação); nenhuma verificação de integridade nem de arquivos | **Saúde do banco** (`backend/saude_banco.py`; `GET /api/saude/banco`, `POST .../backup`, `POST .../manutencao`): verificação rápida ou completa, tamanho e espaço livre, contagens, PDFs/XMLs sem registro e registros sem arquivo, idade do último backup. Backup pela API de backup do SQLite em `backend/data/backups`, com teste de restauração (a cópia abre, passa na verificação e tem as mesmas contagens) e rodízio de 7 diárias + 4 semanais. Workflow n8n `sigpManutencaoBanco` (ativo) todo dia às 03:00: backup e manutenção (optimize, analyze, checkpoint do WAL; VACUUM só com mais de 20% livre). Cartão na aba Painel da IA com botões | 132 Python (`test_painel_ia.py`), e2e `painel_ia_ui.js` 6/6, regressões 94/94. Primeiro backup real verificado (632 KB); status OK; 1 arquivo sem registro |
+| Os 10 PDFs com senha já gravados continuavam com a leitura vazia | Reprocessados pelo utilitário do WF-08 (cadeia completa, sem tirar etiquetas; busca restaurada depois): 6 Brisanet e 3 Claro em alta probabilidade com valor e vencimento; Domínio: 1 inconclusivo e 1 ignorado (baixa) | Conferido no banco. Pendente de conferência humana: uma nota da Brisanet com valor lido R$ 0,30 (valor de imposto) |
+| Mesma fatura em vários e-mails (fatura nova, atraso, pagamento) virava documentos soltos; aviso sem PDF só recebia a etiqueta SIGp/Sem-anexo | **Situação 1** (`backend/avisos_provedor.py`): o tipo de e-mail (`evento`: fatura nova, 2ª via, lembrete, aviso de atraso, pagamento confirmado) vem de frases claras do assunto/corpo (`classificar` devolve `evento`) e, sem frase, da LLM com 80%+ (campo novo no schema, prompt v4.2). Lembrete, atraso e pagamento procuram a cobrança lançada: pelo e-mail do remetente cadastrado no local e, sem ele, pelo nome do provedor com marca própria; linha digitável/chave/número, depois vencimento, depois janela de 45 dias. Uma candidata: status **AVISO** (lista "Avisos vinculados a cobranças"); no pagamento confirmado o SIGp **registra o pagamento sozinho** (origem `aviso_provedor`, valor = saldo, data citada no e-mail ou a de recebimento, PAGO_COM_ATRASO quando passou do vencimento), concilia e marca o provedor do local como pago. Nenhuma ou várias: Inconclusivo com as candidatas e o botão "Tentar vincular de novo". E-mail sem anexo: o WF-08 chama `POST /api/notas-recebidas/aviso` (fatura nova sem anexo continua só com a etiqueta). Aviso sem anexo não vira nota lançada (409) | 13 testes (`test_avisos_provedor.py`), e2e `avisos_ui.js` 6/6, 146 Python, e2e 110/110 |
+| A memória de exemplos aceitava exemplo só por palavra de assunto em comum ("fatura"); a LLM copiou o provedor de um exemplo (Claro lida como "JEQUIE FIBRA NET") | Exemplo só entra com remetente, domínio ou empresa iguais (3 pontos ou mais); nome genérico do remetente não conta. O provedor sugerido pela LLM só vale se uma palavra própria do nome aparecer no documento ou no remetente. Prompt: provedorNome vem sempre do documento atual | lib WF-08 (caso novo), `test_exemplos_llm.py` (caso real da Claro) |
+| Não havia alerta quando a fatura do mês não chegava ao Gmail | **Situação 2** (`backend/fatura_esperada.py`, dentro de `GET /api/alertas`, aba SIG e resumo diário do WF-06): para cada provedor de cada local com fatura anterior, próximo vencimento = último + periodicidade; chegada esperada = vencimento - antecedência habitual do provedor (mediana do histórico vencimento - recebimento; sem histórico, 5 dias). Depois da chegada esperada sem fatura: **FATURA_NAO_RECEBIDA** (média; alta no vencimento; conta os meses sem fatura). Fatura do provedor na caixa sem associar: **FATURA_NA_CAIXA**. Já paga (pagoAte): sem alerta. Sem documento novo do Gmail há mais de 3 dias: **LEITURA_GMAIL_PARADA** (alta) e os de fatura baixam para severidade baixa. Cadastro do provedor: campo **Periodicidade** (vazio = mensal; bimestral, trimestral, semestral, anual; "Sem fatura por e-mail" desliga) | 8 testes (`test_fatura_esperada.py`, com o exemplo 17/11 → 20/11 → alerta em 18/12), e2e `fatura_nao_recebida_ui.js` 5/5, 154 Python, regressões 110/110. Primeiro alerta real: Rodoviária de Jequié · JEQUIE FIBRA NET, fatura de nov/2026 (venc. 15/11) não chegou; última recebida foi a de outubro |
+| Provedor que atende vários locais (HE-NET 5, Bahiasul 4, Conect 4, Vox 3, Claro 3...), vários locais na mesma cidade (Itabuna, Jequié, Ilhéus) e dois ou mais provedores no mesmo local: a sugestão de local dependia do nome do provedor e do histórico, que não distinguem os locais | **Situações 3 a 5** (`backend/identificadores.py` + `lerIdentificadoresCliente` no WF-08, mesmos casos em `tests/casos_identificadores.json`): a fatura é lida para código do cliente, contrato e endereço de instalação (inclusive código em coluna, pela posição: Vox, Claro (código alfanumérico)). Ao associar, o código fica no provedor daquele local (campo novo "Código do cliente / contrato" no cadastro; endereço de instalação em `enderecoInstalacao`); código que já está no mesmo provedor de outro local não é guardado. Nas próximas faturas, código conhecido põe o local certo em primeiro na sugestão; sem código e com o provedor em vários locais, a tela avisa para conferir. Avisos da situação 1 também usam o código. A API devolve o provedor com os códigos para o navegador não apagá-los ao regravar o local. Histórico preenchido uma vez (`python -m backend.preencher_identificadores --gravar`, com backup antes): 92 PDFs lidos, 32 com código, 1 código aprendido (OPIX, 1 contrato) | 11 casos JS + Python, 4 cenários (`test_codigos_cliente.py`), 160 Python, e2e 115/115 |

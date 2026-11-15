@@ -1,0 +1,120 @@
+{
+  "id": "LNCrxFxvHfdDkqL2",
+  "name": "SIGp - Extrair fatura PDF de provedor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sigp-faturas-pdf",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "webhook_fatura_pdf",
+      "name": "Receber PDF",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "sigp-faturas-pdf"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://ocr:5002/extract",
+        "sendBody": true,
+        "contentType": "binaryData",
+        "inputDataFieldName": "data",
+        "options": {
+          "timeout": 420000
+        }
+      },
+      "id": "ocr_pdf_local",
+      "name": "Extrair texto e aplicar OCR local",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const text = String($json.text || '');\nconst ocrUsado = Boolean($json.ocrUsado);\nconst query = $('Receber PDF').first().json.query || {};\nconst expectedProvider = String(query.provedorEsperado || '').trim();\nconst expectedNormalized = expectedProvider.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();\nconst digits = (value) => String(value || '').replace(/\\D/g, '');\nconst cnpjMatches = text.match(/(?:\\d{2}\\.?\\d{3}\\.?\\d{3}\\/?\\d{4}-?\\d{2})/g) || [];\nconst cnpjCandidatos = [...new Set(cnpjMatches.map((value) => digits(value)).filter((value) => value.length === 14))];\nconst dateValue = (value) => {\n  if (!value) return '';\n  const match = value.match(/(\\d{2})[\\/.\\-](\\d{2})[\\/.\\-](\\d{4})|(\\d{4})-(\\d{2})-(\\d{2})/);\n  if (!match) return '';\n  return match[4] ? `${match[4]}-${match[5]}-${match[6]}` : `${match[3]}-${match[2]}-${match[1]}`;\n};\nconst afterLabel = (pattern) => {\n  const match = text.match(pattern);\n  return match ? match[1] : '';\n};\nconst vencimentoRaw = afterLabel(/(?:data\\s+de\\s+)?vencimento\\s*[:\\-]?\\s*(\\d{2}[\\/.\\-]\\d{2}[\\/.\\-]\\d{4}|\\d{4}-\\d{2}-\\d{2})/i);\nconst amountRaw = afterLabel(/(?:valor\\s+total\\s+(?:da\\s+)?(?:fatura|conta)|total\\s+(?:da\\s+)?(?:fatura|conta)|total\\s+a\\s+pagar|valor\\s+a\\s+pagar)[^\\d]{0,50}(?:R\\$\\s*)?([\\d.]+,\\d{2})/i);\nconst parseAmount = (value) => {\n  if (!value) return null;\n  const parsed = Number(value.replace(/\\./g, '').replace(',', '.'));\n  return Number.isFinite(parsed) ? parsed : null;\n};\nconst lines = text.split(/\\r?\\n/);\nconst issuerPattern = /telecom|telecomunic|provedor|internet|comunicacoes|telefonia/i;\nconst issuerCandidates = lines.filter((line) => issuerPattern.test(line));\nconst expectedLine = expectedNormalized ? issuerCandidates.find((line) => line.normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase().includes(expectedNormalized)) || '' : '';\nconst expectedFound = Boolean(expectedLine);\nconst issuerLine = expectedLine || issuerCandidates[0] || '';\nconst issuerCnpj = cnpjMatches.find((cnpj) => {\n  const index = text.indexOf(cnpj);\n  const context = text.slice(Math.max(0, index - 120), index + cnpj.length + 120).normalize('NFD').replace(/[\\u0300-\\u036f]/g, '').toLowerCase();\n  return /telecom|telecomunic|provedor|internet|comunicacoes/i.test(context);\n});\nconst serviceDescription = (() => {\n  const tableHeader = /itens?\\s+de\\s+servi[cç]os?/i;\n  const tableRow = /^\\s*\\S+\\s+\\d+(?:[.,]\\d+)?\\s+(.+?)\\s{2,}(?=R\\$|[\\d.]+,\\d{2}|\\d+[.,]\\d{2})/i;\n  for (let index = 0; index < lines.length; index += 1) {\n    if (!tableHeader.test(lines[index])) continue;\n    for (const line of lines.slice(index + 1, index + 8)) {\n      const match = line.match(tableRow);\n      if (match) return match[1].trim().slice(0, 1000);\n    }\n  }\n  const serviceLabel = /(?:descri[cç][aã]o\\s+(?:do\\s+)?servi[cç]o|discrimina[cç][aã]o\\s+dos?\\s+servi[cç]os|servi[cç]os?\\s+prestados?|item\\s+de\\s+cobran[cç]a|servi[cç]o\\s*[-–—]\\s*discrimina[cç][aã]o)/i;\n  const nonServiceLine = /^(?:valor|total|vencimento|emiss[aã]o|compet[eê]ncia|per[ií]odo|quantidade|unidade|c[oó]digo|subtotal|imposto|tributos|base de c[aá]lculo)\\b/i;\n  for (let index = 0; index < lines.length; index += 1) {\n    if (!serviceLabel.test(lines[index])) continue;\n    const sameLine = lines[index].replace(serviceLabel, '').replace(/^[\\s:—–-]+/, '').trim();\n    const nextLine = lines.slice(index + 1).map((line) => line.trim()).find((line) => line && !nonServiceLine.test(line)) || '';\n    const candidate = sameLine || nextLine;\n    if (candidate && !nonServiceLine.test(candidate)) return candidate.slice(0, 1000);\n  }\n  return '';\n})();\nconst invoiceNumber = afterLabel(/(?:n[uú]mero|n[uú]m\\.?|n[oº]\\.?)\\s*[:º-]*(?:da\\s+)?(?:fatura|conta)\\s*[:#-]?\\s*([A-Z0-9./-]+)/i)\n  || afterLabel(/(?:fatura|conta)\\s*(?:n[uú]mero|n[uú]m\\.?|n[oº]\\.?)\\s*[:º-]*([A-Z0-9./-]+)/i);\nconst issuedRaw = afterLabel(/(?:data\\s+de\\s+)?(?:emiss[aã]o|emitida\\s+em)\\s*[:\\-]?\\s*(\\d{2}[\\/.\\-]\\d{2}[\\/.\\-]\\d{4}|\\d{4}-\\d{2}-\\d{2})/i);\nconst expectedAmount = Number(query.valorEsperado || 0);\nconst valorTotal = parseAmount(amountRaw);\nreturn {\n  json: {\n    ok: true,\n    textEncontrado: text.trim().length > 0,\n    ocrUsado,\n    emissorNome: issuerLine.trim(),\n    emissorEsperadoEncontrado: expectedFound,\n    cnpjEmissor: issuerCnpj ? digits(issuerCnpj) : (cnpjCandidatos.length === 1 ? cnpjCandidatos[0] : ''),\n    cnpjCandidatos,\n    numeroFatura: invoiceNumber,\n    dataEmissao: dateValue(issuedRaw),\n    dataVencimento: dateValue(vencimentoRaw),\n    valorTotal,\n    descricaoServico: serviceDescription,\n    comparacao: {\n      emissorConfere: expectedFound,\n      valorConfere: expectedAmount > 0 && valorTotal !== null && Math.abs(expectedAmount - valorTotal) < 0.01,\n      vencimentoConfere: !query.vencimentoEsperado || query.vencimentoEsperado === dateValue(vencimentoRaw)\n    },\n    camposParaRevisar: ['emissorNome', 'cnpjEmissor', 'numeroFatura', 'dataEmissao', 'dataVencimento', 'valorTotal', 'descricaoServico'],\n    aviso: text.trim() ? '' : 'Nenhum texto foi reconhecido no PDF, mesmo após o OCR local; confira os campos manualmente.'\n  }\n};"
+      },
+      "id": "parse_fatura",
+      "name": "Identificar dados da fatura",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond_fatura",
+      "name": "Devolver campos extraídos",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receber PDF": {
+      "main": [
+        [
+          {
+            "node": "Extrair texto e aplicar OCR local",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extrair texto e aplicar OCR local": {
+      "main": [
+        [
+          {
+            "node": "Identificar dados da fatura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identificar dados da fatura": {
+      "main": [
+        [
+          {
+            "node": "Devolver campos extraídos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "sigp-faturas-pdf-v1",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "tags": []
+}

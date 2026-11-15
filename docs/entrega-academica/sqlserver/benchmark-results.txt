@@ -1,0 +1,564 @@
+Changed database context to 'SIGpAcademic'.
+SQL Server parse and compile time: 
+   CPU time = 7 ms, elapsed time = 11 ms.
+local_id                                 provedor                                                                         ano         mes         quantidade_notas     total_faturado                          
+---------------------------------------- -------------------------------------------------------------------------------- ----------- ----------- -------------------- ----------------------------------------
+LOC-001                                  Conecta Alfa Fictícia                                                                  2025          10                  182                                 96623.70
+LOC-002                                  Rede Beta Fictícia                                                                     2025          10                  183                                 96425.10
+LOC-003                                  Link Gama Fictícia                                                                     2025          10                  183                                 96183.00
+LOC-001                                  Conecta Alfa Fictícia                                                                  2025          11                 1370                                720751.50
+LOC-002                                  Rede Beta Fictícia                                                                     2025          11                 1370                                720750.50
+LOC-003                                  Link Gama Fictícia                                                                     2025          11                 1370                                720749.50
+LOC-001                                  Conecta Alfa Fictícia                                                                  2025          12                 1416                                740471.10
+LOC-002                                  Rede Beta Fictícia                                                                     2025          12                 1416                                740228.10
+LOC-003                                  Link Gama Fictícia                                                                     2025          12                 1415                                740674.00
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           1                 1416                                735838.50
+LOC-002                                  Rede Beta Fictícia                                                                     2026           1                 1415                                736287.50
+LOC-003                                  Link Gama Fictícia                                                                     2026           1                 1416                                736081.50
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           2                 1278                                661284.90
+LOC-002                                  Rede Beta Fictícia                                                                     2026           2                 1279                                661075.90
+LOC-003                                  Link Gama Fictícia                                                                     2026           2                 1279                                660833.00
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           3                 1416                                744827.10
+LOC-002                                  Rede Beta Fictícia                                                                     2026           3                 1416                                745484.10
+LOC-003                                  Link Gama Fictícia                                                                     2026           3                 1415                                744139.00
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           4                 1370                                736063.50
+LOC-002                                  Rede Beta Fictícia                                                                     2026           4                 1370                                736062.50
+LOC-003                                  Link Gama Fictícia                                                                     2026           4                 1370                                735164.50
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           5                 1416                                755746.50
+LOC-002                                  Rede Beta Fictícia                                                                     2026           5                 1415                                756207.50
+LOC-003                                  Link Gama Fictícia                                                                     2026           5                 1416                                756889.50
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           6                 1370                                727705.50
+LOC-002                                  Rede Beta Fictícia                                                                     2026           6                 1370                                727707.50
+LOC-003                                  Link Gama Fictícia                                                                     2026           6                 1370                                727706.50
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           7                 1415                                747576.00
+LOC-002                                  Rede Beta Fictícia                                                                     2026           7                 1416                                748251.90
+LOC-003                                  Link Gama Fictícia                                                                     2026           7                 1416                                747108.90
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           8                 1416                                743862.30
+LOC-002                                  Rede Beta Fictícia                                                                     2026           8                 1416                                742719.30
+LOC-003                                  Link Gama Fictícia                                                                     2026           8                 1415                                743189.50
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026           9                 1377                                716310.00
+LOC-002                                  Rede Beta Fictícia                                                                     2026           9                 1377                                716359.75
+LOC-003                                  Link Gama Fictícia                                                                     2026           9                 1376                                716160.25
+LOC-001                                  Conecta Alfa Fictícia                                                                  2026          10                 1279                                663181.20
+LOC-002                                  Rede Beta Fictícia                                                                     2026          10                 1278                                663657.30
+LOC-003                                  Link Gama Fictícia                                                                     2026          10                 1278                                664244.10
+Table 'Worktable'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Workfile'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Notas'. Scan count 1, logical reads 3277, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Provedores'. Scan count 1, logical reads 2, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'LocalScope'. Scan count 1, logical reads 2, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+
+ SQL Server Execution Times:
+   CPU time = 36 ms,  elapsed time = 35 ms.
+SQL Server parse and compile time: 
+   CPU time = 137 ms, elapsed time = 137 ms.
+id                   local_id                                 provedor_id                              valor_total    vencimento       status                  
+-------------------- ---------------------------------------- ---------------------------------------- -------------- ---------------- ------------------------
+                 200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+                 380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+                 560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+                 740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+                 920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+                1100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+                1280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+                1460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+                1640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+                1820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+                2000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+                2180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+                2360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+                2540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+                2720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+                2900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+                3080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+                3260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+                3440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+                3620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+                3800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+                3980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+                4160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+                4340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+                4520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+                4700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+                4880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+                5060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+                5240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+                5420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+                5600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+                5780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+                5960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+                6140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+                6320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+                6500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+                6680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+                6860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+                7040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+                7220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+                7400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+                7580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+                7760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+                7940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+                8120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+                8300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+                8480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+                8660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+                8840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+                9020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+                9200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+                9380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+                9560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+                9740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+                9920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               10100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               10280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               10460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               10640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               10820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               11000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               11180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               11360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               11540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               11720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               11900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               12080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               12260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               12440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               12620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               12800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               12980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               13160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               13340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               13520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               13700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               13880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               14060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               14240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               14420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               14600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               14780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               14960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               15140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               15320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               15500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               15680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               15860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               16040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               16220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               16400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               16580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               16760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               16940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               17120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               17300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               17480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               17660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               17840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               18020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+               18200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+               18380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+               18560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+               18740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+               18920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               19100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               19280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               19460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               19640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               19820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               20000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               20180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               20360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               20540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               20720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               20900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               21080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               21260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               21440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               21620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               21800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               21980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               22160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               22340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               22520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               22700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               22880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               23060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               23240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               23420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               23600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               23780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               23960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               24140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               24320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               24500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               24680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               24860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               25040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               25220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               25400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               25580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               25760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               25940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               26120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               26300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               26480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               26660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               26840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               27020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+               27200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+               27380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+               27560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+               27740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+               27920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               28100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               28280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               28460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               28640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               28820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               29000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               29180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               29360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               29540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               29720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               29900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               30080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               30260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               30440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               30620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               30800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               30980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               31160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               31340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               31520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               31700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               31880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               32060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               32240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               32420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               32600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               32780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               32960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               33140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               33320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               33500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               33680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               33860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               34040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               34220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               34400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               34580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               34760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               34940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               35120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               35300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               35480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               35660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               35840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               36020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+               36200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+               36380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+               36560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+               36740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+               36920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               37100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               37280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               37460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               37640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               37820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               38000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               38180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               38360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               38540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               38720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               38900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               39080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               39260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               39440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               39620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               39800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               39980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               40160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               40340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               40520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               40700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               40880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               41060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               41240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               41420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               41600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               41780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               41960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               42140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               42320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               42500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               42680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               42860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               43040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               43220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               43400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               43580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               43760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               43940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               44120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               44300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               44480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               44660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               44840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               45020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+               45200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+               45380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+               45560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+               45740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+               45920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               46100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               46280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               46460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               46640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               46820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               47000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               47180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               47360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               47540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               47720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               47900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               48080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               48260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               48440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               48620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               48800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               48980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               49160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               49340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               49520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               49700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               49880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               50060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               50240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               50420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               50600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               50780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               50960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               51140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               51320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               51500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               51680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               51860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               52040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               52220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               52400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               52580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               52760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               52940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               53120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               53300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               53480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               53660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               53840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               54020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+               54200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+               54380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+               54560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+               54740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+               54920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               55100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               55280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               55460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               55640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               55820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               56000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               56180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               56360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               56540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               56720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               56900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               57080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               57260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               57440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               57620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               57800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               57980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               58160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               58340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               58520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               58700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               58880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               59060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               59240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               59420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               59600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               59780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               59960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               60140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               60320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               60500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               60680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               60860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               61040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               61220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               61400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               61580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               61760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               61940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               62120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               62300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               62480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               62660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               62840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               63020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+               63200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+               63380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+               63560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+               63740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+               63920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               64100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               64280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               64460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               64640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               64820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               65000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               65180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               65360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               65540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               65720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               65900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               66080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               66260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               66440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               66620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               66800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               66980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               67160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               67340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               67520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               67700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               67880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               68060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               68240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               68420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               68600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               68780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               68960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               69140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               69320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               69500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               69680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               69860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               70040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               70220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               70400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               70580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               70760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               70940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               71120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               71300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               71480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               71660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               71840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               72020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+               72200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+               72380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+               72560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+               72740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+               72920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               73100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               73280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               73460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               73640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               73820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               74000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               74180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               74360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               74540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               74720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               74900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               75080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               75260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               75440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               75620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               75800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               75980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               76160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               76340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               76520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               76700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               76880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               77060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               77240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               77420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               77600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               77780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               77960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               78140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               78320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               78500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               78680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               78860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               79040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               79220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               79400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               79580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               79760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               79940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               80120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               80300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               80480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               80660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               80840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               81020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+               81200 LOC-003                                  PROV-003                                          98.00       2026-09-28 PENDENTE                
+               81380 LOC-003                                  PROV-003                                         116.00       2026-09-28 PENDENTE                
+               81560 LOC-003                                  PROV-003                                         134.00       2026-09-28 PENDENTE                
+               81740 LOC-003                                  PROV-003                                         152.00       2026-09-28 PENDENTE                
+               81920 LOC-003                                  PROV-003                                         170.00       2026-09-28 PENDENTE                
+               82100 LOC-003                                  PROV-003                                         188.00       2026-09-28 PENDENTE                
+               82280 LOC-003                                  PROV-003                                         206.00       2026-09-28 PENDENTE                
+               82460 LOC-003                                  PROV-003                                         224.00       2026-09-28 PENDENTE                
+               82640 LOC-003                                  PROV-003                                         242.00       2026-09-28 PENDENTE                
+               82820 LOC-003                                  PROV-003                                         260.00       2026-09-28 PENDENTE                
+               83000 LOC-003                                  PROV-003                                         278.00       2026-09-28 PENDENTE                
+               83180 LOC-003                                  PROV-003                                         296.00       2026-09-28 PENDENTE                
+               83360 LOC-003                                  PROV-003                                         314.00       2026-09-28 PENDENTE                
+               83540 LOC-003                                  PROV-003                                         332.00       2026-09-28 PENDENTE                
+               83720 LOC-003                                  PROV-003                                         350.00       2026-09-28 PENDENTE                
+               83900 LOC-003                                  PROV-003                                         368.00       2026-09-28 PENDENTE                
+               84080 LOC-003                                  PROV-003                                         386.00       2026-09-28 PENDENTE                
+               84260 LOC-003                                  PROV-003                                         404.00       2026-09-28 PENDENTE                
+               84440 LOC-003                                  PROV-003                                         422.00       2026-09-28 PENDENTE                
+               84620 LOC-003                                  PROV-003                                         440.00       2026-09-28 PENDENTE                
+               84800 LOC-003                                  PROV-003                                         458.00       2026-09-28 PENDENTE                
+               84980 LOC-003                                  PROV-003                                         476.00       2026-09-28 PENDENTE                
+               85160 LOC-003                                  PROV-003                                         494.00       2026-09-28 PENDENTE                
+               85340 LOC-003                                  PROV-003                                         512.00       2026-09-28 PENDENTE                
+               85520 LOC-003                                  PROV-003                                         530.00       2026-09-28 PENDENTE                
+               85700 LOC-003                                  PROV-003                                         548.00       2026-09-28 PENDENTE                
+               85880 LOC-003                                  PROV-003                                         566.00       2026-09-28 PENDENTE                
+               86060 LOC-003                                  PROV-003                                         584.00       2026-09-28 PENDENTE                
+               86240 LOC-003                                  PROV-003                                         602.00       2026-09-28 PENDENTE                
+               86420 LOC-003                                  PROV-003                                         620.00       2026-09-28 PENDENTE                
+               86600 LOC-003                                  PROV-003                                         638.00       2026-09-28 PENDENTE                
+               86780 LOC-003                                  PROV-003                                         656.00       2026-09-28 PENDENTE                
+               86960 LOC-003                                  PROV-003                                         674.00       2026-09-28 PENDENTE                
+               87140 LOC-003                                  PROV-003                                         692.00       2026-09-28 PENDENTE                
+               87320 LOC-003                                  PROV-003                                         710.00       2026-09-28 PENDENTE                
+               87500 LOC-003                                  PROV-003                                         728.00       2026-09-28 PENDENTE                
+               87680 LOC-003                                  PROV-003                                         746.00       2026-09-28 PENDENTE                
+               87860 LOC-003                                  PROV-003                                         764.00       2026-09-28 PENDENTE                
+               88040 LOC-003                                  PROV-003                                         782.00       2026-09-28 PENDENTE                
+               88220 LOC-003                                  PROV-003                                         800.00       2026-09-28 PENDENTE                
+               88400 LOC-003                                  PROV-003                                         818.00       2026-09-28 PENDENTE                
+               88580 LOC-003                                  PROV-003                                         836.00       2026-09-28 PENDENTE                
+               88760 LOC-003                                  PROV-003                                         854.00       2026-09-28 PENDENTE                
+               88940 LOC-003                                  PROV-003                                         872.00       2026-09-28 PENDENTE                
+               89120 LOC-003                                  PROV-003                                         890.00       2026-09-28 PENDENTE                
+               89300 LOC-003                                  PROV-003                                         908.00       2026-09-28 PENDENTE                
+               89480 LOC-003                                  PROV-003                                         926.00       2026-09-28 PENDENTE                
+               89660 LOC-003                                  PROV-003                                         944.00       2026-09-28 PENDENTE                
+               89840 LOC-003                                  PROV-003                                         962.00       2026-09-28 PENDENTE                
+               90020 LOC-003                                  PROV-003                                          80.00       2026-09-28 PENDENTE                
+Table 'Worktable'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Workfile'. Scan count 0, logical reads 0, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Conciliacoes'. Scan count 1, logical reads 528, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'Notas'. Scan count 1, logical reads 3277, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+Table 'LocalScope'. Scan count 1, logical reads 2, physical reads 0, page server reads 0, read-ahead reads 0, page server read-ahead reads 0, lob logical reads 0, lob physical reads 0, lob page server reads 0, lob read-ahead reads 0, lob page server read-ahead reads 0.
+
+ SQL Server Execution Times:
+   CPU time = 20 ms,  elapsed time = 20 ms.

@@ -1,0 +1,6 @@
+Changed database context to 'SIGpAcademic'.
+quando|quem_pediu|acao|objeto|correlation_id|detalhe_redigido
+------|----------|----|------|--------------|----------------
+2026-11-14T04:03:06|teste-sem-permissao|AI_CONTEXT_DENIED|ai.vw_contexto_minimo|02BE2DE4-6715-46DA-BA27-C83752E2F858|local_id=LOC-002; db_principal=sigp_ia_loc001; reason=scope_denied
+2026-11-14T04:03:06|n8n-demo|AI_CONTEXT_READ|ai.vw_contexto_minimo|115A66D2-2A5A-4CF4-B582-BB95269A5BF9|local_id=LOC-001; provider_id=PROV-001; db_principal=sigp_ia_loc001; rows=20
+2026-11-14T04:03:06|n8n-demo|AI_RAG_SOURCES|ai.rag_documents|115A66D2-2A5A-4CF4-B582-BB95269A5BF9|local_id=LOC-001; db_principal=sigp_ia_loc001; source_ids=DOC-ALFA-03,DOC-ALFA-01,DOC-POL-11,DOC-POL-07,DOC-POL-13

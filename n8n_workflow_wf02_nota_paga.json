@@ -1,0 +1,130 @@
+{
+  "id": "sigpWF02NotaPaga",
+  "name": "SIGp - WF-02 Receber nota paga",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sigp-nota-paga",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9f702b64-8381-5157-8cb4-a9b7e492515f",
+      "name": "Receber documento",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "sigp-nota-paga"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mesmo contrato para importação manual (canal=interface) e integração automática (Praxio/Globus).\nconst body = { ...($input.first().json.body || {}) };\nconst canal = body.canal || 'integracao';\ndelete body.canal;\nif (!body.origem) body.origem = canal === 'interface' ? 'manual' : 'n8n';\n// A validação (campos, duplicidade, valores) é da API SIGp; o status e a mensagem dela voltam ao chamador.\nreturn [{ json: { payload: body } }];"
+      },
+      "id": "7d3a85f1-48ba-5e71-9981-aca1665a7a75",
+      "name": "Preparar documento (contrato v2)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SIGP_API_URL }}/api/notas/pagas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-API-Key",
+              "value": "={{ $env.SIGP_API_KEY || '' }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}"
+      },
+      "id": "28fd8cbf-d62a-5dcd-9716-42dd269dc84c",
+      "name": "Gravar na API SIGp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "responseCode": "={{ $json.statusCode }}"
+        }
+      },
+      "id": "44116afd-b223-5f4c-9c18-036b241d29d5",
+      "name": "Responder",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        900,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Receber documento": {
+      "main": [
+        [
+          {
+            "node": "Preparar documento (contrato v2)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar documento (contrato v2)": {
+      "main": [
+        [
+          {
+            "node": "Gravar na API SIGp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gravar na API SIGp": {
+      "main": [
+        [
+          {
+            "node": "Responder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "America/Sao_Paulo",
+    "errorWorkflow": "sigpWF99Erros000"
+  },
+  "active": false,
+  "pinData": {},
+  "tags": []
+}

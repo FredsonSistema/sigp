@@ -1,0 +1,27 @@
+# Ambientes e caches locais
+.venv*/
+__pycache__/
+*.pyc
+.qodo/
+
+# Segredos
+.env
+docs/entrega-academica/sqlserver/.env.academic
+
+# Dados e execução (ficam fora do repositório; ver backup no README)
+backend/data/
+*.db
+*.db-wal
+*.db-shm
+*.pid
+logs/
+sigp-*.log
+
+# Documentos de teste e capturas
+*.pdf
+image-*.png
+
+# PDFs da entrega acadêmica fazem parte da entrega (os demais PDFs são documentos reais e ficam fora)
+!docs/entrega-academica/*.pdf
+# Backups de workflow exportados do n8n (locais; os JSON gerados pelos builds são a fonte)
+n8n/**/backup_*.json

@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "resumoExecutivo": { "type": "string" },
+    "impacto": { "type": "string", "enum": ["nenhum", "baixo", "medio", "alto"] },
+    "recomendacao": { "type": "string" }
+  },
+  "required": ["resumoExecutivo", "impacto", "recomendacao"]
+}

@@ -1,0 +1,157 @@
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: sigp_n8n
+    restart: always
+    ports:
+      - "127.0.0.1:5678:5678"
+    environment:
+      - N8N_HOST=127.0.0.1
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - NODE_ENV=production
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - N8N_EDITOR_BASE_URL=http://127.0.0.1:5678/
+      - WEBHOOK_URL=http://127.0.0.1:5678/
+      - N8N_SECURE_COOKIE=false
+      # Workflows leem a URL e a chave da API SIGp por {{$env.SIGP_API_URL}} e {{$env.SIGP_API_KEY}}.
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - SIGP_API_URL=http://api:5001
+      - SIGP_API_KEY=${SIGP_API_KEY:-}
+      - SIGP_ACADEMIC_AI_KEY=${SIGP_ACADEMIC_AI_KEY:-}
+      # LLM somente local (requisito: nenhum dado sai da rede). O n8n chama o Ollama do serviço "ollama".
+      # Não configure chaves de LLM externas (ANTHROPIC_API_KEY, OPENAI_API_KEY etc.) neste container.
+      - SIGP_OLLAMA_URL=http://ollama:11434
+      - SIGP_OLLAMA_MODEL=${SIGP_OLLAMA_MODEL:-qwen2.5:3b}
+      # Notificações; configure apenas os serviços que utilizar.
+      - SIGP_RELATORIO_EMAIL=${SIGP_RELATORIO_EMAIL:-}
+      - SIGP_TELEGRAM_CHAT_ID=${SIGP_TELEGRAM_CHAT_ID:-}
+      - SIGP_WHATSAPP_URL=${SIGP_WHATSAPP_URL:-}
+      - SIGP_WHATSAPP_NUMERO=${SIGP_WHATSAPP_NUMERO:-}
+      - SIGP_WHATSAPP_APIKEY=${SIGP_WHATSAPP_APIKEY:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  sie:
+    build:
+      context: .
+      dockerfile: sie/Dockerfile
+    container_name: sigp_sie
+    restart: always
+    ports:
+      - "127.0.0.1:5000:5000"
+    volumes:
+      - ./buscador_nfse.db:/app/buscador_nfse.db
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/health', timeout=10)"
+      interval: 30s
+      timeout: 15s
+      retries: 3
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: sigp_api
+    restart: always
+    ports:
+      - "127.0.0.1:5001:5001"
+    environment:
+      - SIGP_HOST=0.0.0.0
+      - SIGP_PORT=5001
+      - SIGP_API_KEY=${SIGP_API_KEY:-}
+      - SIGP_CORS_ORIGINS=${SIGP_CORS_ORIGINS:-http://127.0.0.1:8000,http://localhost:8000}
+      - SIGP_EXIGIR_FATURA=${SIGP_EXIGIR_FATURA:-1}
+      - SIGP_N8N_EVENTOS_URL=${SIGP_N8N_EVENTOS_URL:-http://n8n:5678/webhook/sigp-eventos}
+      - SIGP_N8N_TOKEN=${SIGP_N8N_TOKEN:-}
+    volumes:
+      - ./backend/data:/app/backend/data
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5001/api/health', timeout=5)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  ocr:
+    build:
+      context: ./ocr
+    container_name: sigp_fatura_ocr
+    restart: always
+    environment:
+      # Raízes de CNPJ das empresas do grupo: regras de senha de PDFs (Brisanet, Claro...). Nunca a senha em si.
+      SIGP_PDF_SENHA_CNPJS: ${SIGP_PDF_SENHA_CNPJS:-}
+    expose:
+      - "5002"
+    read_only: true
+    tmpfs:
+      - /tmp:size=256m,noexec,nosuid,nodev
+    mem_limit: 768m
+    pids_limit: 64
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5002/health', timeout=2)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  # LLM local (D-01). Só na rede interna (sem porta no Windows): o n8n chama http://ollama:11434.
+  # Modelo usado pelos workflows: SIGP_OLLAMA_MODEL (padrão qwen2.5:3b). Versão fixada para não mudar sozinha.
+  ollama:
+    image: ollama/ollama:0.40.14
+    container_name: sigp_ollama
+    restart: always
+    expose:
+      - "11434"
+    environment:
+      - OLLAMA_KEEP_ALIVE=30m          # mantém o modelo carregado entre chamadas (CPU: carregar leva segundos)
+      - OLLAMA_NUM_PARALLEL=1          # uma inferência por vez: WF-08 e WF-05 dividem a mesma CPU
+      - OLLAMA_MAX_LOADED_MODELS=1
+    volumes:
+      - ollama_data:/root/.ollama
+    mem_limit: 6g
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  web:
+    image: nginx:1.27-alpine
+    container_name: sigp_web
+    restart: always
+    ports:
+      - "127.0.0.1:8000:80"
+    volumes:
+      - ./agencias.html:/usr/share/nginx/html/agencias.html:ro
+      - ./frontend:/usr/share/nginx/html/frontend:ro
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  n8n_data:
+  ollama_data:
