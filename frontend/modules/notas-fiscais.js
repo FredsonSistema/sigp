@@ -514,7 +514,7 @@ async function sincronizarBackendNFSE(item) {
 }
 
 function getNFSEBackendUrl() {
-  return (typeof localStorage !== 'undefined' && localStorage.getItem('sigp_nfse_backend_url')) || 'http://127.0.0.1:5001';
+  return window.SIGP_CONFIG.apiUrl();
 }
 
 function mapBackendNFSE(item = {}) {

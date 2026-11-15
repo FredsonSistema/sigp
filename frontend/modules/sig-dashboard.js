@@ -59,7 +59,7 @@
     if (!container) return;
     container.innerHTML = '<div class="dash-empty" role="status">Carregando indicadores do SIG…</div>';
 
-    const apiUrl = window.SIGP_NFSE?.getNFSEBackendUrl?.() || 'http://127.0.0.1:5001';
+    const apiUrl = window.SIGP_CONFIG.apiUrl();
     try {
       const base = apiUrl.replace(/\/$/, '');
       const [response, extras] = await Promise.all([fetch(`${base}/api/sig/resumo`), loadExtras(base)]);
@@ -162,7 +162,7 @@
     card.querySelectorAll('[data-decisao]').forEach((b) => { b.disabled = true; });
     status.textContent = 'Gravando a decisão…';
     try {
-      const base = (window.SIGP_NFSE?.getNFSEBackendUrl?.() || 'http://127.0.0.1:5001').replace(/\/$/, '');
+      const base = (window.SIGP_CONFIG.apiUrl()).replace(/\/$/, '');
       const response = await fetch(`${base}/api/sig/decisoes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -269,7 +269,7 @@
       event.preventDefault();
       const errorBox = container.querySelector('#sigError');
       errorBox.hidden = true;
-      const apiUrl = window.SIGP_NFSE?.getNFSEBackendUrl?.() || 'http://127.0.0.1:5001';
+      const apiUrl = window.SIGP_CONFIG.apiUrl();
       const appliedFilters = Object.fromEntries(new FormData(form).entries());
       try {
         const response = await fetch(`${apiUrl.replace(/\/$/, '')}/api/sig/resumo?${makeQuery(form)}`);

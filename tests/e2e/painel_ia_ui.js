@@ -18,7 +18,7 @@ const { launch, shot, check, loginFresh } = require('./lib');
     await page.waitForSelector('#piaBanco [data-role="saude-status"]', { timeout: 15000 });
     await page.locator('#piaBanco [data-action="backup"]').click();
     await page.waitForFunction(() => /criado e verificado/.test(document.getElementById('piaBancoStatus').textContent), null, { timeout: 30000 });
-    await page.waitForFunction(() => /há \d/.test(document.querySelector('#piaBanco [data-role="backup"]')?.innerText || ''), null, { timeout: 15000 });
+    await page.waitForFunction(() => /há 0(,\d)? h/.test(document.querySelector('#piaBanco [data-role="backup"]')?.innerText || ''), null, { timeout: 15000 });
     const backup = await page.locator('#piaBanco [data-role="backup"]').innerText();
     check(results, 'backup pela tela: criado, verificado e mostrado como recente', /há 0(,\d)? h/.test(backup), backup.replace(/\s+/g, ' '));
     const status = await page.locator('#piaBanco [data-role="saude-status"]').innerText();

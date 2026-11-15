@@ -142,7 +142,7 @@
 
   async function extract() {
     const file = selectedFile;
-    const endpoint = localStorage.getItem(WEBHOOK_KEY) || '';
+    const endpoint = window.SIGP_CONFIG.webhookUrl('webhookFaturaPdf');
     if (!file) {
       setBusy(false, 'Selecione uma fatura PDF.');
       return;
@@ -444,7 +444,7 @@
       byId(id).addEventListener('change', renderComparisons);
     });
 
-    byId('faturasWebhookUrl').value = localStorage.getItem(WEBHOOK_KEY) || '';
+    byId('faturasWebhookUrl').value = window.SIGP_CONFIG.get('webhookFaturaPdf');
     byId('faturasSalvarWebhook').onclick = () => {
       const url = byId('faturasWebhookUrl').value.trim();
       if (url) {
@@ -455,7 +455,7 @@
           return;
         }
       }
-      localStorage.setItem(WEBHOOK_KEY, url);
+      window.SIGP_CONFIG.set({ webhookFaturaPdf: url });
       const settingsField = byId('nfse_fatura_webhook_url');
       if (settingsField) settingsField.value = url;
       byId('faturasStatus').textContent = url ? 'URL do webhook salva neste navegador.' : 'URL do webhook removida.';

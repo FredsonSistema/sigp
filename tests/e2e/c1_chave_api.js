@@ -29,7 +29,7 @@ const { APP_URL, API_TEST_KEY, launch, shot, visible, check } = require('./lib')
     await page.click('#apiKeySetupForm button[type=submit]');
     await page.waitForFunction(() => getComputedStyle(document.querySelector('#appRoot')).display !== 'none', null, { timeout: 20000 });
     check(results, 'após informar a chave, o app abre', true);
-    const salva = await page.evaluate(() => Boolean(localStorage.getItem('sigp_api_key')));
+    const salva = await page.evaluate(() => Boolean(window.SIGP_CONFIG.get('apiKey')));
     check(results, 'a chave ficou salva no navegador (localStorage)', salva);
     await shot(page, 'c1-03-app-aberto');
 
@@ -55,12 +55,12 @@ const { APP_URL, API_TEST_KEY, launch, shot, visible, check } = require('./lib')
     await page.goto(APP_URL);
     await page.waitForSelector('#authScreen');
     await page.waitForTimeout(1500);
-    const persistiu = await page.evaluate(() => Boolean(localStorage.getItem('sigp_api_key')));
+    const persistiu = await page.evaluate(() => Boolean(window.SIGP_CONFIG.get('apiKey')));
     check(results, 'nova aba: a chave continua salva', persistiu);
     check(results, 'nova aba: tela de login sem bloco de chave', !(await visible(page, '#apiKeySetup')));
 
     // chave salva deixa de valer (ex.: .env mudou): deve voltar a pedir, com mensagem clara
-    await page.evaluate(() => localStorage.setItem('sigp_api_key', 'chave-antiga-invalida'));
+    await page.evaluate(() => window.SIGP_CONFIG.set({ apiKey: 'chave-antiga-invalida' }));
     await page.reload();
     await page.waitForSelector('#loginForm', { state: 'visible' });
     await page.waitForTimeout(1500);

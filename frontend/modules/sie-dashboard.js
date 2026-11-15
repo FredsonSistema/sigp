@@ -5,7 +5,7 @@
   const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (character) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
   })[character]);
-  const apiBase = () => (window.SIGP_NFSE?.getNFSEBackendUrl?.() || 'http://127.0.0.1:5001').replace(/\/$/, '');
+  const apiBase = () => window.SIGP_CONFIG.apiUrl();
 
   function monthLabel(value) {
     const [year, month] = value.split('-').map(Number);

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import urllib.request
 import os
 import re
 import sqlite3
@@ -2621,6 +2622,38 @@ def metricas_llm_route():
     )
     resultado["resumo"] = metricas_llm.resumo_textual(resultado)
     return jsonify({"ok": True, **resultado})
+
+
+# Variáveis de integração do servidor: só o estado. Segredos aparecem como "definida/não definida", nunca o valor.
+_INTEGRACAO_SEGREDOS = ("SIGP_API_KEY", "SIGP_N8N_TOKEN")
+_INTEGRACAO_VALORES = ("SIGP_CORS_ORIGINS", "SIGP_N8N_EVENTOS_URL", "SIGP_EXIGIR_FATURA", "SIGP_PUBLIC_API_URL", "SIGP_PUBLIC_N8N_URL")
+
+
+@app.get("/api/integracao/estado")
+def integracao_estado_route():
+    variaveis: Dict[str, Any] = {}
+    for nome in _INTEGRACAO_SEGREDOS:
+        variaveis[nome] = {"segredo": True, "definida": bool(os.environ.get(nome, "").strip())}
+    for nome in _INTEGRACAO_VALORES:
+        valor = os.environ.get(nome, "").strip()
+        variaveis[nome] = {"segredo": False, "definida": bool(valor), "valor": valor[:200]}
+    ocr: Dict[str, Any] = {"ok": False}
+    try:
+        with urllib.request.urlopen(os.environ.get("SIGP_OCR_URL", "http://ocr:5002") + "/health", timeout=3) as resposta:  # noqa: S310
+            ocr = {"ok": True, **json.loads(resposta.read().decode("utf-8"))}
+    except (OSError, ValueError):
+        pass
+    if "regrasSenha" in ocr:
+        variaveis["SIGP_PDF_SENHA_CNPJS"] = {"segredo": False, "definida": ocr["regrasSenha"] > 0, "valor": f"{ocr['regrasSenha']} empresa(s)"}
+    eventos = list_eventos(limite=1)
+    ultimo = eventos[0] if eventos else None
+    eventos_texto = "nenhum evento enviado ainda" if not ultimo else (
+        f"último {ultimo.get('evento')} {str(ultimo.get('status') or '').lower()} em {str(ultimo.get('created_at') or '')[:16].replace('T', ' ')}")
+    return jsonify({
+        "ok": True, "variaveis": variaveis, "ocr": ocr,
+        "ollama": metricas_llm.estado_modelo(os.environ.get("SIGP_OLLAMA_URL", "http://ollama:11434"), os.environ.get("SIGP_OLLAMA_MODEL", "qwen2.5:3b")),
+        "eventos": {"configurado": bool(events.webhook_url()), "texto": eventos_texto if events.webhook_url() else "SIGP_N8N_EVENTOS_URL não definida"},
+    })
 
 
 @app.get("/api/saude/banco")

@@ -27,9 +27,10 @@
   const readRaw = (key) => {
     try { return localStorage.getItem(key); } catch (error) { return null; }
   };
-  const backendUrl = () => read(KEYS.backendUrl, 'http://127.0.0.1:5001').replace(/\/$/, '');
-  const n8nBase = () => read(KEYS.n8nBase, 'http://127.0.0.1:5678').replace(/\/$/, '');
-  const modoEntrada = () => read(KEYS.entrada, 'n8n');
+  // Endereços, chave e modo vêm da configuração de integração (frontend/modules/config-integracao.js).
+  const backendUrl = () => window.SIGP_CONFIG.apiUrl();
+  const n8nBase = () => window.SIGP_CONFIG.n8nUrl();
+  const modoEntrada = () => window.SIGP_CONFIG.get('modoEntrada') || 'n8n';
   const originalSetItem = Storage.prototype.setItem;
   const originalRemoveItem = Storage.prototype.removeItem;
 
@@ -37,8 +38,8 @@
   window.fetch = (input, init = {}) => {
     const url = typeof input === 'string' ? input : input?.url || '';
     const method = String(init.method || (typeof input === 'object' && input?.method) || 'GET').toUpperCase();
-    const apiKey = read(KEYS.apiKey);
-    if (apiKey && method !== 'GET' && url.startsWith(backendUrl())) {
+    const apiKey = window.SIGP_CONFIG.get('apiKey');
+    if (apiKey && method !== 'GET' && backendUrl() && url.startsWith(backendUrl())) {
       const headers = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined) || {});
       if (!headers.has('X-API-Key')) headers.set('X-API-Key', apiKey);
       return originalFetch(input, { ...init, headers });
@@ -46,13 +47,14 @@
     return originalFetch(input, init);
   };
 
-  const WEBHOOK_PATHS = { '/api/notas/lancadas': 'sigp-nota-lancada', '/api/notas/pagas': 'sigp-nota-paga' };
+  const WEBHOOK_PATHS = { '/api/notas/lancadas': 'webhookNotaLancada', '/api/notas/pagas': 'webhookNotaPaga' };
 
   async function enviarDocumento(path, body) {
     const webhook = WEBHOOK_PATHS[path];
-    if (modoEntrada() === 'n8n' && webhook) {
+    const webhookUrl = webhook ? window.SIGP_CONFIG.webhookUrl(webhook) : '';
+    if (modoEntrada() === 'n8n' && webhookUrl) {
       try {
-        const response = await originalFetch(`${n8nBase()}/webhook/${webhook}`, {
+        const response = await originalFetch(webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...body, canal: 'interface' }),
@@ -79,7 +81,7 @@
   }
 
   async function enviarAnaliseManual(dados) {
-    const response = await originalFetch(`${n8nBase()}/webhook/sigp-eventos`, {
+    const response = await originalFetch(window.SIGP_CONFIG.webhookUrl('webhookEventos'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

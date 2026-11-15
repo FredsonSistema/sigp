@@ -202,7 +202,8 @@ class OcrHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         if self.path == "/health":
-            self._send_json(200, {"ok": True})
+            raizes = [r for r in os.environ.get("SIGP_PDF_SENHA_CNPJS", "").split(",") if re.sub(r"\D", "", r)]
+            self._send_json(200, {"ok": True, "regrasSenha": len(raizes)})
             return
         self._send_json(404, {"ok": False, "error": "Rota não encontrada."})
 
