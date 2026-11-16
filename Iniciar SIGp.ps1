@@ -192,6 +192,22 @@ try {
         throw 'O Docker Desktop abriu, mas o motor de containers não ficou pronto em 5 minutos.'
     }
 
+    # Trava contra clique acidental num computador novo (ex.: avaliação acadêmica): só pergunta quando o
+    # SIGp ainda não está instalado aqui. Na máquina do autor os containers existem e nada é perguntado.
+    & $dockerCommand.Source inspect sigp_api *> $null
+    if ($LASTEXITCODE -ne 0 -and -not $SemNavegador) {
+        Write-Host ''
+        Write-Host 'ATENÇÃO: este é o SIGp de uso pessoal do autor (com interface web).' -ForegroundColor Yellow
+        Write-Host 'Ele NÃO faz parte da avaliação acadêmica. Para a avaliação, veja:' -ForegroundColor Yellow
+        Write-Host '  docs/entrega-academica/README-ENTREGA2.md' -ForegroundColor Yellow
+        Write-Host 'Instalar o SIGp pessoal baixa e sobe 6 containers (vários GB).' -ForegroundColor Yellow
+        $resposta = Read-Host 'Continuar mesmo assim? (S/N)'
+        if ($resposta -notmatch '^[sS]') {
+            Write-Host 'Nada foi instalado.'
+            Stop-Transcript | Out-Null
+            exit 0
+        }
+    }
     if (-not $Reconstruir -and (Test-AllReady)) {
         Write-Host 'Todos os serviços já estavam prontos.' -ForegroundColor Green
     }

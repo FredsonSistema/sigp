@@ -1,3 +1,5 @@
+# Nome fixo do projeto: redes e containers iguais em qualquer pasta (o setup acadêmico depende dele).
+name: sigp_n8n
 services:
   n8n:
     image: n8nio/n8n:latest
