@@ -106,6 +106,16 @@ $rootEnv = Read-EnvFile $rootEnvFile
 $rootEnv["SIGP_ACADEMIC_AI_KEY"] = $academicEnv["SIGP_AI_API_KEY"]
 Write-EnvFile $rootEnvFile $rootEnv
 
+# O compose acadêmico usa duas redes externas. A do n8n nasce com o projeto principal "sigp_n8n"
+# (nome fixo, para funcionar em qualquer pasta clonada); a acadêmica é criada aqui se não existir.
+& docker compose -p sigp_n8n up -d n8n
+if ($LASTEXITCODE -ne 0) {
+    throw "Não foi possível subir o serviço n8n da composição principal."
+}
+& docker network inspect sqlserver_default *> $null
+if ($LASTEXITCODE -ne 0) {
+    & docker network create sqlserver_default | Out-Null
+}
 Invoke-DockerCompose @("up", "-d", "sqlserver-academic")
 $env:SQLCMDPASSWORD = $academicEnv["MSSQL_SA_PASSWORD"]
 $ready = $false
@@ -220,7 +230,7 @@ if (-not $aiReady) {
     throw "O serviço acadêmico de IA não ficou pronto."
 }
 
-& docker compose up -d n8n
+& docker compose -p sigp_n8n up -d n8n
 if ($LASTEXITCODE -ne 0) {
     throw "Não foi possível reiniciar o serviço n8n da composição principal."
 }
@@ -234,7 +244,13 @@ if ($LASTEXITCODE -ne 0) {
     throw "Não foi possível importar o workflow acadêmico no n8n."
 }
 
-Write-Host "SQL Server, serviço IA, modelo local e workflow importado."
-Write-Host "Abra http://127.0.0.1:5678, ative 'SIGp Acadêmico - RAG e Análise' e execute os casos:"
+# Publica (ativa) o workflow pelo id fixo do JSON e reinicia o n8n para registrar o webhook.
+& docker exec sigp_n8n n8n publish:workflow --id=R7lKILedIMV89Jay
+if ($LASTEXITCODE -ne 0) {
+    throw "Não foi possível publicar o workflow acadêmico no n8n."
+}
+& docker restart sigp_n8n | Out-Null
+Write-Host "SQL Server, serviço IA, modelo local e workflow importado e publicado."
+Write-Host "Teste: POST http://127.0.0.1:5678/webhook/sigp-academic-ai (ver docs/entrega-academica/ENDPOINTS.md). Casos de avaliação:"
 Write-Host "  `$env:SIGP_ACADEMIC_AI_KEY = '<valor de docs/entrega-academica/sqlserver/.env.academic>'"
-Write-Host "  .\\.venv\\Scripts\\python.exe docs\\entrega-academica\\ia\\run_cases.py"
+Write-Host "  python docs\\entrega-academica\\ia\\run_cases.py"

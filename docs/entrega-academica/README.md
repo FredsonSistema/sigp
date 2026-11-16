@@ -1,5 +1,7 @@
 # SIGp — Auditoria de faturas de provedores
 
+> **Entrega 2:** veja [`README-ENTREGA2.md`](README-ENTREGA2.md) (documentos e como testar), [`GUIA-INSTALACAO.md`](GUIA-INSTALACAO.md) e [`ENDPOINTS.md`](ENDPOINTS.md).
+
 **Grupo e integrantes:** ver [`identificacao.json`](identificacao.json) (a mesma identificação de todos os PDFs).  
 **Disciplinas:** Projeto de Inteligência Artificial; Segurança e Otimização de Banco de Dados.
 

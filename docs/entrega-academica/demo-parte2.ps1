@@ -28,9 +28,9 @@ function Comando($texto) { Write-Host "> $texto" -ForegroundColor Yellow }
 function Pausa { if (-not $SemPausa) { Read-Host "`n[Enter] próximo passo" | Out-Null } }
 function Sql($consulta) { & sqlcmd @base -Q "SET NOCOUNT ON; $consulta" }
 # O Ollama é compartilhado com o SIGp de produção (um pedido por vez, um modelo carregado).
-# Antes do passo 1 carregamos o qwen2.5:0.5b e esperamos a fila esvaziar, para a demo não estourar o tempo.
+# Antes do passo 1 carregamos o qwen2.5:0.5b (no Ollama configurado na IA acadêmica) e esperamos a fila esvaziar, para a demo não estourar o tempo.
 function Aquecer-Modelo {
-  $py_aq = "import json,urllib.request as u;r=u.Request('http://ollama:11434/api/generate',data=json.dumps({'model':'qwen2.5:0.5b','prompt':'ok','stream':False,'keep_alive':'30m','options':{'num_predict':1}}).encode(),headers={'Content-Type':'application/json'});u.urlopen(r,timeout=900).read();print('ok')"
+  $py_aq = "import json,os,urllib.request as u;r=u.Request(os.environ.get('OLLAMA_URL','http://ollama:11434')+'/api/generate',data=json.dumps({'model':'qwen2.5:0.5b','prompt':'ok','stream':False,'keep_alive':'30m','options':{'num_predict':1}}).encode(),headers={'Content-Type':'application/json'});u.urlopen(r,timeout=900).read();print('ok')"
   for ($i = 1; $i -le 3; $i++) {
     Write-Host "  aquecendo o modelo local (tentativa $i/3; pode levar alguns minutos se o Ollama estiver ocupado)..." -ForegroundColor DarkGray
     $saida = docker exec sigp_academic_ai python -c $py_aq 2>&1

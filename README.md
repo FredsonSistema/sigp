@@ -1,5 +1,7 @@
 # SIGp — Sistema Gerencial Pessoal
 
+> **Avaliação acadêmica (Entrega 2):** comece por [`docs/entrega-academica/README-ENTREGA2.md`](docs/entrega-academica/README-ENTREGA2.md). Ele diz onde estão os documentos, como instalar e quais endpoints testar. A interface web descrita abaixo é o sistema pessoal do autor e não faz parte da avaliação.
+
 Protótipo local para cadastro e gestão de agências, rodoviárias e garagens, com notas fiscais de provedores, anexos de faturas, conciliação e integração com n8n.
 
 ## Equipe
