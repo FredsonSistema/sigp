@@ -39,6 +39,10 @@ MODEL_BACKEND = os.environ.get("MODEL_BACKEND", "ollama")
 MODEL_URL = os.environ.get("MODEL_URL", OLLAMA_URL).rstrip("/")
 MODEL_NAME = os.environ.get("MODEL_NAME", OLLAMA_MODEL)
 MODEL_PROFILE = os.environ.get("MODEL_PROFILE", "baseline")
+# Na máquina compartilhada o Ollama atende um pedido por vez; o pedido da IA pode esperar na fila
+# (140 s: abaixo dos 150 s do nó HTTP do n8n, para a API responder antes do n8n desistir).
+OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "140"))
+OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "30m")
 PROMPT_VERSION = "3.0"
 ALLOWED_CLASSIFICATIONS = {"CONTRATADO", "DIVERGENTE", "REVISAR"}
 MODEL_OUTPUT_SCHEMA = {
@@ -302,6 +306,7 @@ def ask_ollama(prompt: str) -> tuple[dict, str]:
         "stream": False,
         "format": MODEL_OUTPUT_SCHEMA,
         "options": {"temperature": 0, "num_predict": 160},
+        "keep_alive": OLLAMA_KEEP_ALIVE,
     }).encode("utf-8")
     req = Request(
         f"{OLLAMA_URL}/api/generate",
@@ -310,7 +315,7 @@ def ask_ollama(prompt: str) -> tuple[dict, str]:
         method="POST",
     )
     try:
-        with urlopen(req, timeout=120) as response:
+        with urlopen(req, timeout=OLLAMA_TIMEOUT_SECONDS) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
         app.logger.exception("Ollama indisponível ou resposta inválida.")
