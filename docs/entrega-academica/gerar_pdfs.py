@@ -37,15 +37,16 @@ GOLD = colors.HexColor("#D69A2D")
 RED = colors.HexColor("#A83B3B")
 WHITE = colors.white
 
-TEAM = [
-    ("Maciel Lopes Francisco", "não informada"),
-    ("Fredson Pereira (nome informado)", "não informada"),
-    ("Aeverton Santos", "não informada"),
-    ("Jonatas de Jesus Souza", "não informada"),
-]
+# Identificação: um arquivo só para todos os PDFs (identificacao.json, nesta pasta).
+import json as _json
+
+_IDENT = _json.loads((Path(__file__).resolve().parent / "identificacao.json").read_text(encoding="utf-8"))
+TEAM = [(i["nome"], i["matricula"]) for i in _IDENT["integrantes"]]
+_PENDENTE = [i["nome"] for i in _IDENT["integrantes"] if "confirmar" in i["matricula"]]
 TEAM_NOTE = (
-    "Grupo: nome não informado. Nomes registrados conforme informados; confirmar "
-    "nomes completos de Fredson Pereira e Aeverton Santos e preencher todas as matrículas."
+    f"Grupo: {_IDENT['grupo']}. Integrantes: "
+    + "; ".join(f"{n} (matrícula {m})" for n, m in TEAM) + "."
+    + (" Matrículas a preencher em identificacao.json." if _PENDENTE else "")
 )
 DATE_LABEL = "2 de novembro de 2026"
 
@@ -362,7 +363,7 @@ class AcademicDoc(BaseDocTemplate):
             str(filename), pagesize=pagesize,
             leftMargin=17 * mm, rightMargin=17 * mm,
             topMargin=17 * mm, bottomMargin=17 * mm,
-            title=title, author="Grupo SIGp (identificação a completar)",
+            title=title, author=f"Grupo SIGp — {_IDENT['grupo']}",
         )
         frame = Frame(
             self.leftMargin, self.bottomMargin, self.width, self.height,

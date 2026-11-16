@@ -1,0 +1,12 @@
+{
+  "grupo": "a confirmar",
+  "data": "16 de novembro de 2026",
+  "repositorio": "https://github.com/FredsonSistema/sigp",
+  "disciplinas": ["Projeto de Inteligência Artificial", "Segurança e Otimização de Banco de Dados"],
+  "integrantes": [
+    {"nome": "Fredson Pereira", "matricula": "a confirmar", "contribuicao": "a confirmar"},
+    {"nome": "Maciel Lopes Francisco", "matricula": "a confirmar", "contribuicao": "a confirmar"},
+    {"nome": "Aeverton Santos", "matricula": "a confirmar", "contribuicao": "a confirmar"},
+    {"nome": "Jonatas de Jesus Souza", "matricula": "a confirmar", "contribuicao": "a confirmar"}
+  ]
+}

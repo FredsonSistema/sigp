@@ -1,7 +1,16 @@
 # SIGp — Auditoria de faturas de provedores
 
-**Grupo:** a definir  
-**Integrantes:** Maciel Lopes Francisco — matrícula pendente; Fredson Pereira — matrícula pendente; Aeverton Santos — matrícula pendente; Jonatas de Jesus Souza — matrícula pendente.  
+**Grupo e integrantes:** ver [`identificacao.json`](identificacao.json) (a mesma identificação de todos os PDFs).  
+**Disciplinas:** Projeto de Inteligência Artificial; Segurança e Otimização de Banco de Dados.
+
+## Parte 2 (16/11/2026)
+
+- **[Relatório de andamento da parte 2](relatorio-parte2.pdf)**: o que foi feito desde a parte 1, limites, evidências e contribuição individual (gerado por `gerar_parte2.py`).
+- Evidências: [`sqlserver/evidence/parte2/`](sqlserver/evidence/parte2/) (n8n ponta a ponta, casos de teste, IA sem permissão e injeção, auditoria, mascaramento, benchmark e planos, latência e custo, memória de exemplos) e [`seguranca/permissoes-perfis.md`](seguranca/permissoes-perfis.md) (matriz de perfis e permissões da API).
+- Casos de teste: [`ia/casos-de-teste-parte2.md`](ia/casos-de-teste-parte2.md) · Prompts: [`ia/prompts/CHANGELOG.md`](ia/prompts/CHANGELOG.md) · Roteiro do vídeo/prints: [`roteiro-video-parte2.md`](roteiro-video-parte2.md).
+- Histórico de todas as mudanças (antes e depois, com a verificação): [`../registro-mudancas.md`](../registro-mudancas.md).
+
+## Parte 1 (02/11/2026)
 **Disciplinas:** Projeto de Inteligência Artificial; Segurança e Otimização de Banco de Dados.
 
 ## Problema e objetivo
@@ -36,9 +45,10 @@ O SQL Server aplica RLS e testes de papéis/permissões; os detalhes e evidênci
 
 **MVP proposto:** SQL Server local com carga sintética, duas consultas medidas, CLI de importação/consulta e fluxo n8n de entrada. RAG local e relatório de sugestões só entram se forem realmente implementados e validados no prazo.
 
-**Repositório:** URL remota pendente de configuração. Instruções detalhadas, métricas e matriz de permissões em [`plano-tecnico.md`](plano-tecnico.md).
+**Repositório:** <https://github.com/FredsonSistema/sigp>. Instruções detalhadas, métricas e matriz de permissões em [`plano-tecnico.md`](plano-tecnico.md).
 
 ## PDFs da entrega
+- [Relatório da parte 2](relatorio-parte2.pdf)
 
 - [Parte de IA](parte-ia.pdf)
 - [Parte de Segurança e Otimização](parte-seguranca.pdf)
@@ -48,4 +58,4 @@ O SQL Server aplica RLS e testes de papéis/permissões; os detalhes e evidênci
 
 O guia confronta as propostas acadêmicas com o estado observado do SIGp e lista o que ainda precisa ser implementado ou comprovado. O adaptador LoRA é um experimento isolado; não confundir com o LLM usado pelo endpoint nem apresentar como funcionalidade integrada.
 
-Para recriar os arquivos neste ambiente: `pip install -r requirements-pdf.txt` e `python gerar_pdfs.py`.
+Para recriar os arquivos neste ambiente: `pip install -r requirements-pdf.txt`, `python gerar_pdfs.py` e `python gerar_parte2.py`.
