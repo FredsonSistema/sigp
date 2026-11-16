@@ -44,9 +44,8 @@ _IDENT = _json.loads((Path(__file__).resolve().parent / "identificacao.json").re
 TEAM = [(i["nome"], i["matricula"]) for i in _IDENT["integrantes"]]
 _PENDENTE = [i["nome"] for i in _IDENT["integrantes"] if "confirmar" in i["matricula"]]
 TEAM_NOTE = (
-    f"Grupo: {_IDENT['grupo']}. Integrantes: "
-    + "; ".join(f"{n} (matrícula {m})" for n, m in TEAM) + "."
-    + (" Matrículas a preencher em identificacao.json." if _PENDENTE else "")
+    (f"Grupo: {_IDENT['grupo']}. " if _IDENT["grupo"] else "")
+    + "Integrantes: " + "; ".join(f"{n} (matrícula {m})" if m else n for n, m in TEAM) + "."
 )
 DATE_LABEL = "2 de novembro de 2026"
 
@@ -363,7 +362,7 @@ class AcademicDoc(BaseDocTemplate):
             str(filename), pagesize=pagesize,
             leftMargin=17 * mm, rightMargin=17 * mm,
             topMargin=17 * mm, bottomMargin=17 * mm,
-            title=title, author=f"Grupo SIGp — {_IDENT['grupo']}",
+            title=title, author="SIGp — " + "; ".join(n for n, _m in TEAM),
         )
         frame = Frame(
             self.leftMargin, self.bottomMargin, self.width, self.height,

@@ -1,12 +1,16 @@
 {
-  "grupo": "a confirmar",
+  "grupo": "",
   "data": "16 de novembro de 2026",
   "repositorio": "https://github.com/FredsonSistema/sigp",
   "disciplinas": ["Projeto de Inteligência Artificial", "Segurança e Otimização de Banco de Dados"],
   "integrantes": [
-    {"nome": "Fredson Pereira", "matricula": "a confirmar", "contribuicao": "a confirmar"},
-    {"nome": "Maciel Lopes Francisco", "matricula": "a confirmar", "contribuicao": "a confirmar"},
-    {"nome": "Aeverton Santos", "matricula": "a confirmar", "contribuicao": "a confirmar"},
-    {"nome": "Jonatas de Jesus Souza", "matricula": "a confirmar", "contribuicao": "a confirmar"}
+    {"nome": "Fredson Pereira de Oliveira Santos", "matricula": "",
+     "contribuicao": "Coordenei o projeto e a arquitetura (Docker, API, n8n). Montei o fluxo n8n de ponta a ponta (webhook → API → SQL Server → RAG → Qwen) e o fluxo do Gmail com OCR e triagem pela IA local. Fiz os perfis e permissões da API (grupos, usuários com chave própria, auditoria) e a integração por variáveis de ambiente. Cuidei do repositório, do README e do registro de mudanças."},
+    {"nome": "Maciel Lopes Francisco", "matricula": "",
+     "contribuicao": "Fiquei com a parte de IA: escolha do Qwen local (qualidade, custo e privacidade) e estimativa de custo por 1.000 usos. Montei o corpus de 20 documentos fictícios e a busca do RAG, versionei os prompts (v1 a v4.2) e escrevi os 5 casos de teste com entrada, esperado e obtido. Medi latência e custo do 0,5B e do 3B."},
+    {"nome": "Aeverton Santos", "matricula": "",
+     "contribuicao": "Fiquei com a segurança do banco: modelo de dados com cada coluna classificada (público, interno, sensível), SQL Server com RLS por local, papéis sigp_api, sigp_auditor e sigp_ia com GRANT e DENY, e os testes de acesso permitido e negado. Apliquei o mascaramento dinâmico com UNMASK só para o papel fiscal e a troca das senhas dos usuários da IA."},
+    {"nome": "Jonatas de Jesus Souza", "matricula": "",
+     "contribuicao": "Fiquei com a otimização e os testes de integração: carga de 100.020 notas, as duas consultas lentas, os planos de execução nas configurações A, B e C e os índices ajustados. Testei a IA sem permissão (o banco nega e a IA não devolve dado) e o prompt injection, e conferi a auditoria do que a IA consultou, quem pediu e quando. Executei o fine-tuning LoRA e a comparação com o modelo base."}
   ]
 }

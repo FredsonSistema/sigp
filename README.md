@@ -4,10 +4,10 @@ Protótipo local para cadastro e gestão de agências, rodoviárias e garagens, 
 
 ## Equipe
 
-- Fredson Pereira
-- Maciel Lopes
-- Aeverton
-- Jonata de Jesus
+- Fredson Pereira de Oliveira Santos
+- Maciel Lopes Francisco
+- Aeverton Santos
+- Jonatas de Jesus Souza
 
 Repositório: <https://github.com/FredsonSistema/sigp>
 
@@ -18,6 +18,30 @@ Repositório: <https://github.com/FredsonSistema/sigp>
 >
 > O fluxo alvo, o que já está pronto e o plano de ação estão em [`docs/guia-fluxo-n8n.md`](docs/guia-fluxo-n8n.md).
 > O roteiro para consolidar persistência local e preparar uma instalação completa para Windows está em [`docs/roteiro-instalacao-local.md`](docs/roteiro-instalacao-local.md).
+
+## Como rodar a entrega acadêmica (terminal, sem site)
+
+Pré-requisitos: Docker Desktop, PowerShell 7 (`pwsh`), `sqlcmd` e Python 3. Na raiz do projeto:
+
+```powershell
+# 1. Banco, papéis e carga. O setup gera as senhas aleatórias em .env.academic (fora do repositório;
+#    as variáveis estão descritas em .env.academic.example).
+pwsh -File docs/entrega-academica/sqlserver/setup-academic.ps1
+
+# 2. Sistema principal (API, n8n, OCR, Ollama) e ambiente acadêmico leve (SQL Server 2 GB + API da IA)
+docker compose up -d
+docker compose --env-file docs/entrega-academica/sqlserver/.env.academic `
+  -f docs/entrega-academica/sqlserver/compose.academic.yml `
+  -f docs/entrega-academica/sqlserver/compose.leve.yml up -d
+
+# 3. Demonstração de todos os itens da entrega 2 (com pausa entre os passos; sem pausa: -SemPausa)
+pwsh -File docs/entrega-academica/demo-parte2.ps1
+```
+
+A demonstração mostra, nesta ordem: fluxo n8n → API → SQL Server/RLS → RAG → Qwen local; casos de teste, prompts, fine-tuning,
+custo e latência; papéis com GRANT e DENY; mascaramento; volume e consultas lentas; IA sem permissão e prompt injection; auditoria;
+perfis e permissões da API. O PDF da entrega é gerado por `python docs/entrega-academica/gerar_parte2.py` (ver
+[`docs/entrega-academica/README.md`](docs/entrega-academica/README.md)).
 
 ## Visão do sistema
 
