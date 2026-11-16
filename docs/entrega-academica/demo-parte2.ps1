@@ -2,8 +2,9 @@
 # Cada passo mostra o comando, executa e espera Enter (para gravar o vídeo). Com -SemPausa roda direto
 # e grava a saída em sqlserver/evidence/parte2/demo-parte2-saida.txt (os "prints" do relatório).
 # Nenhuma senha é mostrada: o script lê o .env.academic e passa a senha por variável de ambiente.
-# Uso, na raiz do projeto:  pwsh -File docs/entrega-academica/demo-parte2.ps1  [-SemPausa]
-param([switch]$SemPausa)
+# Uso, na raiz do projeto:  pwsh -File docs/entrega-academica/demo-parte2.ps1  [-SemPausa] [-VerNoN8n]
+# -VerNoN8n: o passo 1 usa o webhook de teste, para ver o fluxo executando no editor do n8n (tela dividida).
+param([switch]$SemPausa, [switch]$VerNoN8n)
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
 $OutputEncoding = [Text.Encoding]::UTF8
@@ -46,14 +47,21 @@ try {
 
   Passo 1 'IA · fluxo de ponta a ponta (n8n + RAG + LLM local)' 'Webhook do n8n -> API -> SQL Server com RLS -> RAG (fontes citadas) -> Qwen local. A regra decide; o modelo sugere; nada é pago sozinho.'
   Aquecer-Modelo
+  $url = 'http://127.0.0.1:5678/webhook/sigp-academic-ai'
+  if ($VerNoN8n) {
+    $url = 'http://127.0.0.1:5678/webhook-test/sigp-academic-ai'
+    Write-Host '  No n8n: abra o workflow "SIGp Acadêmico - RAG e Análise" e clique em "Execute workflow" (fica escutando o evento de teste).' -ForegroundColor Magenta
+    Read-Host '  [Enter] quando o n8n estiver escutando' | Out-Null
+  }
   $corpo = '{"provider":"Conecta Alfa Fictícia","description":"IP adicional mensal","amount":"35.00","due_date":"2026-11-10"}'
-  Comando "Invoke-RestMethod -Method Post http://127.0.0.1:5678/webhook/sigp-academic-ai -Body '$corpo'"
+  Comando "Invoke-RestMethod -Method Post $url -Body '$corpo'"
   $t0 = Get-Date
   $r = $null
   for ($i = 1; $i -le 3 -and -not $r; $i++) {
-    try { $r = Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:5678/webhook/sigp-academic-ai' -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($corpo)) -TimeoutSec 300 }
+    try { $r = Invoke-RestMethod -Method Post -Uri $url -ContentType 'application/json; charset=utf-8' -Body ([Text.Encoding]::UTF8.GetBytes($corpo)) -TimeoutSec 300 }
     catch {
       if ($i -eq 3) { throw "O fluxo da IA falhou 3 vezes ($($_.Exception.Message)). O Ollama provavelmente está ocupado com o SIGp de produção: desative o WF-08 no n8n e rode de novo." }
+      if ($VerNoN8n) { Write-Host '  (webhook de teste: clique de novo em "Execute workflow" no n8n e aperte Enter)' -ForegroundColor Magenta; Read-Host | Out-Null }
       Write-Host "  o modelo local estava ocupado (tentativa $i/3); aquecendo e tentando de novo..." -ForegroundColor DarkGray
       Aquecer-Modelo
     }
