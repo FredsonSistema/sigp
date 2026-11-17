@@ -15,6 +15,8 @@ COPY requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/*.py /app/backend/
+# Conhecimento do assistente em partes (JSON por tema).
+COPY backend/conhecimento_assistente/ /app/backend/conhecimento_assistente/
 
 EXPOSE 5001
 

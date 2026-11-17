@@ -46,6 +46,14 @@
   h1 span{ color:var(--text-dim); font-weight:400; margin-left:8px; font-size:14px; }
 
   .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
+.ass-conversa{border:1px solid var(--line); border-radius:10px; padding:10px; min-height:260px; max-height:58vh; overflow:auto; background:var(--panel-2); display:flex; flex-direction:column; gap:8px}
+.ass-msg{max-width:85%; padding:8px 12px; border-radius:10px; font-size:13.5px; line-height:1.45}
+.ass-voce{align-self:flex-end; background:var(--accent); color:#fff}
+.ass-ia{align-self:flex-start; background:var(--panel); border:1px solid var(--line)}
+.ass-pensando{color:var(--text-dim); font-style:italic}
+.ass-rodape{display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap}
+.ass-form{display:flex; gap:8px; margin-top:10px} .ass-form input{flex:1}
+.ass-sugestoes{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0}
 .cfg-alertas-lista{list-style:none; margin:4px 0 8px; padding:0; display:flex; flex-wrap:wrap; gap:6px}
 .cfg-alertas-lista li{display:flex; align-items:center; gap:4px; border:1px solid var(--border, #c6d3dc); border-radius:14px; padding:2px 4px 2px 10px; font-size:13px}
 /* ---- login gate ---- */
@@ -881,7 +889,8 @@
     <button class="tab" data-view="agenda-pessoal">Agenda Pessoal</button>
     <button class="tab" data-view="sys">Sistemas de TI</button>
     <button class="tab" data-view="geral">Dashboard</button>
-    <button class="tab" data-view="ia">Painel da IA</button>
+    <button class="tab" data-view="assistente">Assistente</button>
+<button class="tab" data-view="ia">Painel da IA</button>
     <button class="tab" data-view="config">Configurações</button>
   </nav>
 </header>
@@ -914,6 +923,7 @@
   <div id="view_geral" style="display:none"></div>
   <div id="view_sig" style="display:none"></div>
   <div id="view_sie" style="display:none"></div>
+  <div id="view_assistente" style="display:none"></div>
   <div id="view_ia" style="display:none"></div>
   <div id="view_config" style="display:none"></div>
   <div id="view_faturas" style="display:none">
@@ -1535,6 +1545,7 @@
 <script src="frontend/modules/faturas-provedores.js?v=20261115-config"></script>
 <script src="frontend/modules/notas-recebidas.js?v=20261115-codigos"></script>
 <script src="frontend/modules/painel-ia.js?v=20261114"></script>
+<script src="frontend/modules/assistente.js?v=20261117"></script>
 <script src="frontend/modules/webhook-client.js"></script>
 <script src="frontend/modules/sig-dashboard.js?v=20261115-config"></script>
 <script src="frontend/modules/sie-dashboard.js?v=20261115-config"></script>
@@ -5628,6 +5639,7 @@ function switchTab(view){
   document.getElementById('view_geral').style.display = view==='geral' ? '' : 'none';
   document.getElementById('view_sig').style.display = view==='sig' ? '' : 'none';
   document.getElementById('view_sie').style.display = view==='sie' ? '' : 'none';
+  document.getElementById('view_assistente').style.display = view==='assistente' ? '' : 'none';
   document.getElementById('view_ia').style.display = view==='ia' ? '' : 'none';
   document.getElementById('view_config').style.display = view==='config' ? '' : 'none';
   document.getElementById('view_faturas').style.display = view==='faturas' ? '' : 'none';
@@ -5656,6 +5668,7 @@ function switchTab(view){
   if(view==='geral') renderVisaoGeral();
   if(view==='sig') window.SIGP_SIG.render();
   if(view==='sie') window.SIGP_SIE.render();
+  if(view==='assistente') window.SIGP_ASSISTENTE.render();
   if(view==='ia') window.SIGP_PAINEL_IA.render();
   if(view==='config') renderConfigTab();
   if(view==='faturas') window.SIGP_FATURAS.renderTab();

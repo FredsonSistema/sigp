@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import acesso, avisos_provedor, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco, sessoes
+from backend import acesso, assistente, avisos_provedor, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco, sessoes
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -2882,6 +2882,89 @@ _INTEGRACAO_SEGREDOS = ("SIGP_API_KEY", "SIGP_N8N_TOKEN")
 _INTEGRACAO_VALORES = ("SIGP_CORS_ORIGINS", "SIGP_N8N_EVENTOS_URL", "SIGP_EXIGIR_FATURA", "SIGP_PUBLIC_API_URL", "SIGP_PUBLIC_N8N_URL")
 
 
+# ---------------------------------------------------------------- assistente da IA local
+_REL_ID = re.compile(r"^rel-\d{8}-\d{6}-[0-9a-f]{6}$")
+
+
+def _quem_pergunta() -> Dict[str, Any]:
+    quem = getattr(g, "acesso", None)
+    if quem:
+        return quem
+    return {"perfil": acesso.ADMIN, "nome": "Administrador", "usuario": "", "permissoes": acesso.TODAS}  # sem SIGP_API_KEY (desenvolvimento)
+
+
+def _pasta_relatorios() -> Path:
+    return Path(_database.DB_PATH).resolve().parent / "relatorios_assistente"
+
+
+def _contexto_assistente() -> "assistente.Contexto":
+    quem = _quem_pergunta()
+    permissoes = acesso.TODAS if quem.get("perfil") == acesso.ADMIN else quem.get("permissoes", [])
+    hoje = date.today()
+    return assistente.Contexto(quem.get("usuario") or quem.get("nome") or "", permissoes, hoje, _pasta_relatorios(),
+                               alertas=lambda: _lista_alertas(hoje, 5), locais=list_locais, notas_recebidas=list_notas_recebidas)
+
+
+@app.post("/api/assistente/perguntar")
+def assistente_perguntar_route():
+    payload = request.get_json(silent=True) or {}
+    try:
+        resposta = assistente.responder(payload.get("pergunta"), _contexto_assistente())
+    except ValueError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 400
+    return jsonify({"ok": True, **resposta})
+
+
+@app.post("/api/assistente/avaliar")
+def assistente_avaliar_route():
+    payload = request.get_json(silent=True) or {}
+    quem = _quem_pergunta()
+    try:
+        r = assistente.avaliar(str(payload.get("id") or ""), bool(payload.get("util")), str(payload.get("comentario") or ""),
+                               quem.get("usuario") or quem.get("nome") or "")
+    except LookupError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 404
+    return jsonify({"ok": True, **r})
+
+
+@app.get("/api/assistente/historico")
+def assistente_historico_route():
+    quem = _quem_pergunta()
+    return jsonify({"ok": True, "items": assistente.historico(quem.get("usuario") or quem.get("nome") or "")})
+
+
+@app.get("/api/assistente/conhecimento")
+def assistente_conhecimento_route():
+    return jsonify({"ok": True, **assistente.conhecimento()})
+
+
+@app.post("/api/assistente/termos")
+def assistente_termos_route():
+    payload = request.get_json(silent=True) or {}
+    quem = _quem_pergunta()
+    try:
+        item = assistente.aprender_termo(payload.get("termo"), payload.get("significa"), quem.get("usuario") or quem.get("nome") or "")
+    except ValueError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 400
+    return jsonify({"ok": True, "item": item}), 201
+
+
+@app.get("/api/assistente/relatorios/<rel_id>/<formato>")
+def assistente_relatorio_route(rel_id: str, formato: str):
+    if not _REL_ID.match(rel_id) or formato not in ("pdf", "csv"):
+        return jsonify({"ok": False, "error": "Relatório inválido."}), 404
+    pasta = _pasta_relatorios()
+    meta_arquivo, arquivo = pasta / f"{rel_id}.json", pasta / f"{rel_id}.{formato}"
+    if not meta_arquivo.exists() or not arquivo.exists():
+        return jsonify({"ok": False, "error": "Relatório não encontrado (os relatórios ficam guardados por 7 dias)."}), 404
+    quem = _quem_pergunta()
+    dono = json.loads(meta_arquivo.read_text(encoding="utf-8")).get("usuario", "")
+    if quem.get("perfil") != acesso.ADMIN and dono != (quem.get("usuario") or quem.get("nome") or ""):
+        return jsonify({"ok": False, "error": "Este relatório é de outro usuário."}), 403
+    return send_file(arquivo, mimetype="application/pdf" if formato == "pdf" else "text/csv; charset=utf-8",
+                     as_attachment=formato == "csv", download_name=f"{rel_id}.{formato}")
+
+
 @app.get("/api/configuracoes/alertas")
 def config_alertas_route():
     """E-mails que recebem o resumo diário de alertas (lido pelo WF-06 antes de enviar)."""
@@ -3189,6 +3272,15 @@ def _parse_iso_date(value: str, default: date) -> date:
     return datetime.strptime(value, "%Y-%m-%d").date() if value else default
 
 
+def _lista_alertas(today: date, window: int, tipos=None) -> List[Dict[str, Any]]:
+    # Local excluído na tela fica inativo (o histórico é preservado): suas notas não geram alerta.
+    excluidos = {str(item["id"]) for item in list_locais(incluir_inativos=True) if not item.get("ativo")}
+    notas = [note for note in list_nota_lancadas() if str(note.get("entidade_id") or "") not in excluidos]
+    recebidas = list_notas_recebidas()
+    return build_alerts(list_locais(), notas, list_nota_pagas(), list_conciliacoes(), today, window, tipos,
+                        received_notes=recebidas, ultima_leitura=fatura_esperada.ultima_leitura_gmail(recebidas))
+
+
 @app.get("/api/alertas")
 def get_alertas():
     try:
@@ -3197,12 +3289,7 @@ def get_alertas():
     except ValueError:
         return jsonify({"ok": False, "error": "Parâmetros inválidos (hoje=AAAA-MM-DD, dias=0..90)."}), 400
     tipos = {item.strip() for item in str(request.args.get("tipo") or "").split(",") if item.strip()} or None
-    # Local excluído na tela fica inativo (o histórico é preservado): suas notas não geram alerta.
-    excluidos = {str(item["id"]) for item in list_locais(incluir_inativos=True) if not item.get("ativo")}
-    notas = [note for note in list_nota_lancadas() if str(note.get("entidade_id") or "") not in excluidos]
-    recebidas = list_notas_recebidas()
-    items = build_alerts(list_locais(), notas, list_nota_pagas(), list_conciliacoes(), today, window, tipos,
-                         received_notes=recebidas, ultima_leitura=fatura_esperada.ultima_leitura_gmail(recebidas))
+    items = _lista_alertas(today, window, tipos)
     resumo: Dict[str, int] = {}
     for item in items:
         resumo[item["status"]] = resumo.get(item["status"], 0) + 1

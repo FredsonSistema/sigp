@@ -354,6 +354,9 @@ def init_db() -> None:
     # Perfis e permissões (backend/acesso.py): tabelas e grupos padrão.
     from backend import acesso
     acesso.garantir_tabelas()
+    # Assistente da IA local (backend/assistente.py): perguntas, avaliações e o que ele aprendeu.
+    from backend import assistente
+    assistente.garantir_tabelas()
 
 
 def _now() -> str:
