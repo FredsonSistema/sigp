@@ -105,14 +105,16 @@ def parte_comum() -> list:
                 "Amostras pequenas: os números são linha de base. Desempenho em CPU: 0,3 s (0,5B) a 1,2 s (3B) por chamada, mais o OCR nos PDFs reais."),
         ]),
         *g.section("2. Repositório e como rodar", [
-            g.P(f"Repositório: <b>{IDENT['repositorio']}</b>. O README da raiz explica como subir os containers e rodar as demonstrações. "
+            g.P(f"Repositório: <b>{IDENT['repositorio']}</b>. Comece por <b>docs/entrega-academica/README-ENTREGA2.md</b> (onde está cada documento "
+                "e como testar). Instalação passo a passo (Docker Desktop, sqlcmd, n8n, modelo local): <b>GUIA-INSTALACAO.md</b>. Endpoints para "
+                "Postman ou outro cliente HTTP: <b>ENDPOINTS.md</b> e a coleção <b>postman/SIGp-academico.postman_collection.json</b>. "
                 "Tudo pelo terminal, na raiz do projeto (PowerShell):"),
-            XPreformatted("docker compose --env-file docs/entrega-academica/sqlserver/.env.academic `\n"
-                          "  -f docs/entrega-academica/sqlserver/compose.academic.yml `\n"
-                          "  -f docs/entrega-academica/sqlserver/compose.leve.yml up -d\n"
-                          "pwsh -File docs/entrega-academica/demo-parte2.ps1          # todos os passos, com pausa (vídeo)\n"
-                          "pwsh -File docs/entrega-academica/demo-parte2.ps1 -SemPausa  # gera os prints deste PDF", ESTILO_PRINT),
-            g.P("Antes, uma vez: pwsh -File docs/entrega-academica/sqlserver/setup-academic.ps1 (cria o banco, os papéis e a carga e gera as senhas aleatórias em .env.academic, fora do repositório; as variáveis estão descritas em .env.academic.example).", "SmallSIGp"),
+            XPreformatted("powershell -ExecutionPolicy Bypass -File docs/entrega-academica/sqlserver/setup-academic.ps1\n"
+                          "   # uma vez: SQL Server, papéis e RLS, IA, Ollama + qwen2.5:0.5b, workflow publicado no n8n\n"
+                          "pwsh -File docs/entrega-academica/demo-parte2.ps1            # os 8 passos, com pausa (vídeo)\n"
+                          "pwsh -File docs/entrega-academica/demo-parte2.ps1 -VerNoN8n  # idem, vendo o fluxo no editor do n8n", ESTILO_PRINT),
+            g.P("O script gera senhas aleatórias em .env.academic, fora do repositório (variáveis descritas em .env.academic.example). "
+                "A carga de volume (100.020 notas) é opcional e está no guia de instalação.", "SmallSIGp"),
         ]),
         *g.section("3. Contribuição individual", [g.make_table(
             [["Integrante", "O que fez no projeto"]] + [[i["nome"], i["contribuicao"]] for i in IDENT["integrantes"]], [W * 0.26, W * 0.74], small=True)]),
@@ -125,7 +127,7 @@ def parte_ia(p: dict) -> list:
             ["Fluxo de ponta a ponta (RAG e n8n)", "Webhook n8n → API → SQL Server/RLS → RAG (5 fontes citadas) → Qwen 0.5B local. Resultado DIVERGENTE, modelo não decide, sem pagamento automático.",
              f"Print abaixo; {E}n8n-ponta-a-ponta.json; demo-parte2.ps1 (passo 1)"],
             ["Prompts versionados", "Versão atual v4.2 (com hash). Em relação à v4.1: campo novo de tipo de e-mail (fatura, 2ª via, atraso, pagamento) e o provedor vem só do documento atual (antes a IA copiava de um exemplo).",
-             "ia/prompts/CHANGELOG.md; v4.md; v4.1.md"],
+             "ia/prompts/CHANGELOG.md; v4.1.md; v4.2.md"],
             ["5 casos de teste (entrada, esperado, obtido)", "IA-001 a IA-005: regra 5/5; modelo concorda 3/5; IA-004 é prompt injection e é barrado.", f"ia/casos-de-teste-parte2.md; {E}ai-test-results.json"],
             ["Fine-tuning preliminar", "LoRA (rank 4) no Qwen2.5-0.5B-Instruct, 80 exemplos de treino, 20 de teste: base acurácia 0,65 e macro-F1 0,522; ajustado 0,90 e 0,900. Dados sintéticos; exploratório.",
              "ia/finetuning/training-results.json; README"],

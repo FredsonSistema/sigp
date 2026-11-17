@@ -49,6 +49,16 @@ Invoke-RestMethod -Method Post http://127.0.0.1:5678/webhook/sigp-academic-ai -C
 ```
 A primeira chamada deve responder `status: ok`. A segunda deve responder `classification: DIVERGENTE`. Ela pode levar até cerca de 1 minuto, porque o modelo ainda está carregando.
 
+## 4.1 Carga de volume e benchmark (opcional)
+
+Sem este passo, a base tem só as 20 notas iniciais, e o passo 5 da demo mostra contagens pequenas. Para reproduzir as 100.020 notas e os planos de execução:
+```powershell
+$env:SQLCMDPASSWORD = '<MSSQL_SA_PASSWORD do .env.academic>'
+sqlcmd -S 127.0.0.1,14333 -U sa -C -d SIGpAcademic -b -i docs/entrega-academica/sqlserver/03_load_benchmark.sql
+pwsh -File docs/entrega-academica/sqlserver/benchmark-parte2.ps1
+```
+A carga leva alguns minutos e pode ser repetida sem duplicar dados. O benchmark grava em `sqlserver/evidence/parte2/` os tempos (`benchmark-tempos.txt`), as leituras lógicas e os planos `.sqlplan` das configurações A, B e C.
+
 ## 5. Testar
 
 - **Postman:** importe [`postman/SIGp-academico.postman_collection.json`](postman/SIGp-academico.postman_collection.json) e preencha a variável `chave`. O valor está em `SIGP_AI_API_KEY`, no `.env.academic`. A descrição completa está em [`ENDPOINTS.md`](ENDPOINTS.md).
