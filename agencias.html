@@ -46,14 +46,98 @@
   h1 span{ color:var(--text-dim); font-weight:400; margin-left:8px; font-size:14px; }
 
   .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
-.ass-conversa{border:1px solid var(--line); border-radius:10px; padding:10px; min-height:260px; max-height:58vh; overflow:auto; background:var(--panel-2); display:flex; flex-direction:column; gap:8px}
-.ass-msg{max-width:85%; padding:8px 12px; border-radius:10px; font-size:13.5px; line-height:1.45}
-.ass-voce{align-self:flex-end; background:var(--accent); color:#fff}
-.ass-ia{align-self:flex-start; background:var(--panel); border:1px solid var(--line)}
-.ass-pensando{color:var(--text-dim); font-style:italic}
-.ass-rodape{display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap}
-.ass-form{display:flex; gap:8px; margin-top:10px} .ass-form input{flex:1}
-.ass-sugestoes{display:flex; flex-wrap:wrap; gap:6px; margin:8px 0}
+/* ---- Assistente (estilo chat: conversas | conversa | artefatos) ---- */
+.chat-app{display:grid; grid-template-columns:250px minmax(0,1fr) minmax(320px,42%); gap:0; height:calc(100vh - 150px); min-height:520px;
+  border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel)}
+.chat-lateral{background:var(--panel-2); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:10px; gap:8px; min-height:0}
+.chat-nova{width:100%}
+.chat-busca{width:100%}
+.chat-lista{list-style:none; margin:0; padding:0; overflow:auto; flex:1; min-height:0}
+.chat-grupo{font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em; padding:10px 6px 4px}
+.chat-conv{display:flex; align-items:center; border-radius:8px}
+.chat-conv:hover, .chat-conv.ativa{background:var(--panel)}
+.chat-conv.ativa{outline:1px solid var(--line)}
+.chat-conv-abrir{flex:1; min-width:0; text-align:left; background:none; border:0; color:var(--text); padding:7px 8px; font-size:13px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer}
+.chat-conv-menu{background:none; border:0; color:var(--text-dim); cursor:pointer; padding:4px; opacity:0; font-size:12px}
+.chat-conv:hover .chat-conv-menu, .chat-conv:focus-within .chat-conv-menu, .chat-conv.ativa .chat-conv-menu{opacity:1}
+.chat-tag{font-size:11px}
+.chat-treinar{width:100%}
+.chat-centro{display:flex; flex-direction:column; min-width:0; min-height:0}
+.chat-topo{display:flex; align-items:center; gap:8px; padding:8px 12px; border-bottom:1px solid var(--line)}
+.chat-titulo{flex:1; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.chat-so-mobile{display:none}
+.chat-rolagem{flex:1; overflow:auto; padding:16px 0; min-height:0}
+.chat-fio{max-width:760px; margin:0 auto; padding:0 16px; display:flex; flex-direction:column; gap:14px}
+.chat-linha{display:flex; gap:10px}
+.chat-voce{justify-content:flex-end}
+.chat-voce .chat-balao{background:var(--panel-2); border:1px solid var(--line); border-radius:16px 16px 4px 16px; padding:9px 14px; max-width:80%;
+  white-space:pre-wrap; font-size:14px}
+.chat-avatar{flex:0 0 28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-size:14px}
+.chat-corpo{flex:1; min-width:0}
+.chat-texto{font-size:14px; line-height:1.55}
+.chat-rodape{display:flex; gap:4px; align-items:center; margin-top:6px; flex-wrap:wrap}
+.chat-acao{background:none; border:1px solid transparent; border-radius:6px; cursor:pointer; padding:2px 6px; color:var(--text-dim)}
+.chat-acao:hover, .chat-acao:focus-visible{border-color:var(--line); color:var(--text)}
+.chat-cartao{display:flex; gap:10px; align-items:center; margin-top:8px; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
+  background:var(--panel-2); cursor:pointer; text-align:left; color:var(--text); max-width:420px}
+.chat-cartao:hover{border-color:var(--accent)}
+.chat-cartao-icone{font-size:22px}
+.chat-digitando{display:flex; gap:4px; padding:6px 0}
+.chat-digitando span{width:7px; height:7px; border-radius:50%; background:var(--text-dim); animation:chatPulso 1.2s infinite}
+.chat-digitando span:nth-child(2){animation-delay:.2s} .chat-digitando span:nth-child(3){animation-delay:.4s}
+@keyframes chatPulso{0%,80%,100%{opacity:.25} 40%{opacity:1}}
+@media (prefers-reduced-motion: reduce){.chat-digitando span{animation:none; opacity:.6}}
+.chat-boas-vindas{max-width:680px; margin:6vh auto 0; padding:0 16px; text-align:center}
+.chat-logo{width:48px; height:48px; margin:0 auto 8px; border-radius:50%; background:var(--accent); color:#fff; font-size:24px; display:flex; align-items:center; justify-content:center}
+.chat-sugestoes{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:8px; margin-top:16px; text-align:left}
+.chat-sugestao{display:flex; flex-direction:column; gap:2px; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-2);
+  color:var(--text); cursor:pointer; text-align:left; font-size:13px}
+.chat-sugestao:hover{border-color:var(--accent)}
+.chat-entrada{display:flex; gap:8px; align-items:flex-end; max-width:760px; width:calc(100% - 32px); margin:8px auto 0; padding:8px;
+  border:1px solid var(--line); border-radius:14px; background:var(--panel-2)}
+.chat-entrada textarea{flex:1; resize:none; border:0; background:transparent; color:var(--text); font:inherit; font-size:14px; line-height:1.45;
+  max-height:160px; padding:4px 6px; outline:none}
+.chat-entrada:focus-within{border-color:var(--accent)}
+.chat-enviar{width:34px; height:34px; border-radius:50%; padding:0; font-size:16px}
+.chat-aviso{text-align:center; padding:4px 0 8px; font-size:11px}
+.chat-painel{border-left:1px solid var(--line); display:flex; flex-direction:column; min-width:0; min-height:0; background:var(--panel)}
+.chat-painel[hidden]{display:none}
+.chat-painel-vazio{padding:20px; text-align:center; margin:auto}
+.chat-art-abas{display:flex; gap:4px; overflow:auto; padding:8px 8px 0; border-bottom:1px solid var(--line)}
+.chat-art-abas button{background:none; border:1px solid transparent; border-bottom:0; border-radius:8px 8px 0 0; padding:6px 10px; cursor:pointer;
+  color:var(--text-dim); white-space:nowrap; font-size:12.5px}
+.chat-art-abas button[aria-selected="true"]{background:var(--panel-2); border-color:var(--line); color:var(--text)}
+.chat-art-cab{display:flex; justify-content:space-between; align-items:flex-start; gap:8px; padding:10px 12px; border-bottom:1px solid var(--line); flex-wrap:wrap}
+.chat-art-acoes{display:flex; gap:6px; flex-wrap:wrap}
+.chat-art-tabela{overflow:auto; flex:1; min-height:0; padding:0 4px 8px}
+.chat-art-tabela table{font-size:12px}
+.chat-art-tabela th{position:sticky; top:0; background:var(--panel-2)}
+.chat-treino{overflow:auto; padding:0 12px 12px}
+.chat-treino .chat-art-cab{padding-left:0; padding-right:0}
+.chat-numeros{display:grid; grid-template-columns:repeat(auto-fit,minmax(90px,1fr)); gap:8px; margin:10px 0}
+.chat-numeros div{border:1px solid var(--line); border-radius:10px; padding:8px; text-align:center; display:flex; flex-direction:column}
+.chat-numeros b{font-size:20px} .chat-numeros span{font-size:11.5px; color:var(--text-dim)}
+.chat-treino-lista{margin:0; padding-left:18px} .chat-treino-lista li{margin-bottom:6px}
+.chat-app .hint{font-size:12px; line-height:1.4; color:var(--text-dim)}
+.chat-app .chat-texto, .chat-app .chat-treino p{font-size:14px}
+.chat-app a.ghost, .chat-app .chat-art-acoes a{display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border:1px solid var(--line);
+  border-radius:8px; color:var(--text); text-decoration:none; font-size:12.5px; background:var(--panel-2)}
+.chat-app a.ghost:hover, .chat-app .chat-art-acoes a:hover{border-color:var(--accent)}
+.chat-busca{background:var(--panel); color:var(--text); border:1px solid var(--line); border-radius:8px; padding:6px 10px; font-size:13px}
+.chat-app{height:calc(100vh - 190px)}
+.chat-treino .nfse-grid{align-items:end}
+.chat-treino .nr-disc summary{font-size:13px}
+@media (max-width: 1100px){
+  .chat-app{grid-template-columns:220px minmax(0,1fr)}
+  .chat-painel{position:fixed; right:0; top:0; bottom:0; width:min(520px,94vw); z-index:60; box-shadow:-8px 0 24px rgba(0,0,0,.25)}
+}
+@media (max-width: 760px){
+  .chat-app{grid-template-columns:minmax(0,1fr)}
+  .chat-lateral{display:none}
+  .chat-app.lateral-aberta .chat-lateral{display:flex; position:fixed; left:0; top:0; bottom:0; width:min(300px,86vw); z-index:61}
+  .chat-so-mobile{display:inline-block}
+}
 .cfg-alertas-lista{list-style:none; margin:4px 0 8px; padding:0; display:flex; flex-wrap:wrap; gap:6px}
 .cfg-alertas-lista li{display:flex; align-items:center; gap:4px; border:1px solid var(--border, #c6d3dc); border-radius:14px; padding:2px 4px 2px 10px; font-size:13px}
 /* ---- login gate ---- */
@@ -1545,7 +1629,7 @@
 <script src="frontend/modules/faturas-provedores.js?v=20261115-config"></script>
 <script src="frontend/modules/notas-recebidas.js?v=20261115-codigos"></script>
 <script src="frontend/modules/painel-ia.js?v=20261114"></script>
-<script src="frontend/modules/assistente.js?v=20261117"></script>
+<script src="frontend/modules/assistente.js?v=20261117c"></script>
 <script src="frontend/modules/webhook-client.js"></script>
 <script src="frontend/modules/sig-dashboard.js?v=20261115-config"></script>
 <script src="frontend/modules/sie-dashboard.js?v=20261115-config"></script>

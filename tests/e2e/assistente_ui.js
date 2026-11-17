@@ -1,5 +1,5 @@
-// Aba Assistente: pergunta por sugestão e digitada, resposta com os números do sistema, 👍 ensina, relatório em
-// PDF e CSV baixa com a sessão, termo novo ensinado (API de TESTE).
+// Aba Assistente (estilo chat): conversas à esquerda, conversa no centro, artefatos à direita; continuação da
+// conversa; relatório PDF e Excel no painel; histórico reabre; treino com 👍 e termo novo (API de TESTE).
 const fs = require('fs');
 const { launch, shot, check, loginFresh } = require('./lib');
 (async () => {
@@ -7,41 +7,57 @@ const { launch, shot, check, loginFresh } = require('./lib');
   const { browser, context } = await launch();
   const page = await context.newPage();
   page.on('dialog', (d) => d.accept(''));
-  const ultima = () => page.locator('#assConversa .ass-ia').last();
-  const esperarResposta = async (n) => page.waitForFunction((qtd) => document.querySelectorAll('#assConversa .ass-ia').length >= qtd
-    && !document.querySelector('#assConversa [aria-busy="true"]'), n, { timeout: 180000 });
+  const respostas = () => page.locator('#view_assistente .chat-ia .chat-texto');
+  const esperar = async (n) => page.waitForFunction((qtd) => document.querySelectorAll('#view_assistente .chat-ia .chat-texto').length >= qtd
+    && !document.querySelector('#view_assistente [aria-busy="true"]'), n, { timeout: 180000 });
+  const perguntar = async (texto) => { await page.fill('#chatPergunta', texto); await page.press('#chatPergunta', 'Enter'); };
   try {
     await loginFresh(page);
     await page.evaluate(() => document.querySelector('.tab[data-view="assistente"]').click());
-    await page.waitForSelector('#assPergunta', { timeout: 20000 });
-    check(results, 'aba Assistente com sugestões', (await page.locator('.ass-sugestoes [data-sugestao]').count()) >= 4);
-    await page.locator('[data-sugestao="Quantas agências estão em atraso?"]').click();
-    await esperarResposta(1);
-    const r1 = await ultima().innerText();
-    check(results, 'responde quantas agências estão em atraso, entendido por regra', /Hoje, \d{2}\/\d{2}\/\d{4}, (nenhuma|\d+ agência)/.test(r1) && /entendido por regra/.test(r1), r1.split('\n')[0]);
-    await ultima().locator('[data-util="1"]').click();
-    await page.waitForFunction(() => /Vou lembrar/.test(document.querySelector('#assConversa .ass-ia:last-child')?.textContent || ''), null, { timeout: 15000 });
-    check(results, '👍 ensina o assistente', true);
-    await page.fill('#assPergunta', 'crie um relatório com a lista de agências');
-    await page.press('#assPergunta', 'Enter');
-    await esperarResposta(2);
-    const r2 = await ultima().innerText();
-    check(results, 'relatório pronto com PDF e Excel', /Pronto: relatório/.test(r2) && /PDF/.test(r2) && /Excel/.test(r2), r2.split('\n')[0]);
-    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }), ultima().locator('a', { hasText: 'Excel' }).click()]);
-    const conteudo = fs.readFileSync(await download.path(), 'utf8');
-    check(results, 'CSV baixa com a sessão, com cabeçalho e acentos', conteudo.startsWith('\ufeffTipo;Nome;Cidade;Endereço'), conteudo.split('\n')[0]);
-    await shot(page, 'assistente-01');
-    // Termo ensinado
-    await page.locator('details', { hasText: 'Ensinar um termo' }).locator(':scope > summary').click();
-    await page.fill('#assTermo', 'em débito');
-    await page.fill('#assSignifica', 'vencida');
-    await page.locator('#assTermoForm button[type=submit]').click();
-    await page.waitForFunction(() => /Aprendido/.test(document.getElementById('assTermoStatus').textContent), null, { timeout: 15000 });
-    await page.fill('#assPergunta', 'quantas contas estão em débito?');
-    await page.press('#assPergunta', 'Enter');
-    await esperarResposta(3);
-    const r3 = await ultima().innerText();
-    check(results, 'termo ensinado passa a valer na próxima pergunta', /(contas? vencidas?|nenhuma)/.test(r3) && /entendido por regra/.test(r3), r3.split('\n')[0]);
+    await page.waitForSelector('#view_assistente .chat-boas-vindas', { timeout: 20000 });
+    check(results, 'três colunas: conversas, conversa e artefatos', await page.locator('#view_assistente .chat-lateral').isVisible()
+      && await page.locator('#view_assistente .chat-centro').isVisible() && await page.locator('#view_assistente .chat-painel').isVisible());
+    check(results, 'tela inicial com "Como posso ajudar?" e sugestões', (await page.locator('.chat-sugestao').count()) >= 4);
+    await page.locator('.chat-sugestao', { hasText: 'Quantas agências estão em atraso?' }).click();
+    await esperar(1);
+    check(results, 'resposta com os números do sistema', /Hoje, \d{2}\/\d{2}\/\d{4}, (nenhuma|\d+ agência)/.test(await respostas().last().innerText()));
+    check(results, 'conversa nova aparece na lista com o título da pergunta',
+      (await page.locator('.chat-conv.ativa .chat-conv-abrir').innerText()).startsWith('Quantas agências estão em atraso?'));
+    const temTabela = await page.locator('.chat-art-tabela tbody tr').count();
+    check(results, 'tabela vai para o painel de artefatos, fora da conversa', temTabela > 1, `${temTabela} linhas`);
+    await page.locator('.chat-ia [data-util="1"]').last().click();
+    await page.waitForSelector('text=👍 aprovado', { timeout: 15000 });
+    check(results, '👍 marca como aprovado', true);
+    await perguntar('e as rodoviárias?');
+    await esperar(2);
+    check(results, 'continuação da conversa ("e as rodoviárias?")', /continuação da conversa/.test(await page.locator('.chat-ia .chat-rodape').last().innerText())
+      && /rodoviária|nenhuma/.test(await respostas().last().innerText()));
+    await perguntar('crie um relatório com a lista de agências');
+    await esperar(3);
+    check(results, 'relatório abre no painel com PDF e Excel', await page.locator('.chat-art-acoes a', { hasText: 'PDF' }).isVisible()
+      && await page.locator('.chat-art-acoes a', { hasText: 'Excel' }).isVisible());
+    check(results, 'painel com abas dos artefatos da conversa', (await page.locator('.chat-art-abas [role="tab"]').count()) >= 2);
+    const [download] = await Promise.all([page.waitForEvent('download', { timeout: 20000 }), page.locator('.chat-art-acoes a', { hasText: 'Excel' }).click()]);
+    check(results, 'Excel (CSV) baixa com a sessão', fs.readFileSync(await download.path(), 'utf8').startsWith('\ufeffTipo;Nome;Cidade;Endereço'));
+    await shot(page, 'assistente-01-conversa');
+    // Nova conversa e histórico
+    const primeira = await page.locator('.chat-conv.ativa .chat-conv-abrir').getAttribute('data-abrir');
+    await page.locator('[data-nova]').click();
+    await page.waitForSelector('#view_assistente .chat-boas-vindas', { timeout: 10000 });
+    await page.locator(`[data-abrir="${primeira}"]`).click();
+    await page.waitForFunction(() => document.querySelectorAll('#view_assistente .chat-ia .chat-texto').length === 3, null, { timeout: 15000 });
+    check(results, 'histórico: reabre a conversa com as 3 respostas', true);
+    // Treinar
+    await page.locator('[data-treinar]').click();
+    await page.waitForSelector('.chat-treino .chat-numeros', { timeout: 15000 });
+    check(results, 'treino mostra números do histórico e exportação do dataset', /aprovadas/.test(await page.locator('.chat-numeros').innerText())
+      && await page.locator('.chat-treino a', { hasText: 'dataset' }).isVisible());
+    await page.fill('#chatTermo', 'em débito');
+    await page.fill('#chatSignifica', 'vencida');
+    await page.locator('#chatTermoForm button[type=submit]').click();
+    await page.waitForFunction(() => /Aprendido/.test(document.getElementById('chatTermoStatus')?.textContent || ''), null, { timeout: 15000 });
+    check(results, 'ensinar termo pelo painel de treino', true);
+    await shot(page, 'assistente-02-treino');
   } catch (error) {
     check(results, 'execução do teste', false, error.message.split('\n')[0]);
     await shot(page, 'assistente-erro').catch(() => {});

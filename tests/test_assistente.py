@@ -146,6 +146,57 @@ class AssistenteTests(unittest.TestCase):
         r = self.perguntar("qual o endereço de Itacaré?")
         self.assertIn("Qual deles?", r["resposta"])
 
+    def test_conversa_continuacao_e_artefato(self):
+        r1 = self.perguntar("quantas agências estão em atraso?")
+        conversa = r1["conversaId"]
+        self.assertTrue(conversa.startswith("cv-"))
+        self.assertEqual((r1["artefato"]["tipo"], r1["artefato"]["total"]), ("tabela", 2))
+        self.assertEqual([c["nome"] for c in r1["artefato"]["colunas"]][:2], ["Local", "Provedor"])
+        # Continuação na mesma conversa: mesma ferramenta, filtro novo
+        r2 = self.client.post("/api/assistente/perguntar", headers=ADMIN, json={"pergunta": "e as rodoviárias?", "conversaId": conversa}).json
+        self.assertEqual((r2["origem"], r2["ferramenta"], r2["parametros"]["tipo"], r2["parametros"]["situacao"]),
+                         ("continuação", "contar_contas", "rodoviaria", "vencida"))
+        self.assertIn("1 rodoviária está com conta vencida", r2["resposta"])
+        r3 = self.client.post("/api/assistente/perguntar", headers=ADMIN, json={"pergunta": "qual o endereço de Itacaré?", "conversaId": conversa}).json
+        r4 = self.client.post("/api/assistente/perguntar", headers=ADMIN, json={"pergunta": "e o telefone?", "conversaId": conversa}).json
+        self.assertEqual((r4["ferramenta"], r4["parametros"]["assunto"]), ("buscar_local", "contato"))
+        self.assertIn("Ana Fictícia", r4["resposta"])
+        self.assertIsNone(r3["artefato"])  # um local só: fica no balão, sem artefato
+        # Fora de conversa a continuação não vale
+        self.assertEqual(self.perguntar("e as rodoviárias?")["ferramenta"], "")  # sem pergunta anterior: não entende
+        # Histórico: lista, mensagens na ordem, renomear, apagar
+        lista = self.client.get("/api/assistente/conversas", headers=ADMIN).json["items"]
+        item = next(c for c in lista if c["id"] == conversa)
+        self.assertEqual((item["titulo"], item["mensagens"], item["artefatos"]), ("quantas agências estão em atraso?", 4, 1))  # 1 linha só não vira artefato
+        msgs = self.client.get(f"/api/assistente/conversas/{conversa}", headers=ADMIN).json["itens"]
+        self.assertEqual([m["pergunta"] for m in msgs][1], "e as rodoviárias?")
+        self.assertEqual(self.client.patch(f"/api/assistente/conversas/{conversa}", headers=ADMIN, json={"titulo": "Atrasos"}).status_code, 200)
+        self.assertEqual(self.client.delete(f"/api/assistente/conversas/{conversa}", headers=ADMIN).status_code, 200)
+        self.assertNotIn(conversa, [c["id"] for c in self.client.get("/api/assistente/conversas", headers=ADMIN).json["items"]])
+
+    def test_conversa_de_outro_usuario_nao_abre(self):
+        conversa = self.perguntar("quantas agências estão em atraso?")["conversaId"]
+        chave = {"X-API-Key": self.client.post("/api/acesso/usuarios", headers=ADMIN, json={"nome": "Outro", "grupoId": "grp-gerente"}).json["chave"]}
+        self.assertEqual(self.client.get(f"/api/assistente/conversas/{conversa}", headers=chave).status_code, 404)
+        r = self.client.post("/api/assistente/perguntar", headers=chave, json={"pergunta": "e as rodoviárias?", "conversaId": conversa})
+        self.assertEqual(r.status_code, 404)
+
+    def test_treinamento_e_dataset_jsonl(self):
+        boa = self.perguntar("quantas garagens e agências estão atrasadas hoje?")
+        ruim = self.perguntar("qual a previsão do tempo?")
+        self.client.post("/api/assistente/avaliar", headers=ADMIN, json={"id": boa["id"], "util": True})
+        self.client.post("/api/assistente/avaliar", headers=ADMIN, json={"id": ruim["id"], "util": False, "comentario": "fora do tema"})
+        t = self.client.get("/api/assistente/treinamento", headers=ADMIN).json
+        self.assertEqual((t["perguntas"], t["aprovadas"], t["reprovadas"]), (2, 1, 1))
+        self.assertEqual(t["listaReprovadas"][0]["comentario"], "fora do tema")
+        self.assertEqual(t["naoEntendidas"][0]["pergunta"], "qual a previsão do tempo?")
+        r = self.client.get("/api/assistente/dataset.jsonl", headers=ADMIN)
+        linhas = [__import__("json").loads(l) for l in r.data.decode("utf-8").splitlines()]
+        r.close()
+        self.assertGreater(len(linhas), 20)
+        self.assertEqual([m["role"] for m in linhas[0]["messages"]], ["system", "user", "assistant"])
+        self.assertIn("aprendido", {l["fonte"] for l in linhas})
+
     def test_prompt_da_llm_tem_ferramentas_exemplos_parecidos_e_protecao(self):
         sistema, usuario = assistente.prompt_llm("quantos terminais rodoviários estão atrasados")
         self.assertIn("- contar_contas:", sistema)

@@ -75,11 +75,21 @@ def garantir_tabelas() -> None:
                 util INTEGER, comentario TEXT NOT NULL DEFAULT '', duracao_ms INTEGER NOT NULL DEFAULT 0, criado_em TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_assistente_perguntas_criado ON assistente_perguntas(criado_em DESC);
+            CREATE TABLE IF NOT EXISTS assistente_conversas (
+                id TEXT PRIMARY KEY, usuario TEXT NOT NULL, titulo TEXT NOT NULL, criada_em TEXT NOT NULL,
+                atualizada_em TEXT NOT NULL, arquivada INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE INDEX IF NOT EXISTS idx_assistente_conversas_usuario ON assistente_conversas(usuario, atualizada_em DESC);
             CREATE TABLE IF NOT EXISTS assistente_aprendido (
                 id TEXT PRIMARY KEY, tipo TEXT NOT NULL, chave TEXT NOT NULL, valor_json TEXT NOT NULL,
                 usuario TEXT NOT NULL DEFAULT '', criado_em TEXT NOT NULL, UNIQUE(tipo, chave)
             );
         """)
+        colunas = {r["name"] for r in conn.execute("PRAGMA table_info(assistente_perguntas)")}
+        for nome in ("conversa_id", "arquivos_json", "artefato_json"):
+            if nome not in colunas:
+                conn.execute(f"ALTER TABLE assistente_perguntas ADD COLUMN {nome} TEXT NOT NULL DEFAULT ''")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_assistente_perguntas_conversa ON assistente_perguntas(conversa_id, criado_em)")
         conn.commit()
     finally:
         conn.close()
@@ -343,9 +353,13 @@ def contar_contas(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
     else:
         texto = (f"Hoje, {hoje}, {_plural(len(locais), alvo)} {'está' if len(locais) == 1 else 'estão'} com "
                  f"{NOME_SITUACAO[situacao][0 if len(itens) == 1 else 1]} ({_plural(len(itens), ('conta', 'contas'))} no total).")
-        mostrar = locais[:MAX_LINHAS_RESPOSTA]
-        texto += " " + ("São: " if len(locais) <= MAX_LINHAS_RESPOSTA else "As primeiras: ") + ", ".join(mostrar) + "."
-    return {"texto": texto, "linhas": [_linha_conta(a) for a in itens], "total": len(itens), "locais": len(locais)}
+        # Lista curta no texto; a completa vai para a tabela (painel de artefatos ou relatório).
+        if len(locais) <= 5:
+            texto += " São: " + ", ".join(locais) + "."
+        else:
+            texto += f" Entre eles: {', '.join(locais[:3])} e mais {len(locais) - 3}. A lista completa está na tabela."
+    return {"texto": texto, "linhas": [_linha_conta(a) for a in itens], "total": len(itens), "locais": len(locais), "colunas": "contas",
+            "titulo": f"{NOME_SITUACAO[situacao][1].capitalize()}" + (f" · {TIPOS[tipo][1]}" if tipo else "")}
 
 
 def listar_contas(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
@@ -353,14 +367,15 @@ def listar_contas(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
     situacao = p.get("situacao") or "todas"
     linhas = [_linha_conta(a) for a in itens]
     if not itens:
-        return {"texto": f"Não há {NOME_SITUACAO[situacao][1]} agora.", "linhas": [], "total": 0}
+        return {"texto": f"Não há {NOME_SITUACAO[situacao][1]} agora.", "linhas": [], "total": 0, "colunas": "contas"}
     texto = f"Encontrei {_plural(len(itens), NOME_SITUACAO[situacao])}:"
     for l in linhas[:MAX_LINHAS_RESPOSTA]:
         texto += f"\n- {l['local']} · {l['provedor'] or 'provedor não informado'}" + (f" · venc. {l['vencimento']}" if l["vencimento"] else "") \
                  + (f" · {l['valor']}" if l["valor"] != "não informado" else "")
     if len(linhas) > MAX_LINHAS_RESPOSTA:
-        texto += f"\n… e mais {len(linhas) - MAX_LINHAS_RESPOSTA}. Peça \"gere um relatório\" para ter a lista completa em PDF e Excel."
-    return {"texto": texto, "linhas": linhas, "total": len(linhas)}
+        texto += f"\n… e mais {len(linhas) - MAX_LINHAS_RESPOSTA}. A lista completa está na tabela; peça \"gere um relatório\" para PDF e Excel."
+    return {"texto": texto, "linhas": linhas, "total": len(linhas), "colunas": "contas",
+            "titulo": NOME_SITUACAO[situacao][1].capitalize() + (f" · {TIPOS[p['tipo']][1]}" if p.get("tipo") else "")}
 
 
 def _rotulo_tipo(local: Dict[str, Any]) -> str:
@@ -452,7 +467,8 @@ def listar_locais(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
         texto += f"\n- {l.get('nome', '')}" + (f" ({l['cidade']})" if l.get("cidade") else "")
     if len(locais) > MAX_LINHAS_RESPOSTA:
         texto += f"\n… e mais {len(locais) - MAX_LINHAS_RESPOSTA}. Peça \"gere um relatório\" para a lista completa em PDF e Excel."
-    return {"texto": texto, "linhas": [_linha_local(l) for l in locais], "total": len(locais)}
+    return {"texto": texto, "linhas": [_linha_local(l) for l in locais], "total": len(locais), "colunas": "locais",
+            "titulo": (TIPOS[p["tipo"]][1].capitalize() if p.get("tipo") else "Locais") + (f" em {p['cidade']}" if p.get("cidade") else "")}
 
 
 COLUNAS = {"locais": [("tipo", "Tipo"), ("nome", "Nome"), ("cidade", "Cidade"), ("endereco", "Endereço"), ("responsavel", "Responsável"),
@@ -489,8 +505,8 @@ def gerar_relatorio(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
     (pasta / f"{rel_id}.csv").write_text("\ufeff" + buf.getvalue(), encoding="utf-8", newline="")  # BOM: o Excel abre com acentos
     _pdf(pasta / f"{rel_id}.pdf", titulo, colunas, linhas, ctx)
     (pasta / f"{rel_id}.json").write_text(json.dumps({"usuario": ctx.usuario, "titulo": titulo, "criadoEm": _agora()}, ensure_ascii=False), encoding="utf-8")
-    texto = f"Pronto: relatório \"{titulo}\" com {_plural(len(linhas), ('linha', 'linhas'))}. Baixe em PDF ou Excel (CSV) abaixo."
-    return {"texto": texto, "linhas": linhas[:MAX_LINHAS_RESPOSTA], "total": len(linhas),
+    texto = f"Pronto: relatório \"{titulo}\" com {_plural(len(linhas), ('linha', 'linhas'))}. Os botões de PDF e Excel (CSV) estão no relatório (painel de artefatos)."
+    return {"texto": texto, "linhas": linhas, "total": len(linhas), "colunas": base, "titulo": titulo,
             "arquivos": [{"formato": f, "url": f"/api/assistente/relatorios/{rel_id}/{f}", "nome": f"{rel_id}.{f}"} for f in ("pdf", "csv")]}
 
 
@@ -559,13 +575,91 @@ AJUDA = ("Posso responder sobre locais, provedores, contas, vencimentos, endere�
          "\"qual o valor da conta de Itacaré?\", \"crie um relatório com a lista de agências\".")
 
 
-def responder(pergunta: str, ctx: Contexto, usar_llm: bool = True) -> Dict[str, Any]:
+_CONTINUACAO = re.compile(r"^(e|e as|e os|e a|e o|e na|e no|e em|agora|tambem|e quanto|e quantas|e quantos|mesma coisa)\b")
+
+
+def continuar(pergunta: str, anterior: Optional[Dict[str, Any]], locais: List[Dict[str, Any]]) -> Optional[Tuple[str, Dict[str, Any]]]:
+    """Pergunta curta que continua a anterior ("e as rodoviárias?", "e o telefone?"): mesma ferramenta, filtro novo."""
+    if not anterior or not anterior.get("ferramenta"):
+        return None
+    if not _CONTINUACAO.match(normalizar(pergunta)) and len(_palavras(pergunta)) > 3:
+        return None
+    marcas = _marcas(_com_termos(pergunta))
+    params = dict(anterior.get("parametros") or {})
+    novo = dict(params)
+    tipo = _tipo_da_pergunta(marcas)
+    situacao = next((m for m in marcas if m in SITUACOES), "")
+    assunto = next((x for x in ("valor", "endereco", "contato", "provedor") if x in marcas), "")
+    if tipo:
+        novo["tipo"] = tipo
+    if situacao:
+        novo["situacao"] = situacao
+    if assunto:
+        novo["assunto"] = assunto
+    citados = achar_locais(pergunta, locais)
+    if citados:
+        local = citados[0][1]
+        if anterior["ferramenta"] == "buscar_local":
+            novo["local"] = local["nome"]
+        elif normalizar(local.get("cidade")) and normalizar(local.get("cidade")) in normalizar(pergunta):
+            novo["cidade"] = local["cidade"]
+    return (anterior["ferramenta"], novo) if novo != params else None
+
+
+def _conversa(ctx: Contexto, conversa_id: Optional[str], pergunta: str) -> str:
+    conn = database.get_connection()
+    try:
+        if conversa_id:
+            row = conn.execute("SELECT id FROM assistente_conversas WHERE id = ? AND usuario = ? AND arquivada = 0", (conversa_id, ctx.usuario)).fetchone()
+            if not row:
+                raise LookupError("Conversa não encontrada.")
+            return row["id"]
+        novo = f"cv-{secrets.token_hex(6)}"
+        titulo = re.sub(r"\s+", " ", pergunta).strip()[:60] or "Nova conversa"
+        conn.execute("INSERT INTO assistente_conversas (id, usuario, titulo, criada_em, atualizada_em) VALUES (?, ?, ?, ?, ?)",
+                     (novo, ctx.usuario, titulo, _agora(), _agora()))
+        conn.commit()
+        return novo
+    finally:
+        conn.close()
+
+
+def _anterior(conversa_id: str) -> Optional[Dict[str, Any]]:
+    conn = database.get_connection()
+    try:
+        row = conn.execute("SELECT ferramenta, parametros_json FROM assistente_perguntas WHERE conversa_id = ? AND ferramenta != ''"
+                           " ORDER BY criado_em DESC LIMIT 1", (conversa_id,)).fetchone()
+    finally:
+        conn.close()
+    return {"ferramenta": row["ferramenta"], "parametros": json.loads(row["parametros_json"])} if row else None
+
+
+MAX_LINHAS_ARTEFATO = 300
+
+
+def _artefato(resposta: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Tabela ou relatório que vai para o painel de artefatos (fora do balão da conversa)."""
+    linhas = resposta.get("linhas") or []
+    if not resposta.get("arquivos") and len(linhas) < 2:
+        return None
+    colunas = COLUNAS.get(resposta.get("colunas") or "", [])
+    return {"tipo": "relatorio" if resposta.get("arquivos") else "tabela", "titulo": resposta.get("titulo") or "Resultado",
+            "colunas": [{"id": c[0], "nome": c[1]} for c in colunas], "linhas": linhas[:MAX_LINHAS_ARTEFATO],
+            "total": resposta.get("total", len(linhas)), "arquivos": resposta.get("arquivos", [])}
+
+
+def responder(pergunta: str, ctx: Contexto, usar_llm: bool = True, conversa_id: Optional[str] = None) -> Dict[str, Any]:
     inicio = datetime.now()
     pergunta = str(pergunta or "").strip()[:500]
     if not pergunta:
         raise ValueError("Escreva uma pergunta.")
-    entendido = entender_por_regras(pergunta, ctx.locais() or ctx._locais())
+    conversa = _conversa(ctx, conversa_id, pergunta)
+    locais_busca = ctx.locais() or ctx._locais()
+    entendido = entender_por_regras(pergunta, locais_busca)
     origem, aviso = "regra", ""
+    if not entendido:
+        entendido = continuar(pergunta, _anterior(conversa), locais_busca)
+        origem = "continuação"
     if not entendido and usar_llm:
         entendido, aviso = entender_por_llm(pergunta)
         origem = "ia local"
@@ -580,20 +674,113 @@ def responder(pergunta: str, ctx: Contexto, usar_llm: bool = True) -> Dict[str, 
         else:
             resposta = EXECUTAR[ferramenta](params, ctx)
     duracao = int((datetime.now() - inicio).total_seconds() * 1000)
+    artefato = _artefato(resposta)
     pergunta_id = f"pq-{secrets.token_hex(6)}"
     conn = database.get_connection()
     try:
-        conn.execute("INSERT INTO assistente_perguntas (id, usuario, pergunta, ferramenta, parametros_json, origem, resposta, duracao_ms, criado_em)"
-                     " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        conn.execute("INSERT INTO assistente_perguntas (id, usuario, pergunta, ferramenta, parametros_json, origem, resposta, duracao_ms, criado_em,"
+                     " conversa_id, arquivos_json, artefato_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                      (pergunta_id, ctx.usuario[:80], pergunta, ferramenta, json.dumps(params, ensure_ascii=False), origem,
-                      resposta["texto"][:4000], duracao, _agora()))
-        conn.execute("DELETE FROM assistente_perguntas WHERE criado_em < (SELECT criado_em FROM assistente_perguntas ORDER BY criado_em DESC LIMIT 1 OFFSET 5000)")
+                      resposta["texto"][:4000], duracao, _agora(), conversa, json.dumps(resposta.get("arquivos", []), ensure_ascii=False),
+                      json.dumps(artefato, ensure_ascii=False) if artefato else ""))
+        conn.execute("UPDATE assistente_conversas SET atualizada_em = ? WHERE id = ?", (_agora(), conversa))
+        conn.execute("DELETE FROM assistente_perguntas WHERE criado_em < (SELECT criado_em FROM assistente_perguntas ORDER BY criado_em DESC LIMIT 1 OFFSET 20000)")
         conn.commit()
     finally:
         conn.close()
-    return {"id": pergunta_id, "resposta": resposta["texto"], "ferramenta": ferramenta, "parametros": params, "origem": origem,
-            "linhas": resposta.get("linhas", [])[:MAX_LINHAS_RESPOSTA], "total": resposta.get("total"),
-            "arquivos": resposta.get("arquivos", []), "duracaoMs": duracao}
+    return {"id": pergunta_id, "conversaId": conversa, "resposta": resposta["texto"], "ferramenta": ferramenta, "parametros": params,
+            "origem": origem, "linhas": resposta.get("linhas", [])[:MAX_LINHAS_RESPOSTA], "total": resposta.get("total"),
+            "arquivos": resposta.get("arquivos", []), "artefato": artefato, "duracaoMs": duracao}
+
+
+# ---------------------------------------------------------------- conversas (histórico) e treinamento
+def listar_conversas(usuario: str, limite: int = 100) -> List[Dict[str, Any]]:
+    conn = database.get_connection()
+    try:
+        rows = conn.execute("SELECT c.id, c.titulo, c.criada_em, c.atualizada_em, COUNT(p.id) AS mensagens,"
+                            " SUM(CASE WHEN p.artefato_json != '' THEN 1 ELSE 0 END) AS artefatos"
+                            " FROM assistente_conversas c LEFT JOIN assistente_perguntas p ON p.conversa_id = c.id"
+                            " WHERE c.usuario = ? AND c.arquivada = 0 GROUP BY c.id ORDER BY c.atualizada_em DESC LIMIT ?",
+                            (usuario, limite)).fetchall()
+    finally:
+        conn.close()
+    return [{"id": r["id"], "titulo": r["titulo"], "criadaEm": r["criada_em"], "atualizadaEm": r["atualizada_em"],
+             "mensagens": r["mensagens"], "artefatos": r["artefatos"] or 0} for r in rows]
+
+
+def mensagens(conversa_id: str, usuario: str) -> Dict[str, Any]:
+    conn = database.get_connection()
+    try:
+        conversa = conn.execute("SELECT * FROM assistente_conversas WHERE id = ? AND usuario = ? AND arquivada = 0", (conversa_id, usuario)).fetchone()
+        if not conversa:
+            raise LookupError("Conversa não encontrada.")
+        rows = conn.execute("SELECT * FROM assistente_perguntas WHERE conversa_id = ? ORDER BY criado_em", (conversa_id,)).fetchall()
+    finally:
+        conn.close()
+    itens = [{"id": r["id"], "pergunta": r["pergunta"], "resposta": r["resposta"], "ferramenta": r["ferramenta"], "origem": r["origem"],
+              "util": None if r["util"] is None else bool(r["util"]), "duracaoMs": r["duracao_ms"], "criadoEm": r["criado_em"],
+              "arquivos": json.loads(r["arquivos_json"] or "[]"), "artefato": json.loads(r["artefato_json"]) if r["artefato_json"] else None}
+             for r in rows]
+    return {"id": conversa["id"], "titulo": conversa["titulo"], "itens": itens}
+
+
+def renomear_conversa(conversa_id: str, usuario: str, titulo: str) -> None:
+    titulo = re.sub(r"\s+", " ", str(titulo or "")).strip()[:80]
+    if not titulo:
+        raise ValueError("Informe o título.")
+    conn = database.get_connection()
+    try:
+        if not conn.execute("UPDATE assistente_conversas SET titulo = ? WHERE id = ? AND usuario = ?", (titulo, conversa_id, usuario)).rowcount:
+            raise LookupError("Conversa não encontrada.")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def apagar_conversa(conversa_id: str, usuario: str) -> None:
+    """Some da lista do usuário; as perguntas avaliadas continuam valendo para o treinamento."""
+    conn = database.get_connection()
+    try:
+        if not conn.execute("UPDATE assistente_conversas SET arquivada = 1 WHERE id = ? AND usuario = ?", (conversa_id, usuario)).rowcount:
+            raise LookupError("Conversa não encontrada.")
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def treinamento() -> Dict[str, Any]:
+    """Resumo do histórico como material de treino: aprovadas (👍) viram exemplos; reprovadas (👎) vão para revisão."""
+    conn = database.get_connection()
+    try:
+        total = conn.execute("SELECT COUNT(*) FROM assistente_perguntas").fetchone()[0]
+        por = dict(conn.execute("SELECT COALESCE(util, -1), COUNT(*) FROM assistente_perguntas GROUP BY COALESCE(util, -1)").fetchall())
+        origens = dict(conn.execute("SELECT origem, COUNT(*) FROM assistente_perguntas GROUP BY origem").fetchall())
+        reprovadas = [dict(r) for r in conn.execute("SELECT id, usuario, pergunta, resposta, ferramenta, comentario, criado_em FROM assistente_perguntas"
+                                                    " WHERE util = 0 ORDER BY criado_em DESC LIMIT 50")]
+        sem_entender = [dict(r) for r in conn.execute("SELECT id, usuario, pergunta, criado_em FROM assistente_perguntas WHERE ferramenta = ''"
+                                                      " ORDER BY criado_em DESC LIMIT 50")]
+    finally:
+        conn.close()
+    return {"perguntas": total, "aprovadas": por.get(1, 0), "reprovadas": por.get(0, 0), "semAvaliacao": por.get(-1, 0),
+            "porOrigem": origens, "exemplosAprendidos": len(_aprendido("exemplo")), "termosAprendidos": len(_aprendido("termo")),
+            "listaReprovadas": reprovadas, "naoEntendidas": sem_entender}
+
+
+def dataset_jsonl() -> str:
+    """Dataset para ajuste fino (formato de conversa, uma linha por exemplo): exemplos dos JSON + perguntas aprovadas (👍).
+    Ensina o modelo a escolher a ferramenta; as respostas continuam sendo escritas pelo código."""
+    sistema = "Escolha a ferramenta do SIGp e os parâmetros para a pergunta. Responda só com JSON."
+    linhas = []
+    vistos = set()
+    for e in exemplos():
+        chave = normalizar(e["pergunta"])
+        if chave in vistos:
+            continue
+        vistos.add(chave)
+        alvo = json.dumps({"ferramenta": e["ferramenta"], "parametros": e["parametros"]}, ensure_ascii=False)
+        linhas.append(json.dumps({"messages": [{"role": "system", "content": sistema}, {"role": "user", "content": e["pergunta"]},
+                                               {"role": "assistant", "content": alvo}], "fonte": e["fonte"]}, ensure_ascii=False))
+    return "\n".join(linhas) + ("\n" if linhas else "")
 
 
 def avaliar(pergunta_id: str, util: bool, comentario: str, usuario: str) -> Dict[str, Any]:

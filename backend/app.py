@@ -2909,10 +2909,62 @@ def _contexto_assistente() -> "assistente.Contexto":
 def assistente_perguntar_route():
     payload = request.get_json(silent=True) or {}
     try:
-        resposta = assistente.responder(payload.get("pergunta"), _contexto_assistente())
+        resposta = assistente.responder(payload.get("pergunta"), _contexto_assistente(), conversa_id=str(payload.get("conversaId") or "") or None)
     except ValueError as erro:
         return jsonify({"ok": False, "error": str(erro)}), 400
+    except LookupError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 404
     return jsonify({"ok": True, **resposta})
+
+
+def _usuario_assistente() -> str:
+    quem = _quem_pergunta()
+    return quem.get("usuario") or quem.get("nome") or ""
+
+
+@app.get("/api/assistente/conversas")
+def assistente_conversas_route():
+    return jsonify({"ok": True, "items": assistente.listar_conversas(_usuario_assistente())})
+
+
+@app.get("/api/assistente/conversas/<conversa_id>")
+def assistente_conversa_route(conversa_id: str):
+    try:
+        return jsonify({"ok": True, **assistente.mensagens(conversa_id, _usuario_assistente())})
+    except LookupError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 404
+
+
+@app.patch("/api/assistente/conversas/<conversa_id>")
+def assistente_renomear_route(conversa_id: str):
+    try:
+        assistente.renomear_conversa(conversa_id, _usuario_assistente(), (request.get_json(silent=True) or {}).get("titulo"))
+    except ValueError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 400
+    except LookupError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 404
+    return jsonify({"ok": True})
+
+
+@app.delete("/api/assistente/conversas/<conversa_id>")
+def assistente_apagar_route(conversa_id: str):
+    try:
+        assistente.apagar_conversa(conversa_id, _usuario_assistente())
+    except LookupError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 404
+    return jsonify({"ok": True})
+
+
+@app.get("/api/assistente/treinamento")
+def assistente_treinamento_route():
+    return jsonify({"ok": True, **assistente.treinamento()})
+
+
+@app.get("/api/assistente/dataset.jsonl")
+def assistente_dataset_route():
+    from flask import Response
+    return Response(assistente.dataset_jsonl(), mimetype="application/jsonl; charset=utf-8",
+                    headers={"Content-Disposition": "attachment; filename=sigp-assistente-dataset.jsonl"})
 
 
 @app.post("/api/assistente/avaliar")
