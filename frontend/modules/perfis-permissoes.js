@@ -86,6 +86,7 @@
       <div class="nr-disc-body">
         <div class="nfse-grid">
           <label>Nome<input class="f" data-campo="nome" maxlength="80" value="${esc(u.nome)}"></label>
+          <label>Nome de usuário (para entrar)<input class="f" data-campo="usuario" maxlength="40" autocomplete="off" value="${esc(u.usuario)}"></label>
           <label>Perfil<select class="f" data-campo="grupoId">${opcoesPerfil(u.grupoId)}</select></label>
           <label class="perm-check"><input type="checkbox" data-campo="ativo"${u.ativo ? ' checked' : ''}> Usuário ativo</label>
         </div>
@@ -298,11 +299,16 @@
           }
           const ajustes = {};
           el.querySelectorAll('[data-ajuste]').forEach((s) => { if (s.value) ajustes[s.dataset.ajuste] = s.value === 'permitir'; });
-          await api(`/api/acesso/usuarios/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({
+          const campoUsuario = el.querySelector('[data-campo="usuario"]');
+          const antes = dados.usuarios.find((u) => u.id === id)?.usuario;
+          const r = await api(`/api/acesso/usuarios/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify({
             nome: el.querySelector('[data-campo="nome"]').value, grupoId: el.querySelector('[data-campo="grupoId"]').value,
-            ativo: el.querySelector('[data-campo="ativo"]').checked, ajustes }) });
+            ativo: el.querySelector('[data-campo="ativo"]').checked, ajustes, ...(campoUsuario ? { usuario: campoUsuario.value } : {}) }) });
           await render(box);
-          status(box, 'Usuário salvo. As permissões valem a partir da próxima ação dele.');
+          const mudouLogin = campoUsuario && antes && r.item.usuario !== antes;
+          status(box, mudouLogin ? `Usuário salvo. Agora ele entra como "${r.item.usuario}" (a senha não mudou).`
+            : 'Usuário salvo. As permissões valem a partir da próxima ação dele.');
+          if (mudouLogin && window.SIGP_ACESSO?.usuario === antes) window.SIGP_PERMISSOES.aplicar();
           return;
         }
         if (acao === 'salvar-grupo' || acao === 'excluir-grupo') {

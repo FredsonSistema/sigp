@@ -318,14 +318,20 @@ def atualizar_usuario(usuario_id: str, dados: Dict[str, Any]) -> Dict[str, Any]:
             raise ValueError("Grupo de permissões inválido.")
         ajustes = _validar_ajustes(dados["ajustes"]) if "ajustes" in dados else json.loads(row["ajustes_json"] or "{}")
         ativo = bool(dados["ativo"]) if "ativo" in dados else bool(row["ativo"])
+        login = row["usuario"]
+        if pessoa and dados.get("usuario") is not None and str(dados["usuario"]).strip().lower() != row["usuario"]:
+            from backend import sessoes  # import aqui: sessoes depende deste módulo
+            login = sessoes.validar_usuario(dados["usuario"])
+            if conn.execute("SELECT 1 FROM acesso_usuarios WHERE usuario = ? AND id != ?", (login, usuario_id)).fetchone():
+                raise ValueError("Já existe um usuário com esse nome de usuário.")
         era_admin = pessoa and row["grupo_id"] == GRUPO_ADMIN and row["ativo"]
         if era_admin and (grupo_id != GRUPO_ADMIN or not ativo):
             outros = conn.execute("SELECT COUNT(*) FROM acesso_usuarios WHERE tipo = 'pessoa' AND grupo_id = ? AND ativo = 1 AND id != ?",
                                   (GRUPO_ADMIN, usuario_id)).fetchone()[0]
             if not outros:
                 raise ValueError("Este é o único administrador: crie outro administrador antes de mudar o perfil dele ou desativá-lo.")
-        conn.execute("UPDATE acesso_usuarios SET nome = ?, grupo_id = ?, ajustes_json = ?, ativo = ?, updated_at = ? WHERE id = ?",
-                     (nome, grupo_id, json.dumps(ajustes), int(ativo), _agora(), usuario_id))
+        conn.execute("UPDATE acesso_usuarios SET nome = ?, grupo_id = ?, ajustes_json = ?, ativo = ?, usuario = ?, updated_at = ? WHERE id = ?",
+                     (nome, grupo_id, json.dumps(ajustes), int(ativo), login, _agora(), usuario_id))
         if not ativo:
             conn.execute("DELETE FROM acesso_sessoes WHERE usuario_id = ?", (usuario_id,))
         conn.commit()

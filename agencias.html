@@ -47,7 +47,7 @@
 
   .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
 /* ---- Assistente (estilo chat: conversas | conversa | artefatos) ---- */
-.chat-app{display:grid; grid-template-columns:250px minmax(0,1fr) minmax(320px,42%); gap:0; height:calc(100vh - 150px); min-height:520px;
+.chat-app{display:grid; grid-template-columns:var(--chat-esq,260px) 6px minmax(320px,1fr) 6px var(--chat-dir,460px); gap:0; height:calc(100vh - 150px); min-height:520px;
   border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel)}
 .chat-lateral{background:var(--panel-2); border-right:1px solid var(--line); display:flex; flex-direction:column; padding:10px; gap:8px; min-height:0}
 .chat-nova{width:100%}
@@ -120,6 +120,21 @@
 .chat-numeros b{font-size:20px} .chat-numeros span{font-size:11.5px; color:var(--text-dim)}
 .chat-treino-lista{margin:0; padding-left:18px} .chat-treino-lista li{margin-bottom:6px}
 .chat-app .hint{font-size:12px; line-height:1.4; color:var(--text-dim)}
+.chat-app.sem-painel{grid-template-columns:var(--chat-esq,260px) 6px minmax(320px,1fr) 0 0}
+.chat-app.sem-lateral{grid-template-columns:0 0 minmax(320px,1fr) 6px var(--chat-dir,460px)}
+.chat-app.sem-lateral.sem-painel{grid-template-columns:0 0 minmax(320px,1fr) 0 0}
+.chat-app.sem-lateral .chat-lateral{display:none}
+.chat-divisor{cursor:col-resize; background:var(--line); position:relative; touch-action:none; opacity:.55; transition:opacity .15s, background .15s}
+.chat-divisor::after{content:""; position:absolute; inset:0 -5px}
+.chat-divisor:hover, .chat-divisor:focus-visible, .chat-app.arrastando .chat-divisor{opacity:1; background:var(--accent); outline:none}
+.chat-divisor[hidden]{display:none}
+.chat-app.arrastando{cursor:col-resize; user-select:none}
+.chat-app.arrastando iframe, .chat-app.arrastando .chat-rolagem{pointer-events:none}
+.chat-lateral-topo{display:flex; gap:6px} .chat-lateral-topo .chat-nova{flex:1}
+.chat-app > .chat-lateral{grid-column:1; grid-row:1} .chat-app > [data-divisor="esq"]{grid-column:2; grid-row:1}
+.chat-app > .chat-centro{grid-column:3; grid-row:1} .chat-app > [data-divisor="dir"]{grid-column:4; grid-row:1}
+.chat-app > .chat-painel{grid-column:5; grid-row:1}
+.chat-lateral, .chat-painel{border-left:0; border-right:0}
 .chat-app .chat-texto, .chat-app .chat-treino p{font-size:14px}
 .chat-app a.ghost, .chat-app .chat-art-acoes a{display:inline-flex; align-items:center; gap:4px; padding:5px 10px; border:1px solid var(--line);
   border-radius:8px; color:var(--text); text-decoration:none; font-size:12.5px; background:var(--panel-2)}
@@ -129,11 +144,13 @@
 .chat-treino .nfse-grid{align-items:end}
 .chat-treino .nr-disc summary{font-size:13px}
 @media (max-width: 1100px){
-  .chat-app{grid-template-columns:220px minmax(0,1fr)}
+  .chat-app, .chat-app.sem-painel, .chat-app.sem-lateral{grid-template-columns:var(--chat-esq,220px) 6px minmax(0,1fr) 0 0}
+  .chat-divisor[data-divisor="dir"]{display:none}
   .chat-painel{position:fixed; right:0; top:0; bottom:0; width:min(520px,94vw); z-index:60; box-shadow:-8px 0 24px rgba(0,0,0,.25)}
 }
 @media (max-width: 760px){
-  .chat-app{grid-template-columns:minmax(0,1fr)}
+  .chat-app, .chat-app.sem-painel, .chat-app.sem-lateral{grid-template-columns:0 0 minmax(0,1fr) 0 0}
+  .chat-divisor{display:none}
   .chat-lateral{display:none}
   .chat-app.lateral-aberta .chat-lateral{display:flex; position:fixed; left:0; top:0; bottom:0; width:min(300px,86vw); z-index:61}
   .chat-so-mobile{display:inline-block}
@@ -845,6 +862,10 @@
       <div>
         <label for="pa_user">Nome de usuário</label>
         <input class="f" type="text" id="pa_user" autocomplete="username" placeholder="ex.: fredson.santos" required>
+      </div>
+      <div>
+        <label for="pa_user2">Confirme o nome de usuário</label>
+        <input class="f" type="text" id="pa_user2" autocomplete="off" required>
       </div>
       <div>
         <label for="pa_senha">Senha (pelo menos 8 caracteres)</label>
@@ -1615,10 +1636,10 @@
 
 <script src="sigp-env.js"></script>
 <script src="frontend/modules/config-integracao.js?v=20261115"></script>
-<script src="frontend/modules/login.js?v=20261117"></script>
+<script src="frontend/modules/login.js?v=20261117b"></script>
 <script src="frontend/modules/api-client.js?v=20261115-perfis"></script>
 <script src="frontend/modules/config-integracao-tela.js?v=20261115"></script>
-<script src="frontend/modules/perfis-permissoes.js?v=20261115"></script>
+<script src="frontend/modules/perfis-permissoes.js?v=20261117"></script>
 <script src="frontend/modules/config-alertas.js?v=20261117"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
@@ -1629,7 +1650,7 @@
 <script src="frontend/modules/faturas-provedores.js?v=20261115-config"></script>
 <script src="frontend/modules/notas-recebidas.js?v=20261115-codigos"></script>
 <script src="frontend/modules/painel-ia.js?v=20261114"></script>
-<script src="frontend/modules/assistente.js?v=20261117c"></script>
+<script src="frontend/modules/assistente.js?v=20261117e"></script>
 <script src="frontend/modules/webhook-client.js"></script>
 <script src="frontend/modules/sig-dashboard.js?v=20261115-config"></script>
 <script src="frontend/modules/sie-dashboard.js?v=20261115-config"></script>

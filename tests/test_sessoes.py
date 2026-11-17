@@ -171,6 +171,23 @@ class SessoesTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.json)
         self.assertEqual(r.json["decisao"]["usuario"], "fredson.santos")
 
+    def test_administrador_corrige_o_nome_de_usuario(self):
+        self.client.post("/api/auth/primeiro-admin", json={"chave": CHAVE_ENV, "usuario": "fredsoon.santos", "senha": SENHA_ADMIN})
+        admin = self.sessao("fredsoon.santos", SENHA_ADMIN)
+        eu = [u for u in self.client.get("/api/acesso/usuarios", headers=admin).json["items"] if u["usuario"] == "fredsoon.santos"][0]
+        r = self.client.put(f"/api/acesso/usuarios/{eu['id']}", headers=admin, json={"usuario": "Fredson.Santos"})
+        self.assertEqual((r.status_code, r.json["item"]["usuario"]), (200, "fredson.santos"))
+        self.assertEqual(self.entrar("fredsoon.santos", SENHA_ADMIN).status_code, 401)
+        self.assertEqual(self.entrar("fredson.santos", SENHA_ADMIN).status_code, 200)  # mesma senha
+        self.assertEqual(self.client.get("/api/acesso/eu", headers=admin).json["usuario"], "fredson.santos")  # sessão aberta continua
+        _, temp = self.pessoa("maria", "grp-leitura", admin)
+        maria = [u for u in self.client.get("/api/acesso/usuarios", headers=admin).json["items"] if u["usuario"] == "maria"][0]
+        r = self.client.put(f"/api/acesso/usuarios/{maria['id']}", headers=admin, json={"usuario": "fredson.santos"})
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Já existe", r.json["error"])
+        r = self.client.put(f"/api/acesso/usuarios/{maria['id']}", headers=admin, json={"usuario": "x"})
+        self.assertIn("3 a 40", r.json["error"])
+
     def test_login_e_falhas_vao_para_a_auditoria(self):
         self.primeiro_admin()
         self.entrar("fredson.santos", "errada-123")

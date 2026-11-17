@@ -17,7 +17,13 @@
     ['Qual o endereço da agência de Itacaré?', 'endereço'], ['Qual o valor da conta de Itacaré?', 'valor'],
     ['Crie um relatório com a lista de agências', 'relatório PDF e Excel'], ['Gere um relatório das contas vencidas', 'relatório'],
   ];
-  const estado = { conversas: [], atual: null, mensagens: [], artefato: null, painel: true, pensando: false, filtro: '' };
+  const estado = { conversas: [], atual: null, mensagens: [], artefato: null, painel: true, pensando: false, filtro: '', lateral: true };
+  // Larguras das colunas (arrastar as divisórias); guardadas neste navegador.
+  const LARGURAS = 'sigp_assistente_larguras_v1';
+  const PADRAO = { esq: 260, dir: 460 };
+  const LIMITES = { esq: [180, 460], dir: [280, 1100] };
+  const lerLarguras = () => { try { return { ...PADRAO, ...(JSON.parse(localStorage.getItem(LARGURAS)) || {}) }; } catch (e) { return { ...PADRAO }; } };
+  let larguras = lerLarguras();
   let box = null;
 
   const quando = (iso) => {
@@ -43,7 +49,8 @@
         <button type="button" class="chat-conv-menu" data-renomear="${esc(c.id)}" aria-label="Renomear ${esc(c.titulo)}">✎</button>
         <button type="button" class="chat-conv-menu" data-apagar="${esc(c.id)}" aria-label="Apagar ${esc(c.titulo)}">🗑</button></div></li>`;
     }).join('');
-    return `<button type="button" class="primary chat-nova" data-nova>＋ Nova conversa</button>
+    return `<div class="chat-lateral-topo"><button type="button" class="primary chat-nova" data-nova>＋ Nova conversa</button>
+        <button type="button" class="ghost small chat-recolher" data-recolher aria-label="Recolher a lista de conversas" title="Recolher">⟨</button></div>
       <label class="sr-only" for="chatBusca">Buscar conversas</label>
       <input class="f chat-busca" id="chatBusca" placeholder="Buscar conversas" value="${esc(estado.filtro)}" autocomplete="off">
       <ul class="chat-lista" aria-label="Conversas">${itens || '<li class="hint" style="padding:8px">Nenhuma conversa ainda.</li>'}</ul>
@@ -70,7 +77,7 @@
   function centro() {
     const vazio = !estado.mensagens.length;
     return `<div class="chat-topo">
-        <button type="button" class="ghost small chat-so-mobile" data-lateral aria-label="Conversas">☰</button>
+        <button type="button" class="ghost small${estado.lateral ? ' chat-so-mobile' : ''}" data-lateral aria-label="Mostrar a lista de conversas" title="Conversas">☰</button>
         <span class="chat-titulo">${esc(estado.conversas.find((c) => c.id === estado.atual)?.titulo || 'Nova conversa')}</span>
         <button type="button" class="ghost small" data-painel aria-pressed="${estado.painel}">${estado.painel ? 'Ocultar' : 'Mostrar'} artefatos${artefatos().length ? ` (${artefatos().length})` : ''}</button>
       </div>
@@ -134,8 +141,9 @@
     box.querySelector('.chat-lateral').innerHTML = lateral();
     box.querySelector('.chat-centro').innerHTML = centro();
     const p = box.querySelector('.chat-painel');
-    p.hidden = !estado.painel || estado.treino;
+    p.hidden = !estado.painel && !estado.treino;
     if (!estado.treino) p.innerHTML = painel();
+    aplicarLarguras();
     const r = box.querySelector('#chatRolagem');
     if (r && noFim) r.scrollTop = r.scrollHeight;
     if (foco && !estado.pensando) box.querySelector('#chatPergunta')?.focus();
@@ -182,6 +190,7 @@
     estado.treino = true;
     const p = box.querySelector('.chat-painel');
     p.hidden = false;
+    aplicarLarguras();
     p.innerHTML = '<div class="hint" style="padding:12px">Carregando…</div>';
     try { p.innerHTML = await treinoHtml(); } catch (e) { p.innerHTML = `<div class="hint" style="padding:12px">${esc(e.message)}</div>`; }
   }
@@ -193,7 +202,16 @@
       if (t.dataset.nova !== undefined) { abrir(null); return; }
       if (t.dataset.abrir) { abrir(t.dataset.abrir); return; }
       if (t.dataset.sugestao) { perguntar(t.dataset.sugestao); return; }
-      if (t.dataset.lateral !== undefined) { box.querySelector('.chat-app').classList.toggle('lateral-aberta'); return; }
+      if (t.dataset.lateral !== undefined) {
+        if (window.matchMedia('(max-width: 760px)').matches) box.querySelector('.chat-app').classList.toggle('lateral-aberta');
+        else { estado.lateral = true; desenhar(false); }
+        return;
+      }
+      if (t.dataset.recolher !== undefined) {
+        if (window.matchMedia('(max-width: 760px)').matches) box.querySelector('.chat-app').classList.remove('lateral-aberta');
+        else { estado.lateral = false; desenhar(false); }
+        return;
+      }
       if (t.dataset.painel !== undefined) { estado.painel = !estado.painel; estado.treino = false; desenhar(false); return; }
       if (t.dataset.artefato) { estado.artefato = t.dataset.artefato; estado.painel = true; estado.treino = false; desenhar(false); return; }
       if (t.dataset.treinar !== undefined) { abrirTreino(); return; }
@@ -265,14 +283,83 @@
     });
   }
 
+  // ---------------------------------------------------------------- divisórias arrastáveis
+  function aplicarLarguras() {
+    const app = box?.querySelector('.chat-app');
+    if (!app) return;
+    const total = app.getBoundingClientRect().width || 1200;
+    const esq = Math.min(Math.max(larguras.esq, LIMITES.esq[0]), LIMITES.esq[1]);
+    // O centro nunca fica com menos de 320 px.
+    const dir = Math.min(Math.max(larguras.dir, LIMITES.dir[0]), Math.max(LIMITES.dir[0], total - (estado.lateral ? esq : 0) - 332));
+    app.style.setProperty('--chat-esq', `${esq}px`);
+    app.style.setProperty('--chat-dir', `${dir}px`);
+    const painelVisivel = !box.querySelector('.chat-painel').hidden;
+    app.classList.toggle('sem-lateral', !estado.lateral);
+    app.classList.toggle('sem-painel', !painelVisivel);
+    app.querySelectorAll('.chat-divisor').forEach((d) => {
+      const lado = d.dataset.divisor;
+      d.hidden = lado === 'esq' ? !estado.lateral : !painelVisivel;
+      d.setAttribute('aria-valuenow', String(lado === 'esq' ? esq : dir));
+    });
+  }
+
+  function guardarLarguras() { try { localStorage.setItem(LARGURAS, JSON.stringify(larguras)); } catch (e) { /* sem espaço */ } }
+
+  function ligarDivisores() {
+    const app = box.querySelector('.chat-app');
+    app.querySelectorAll('.chat-divisor').forEach((d) => {
+      const lado = d.dataset.divisor;
+      d.addEventListener('pointerdown', (ev) => {
+        ev.preventDefault();
+        d.setPointerCapture(ev.pointerId);
+        app.classList.add('arrastando');
+        const rect = app.getBoundingClientRect();
+        const mover = (e) => {
+          larguras[lado] = lado === 'esq' ? e.clientX - rect.left : rect.right - e.clientX;
+          aplicarLarguras();
+        };
+        const soltar = () => {
+          app.classList.remove('arrastando');
+          d.removeEventListener('pointermove', mover);
+          d.removeEventListener('pointerup', soltar);
+          d.removeEventListener('pointercancel', soltar);
+          guardarLarguras();
+        };
+        d.addEventListener('pointermove', mover);
+        d.addEventListener('pointerup', soltar);
+        d.addEventListener('pointercancel', soltar);
+      });
+      d.addEventListener('keydown', (ev) => {
+        const passo = ev.shiftKey ? 64 : 16;
+        const sinal = { ArrowLeft: -1, ArrowRight: 1 }[ev.key];
+        if (!sinal && ev.key !== 'Home') return;
+        ev.preventDefault();
+        if (ev.key === 'Home') larguras[lado] = PADRAO[lado];
+        else larguras[lado] += (lado === 'esq' ? sinal : -sinal) * passo;
+        aplicarLarguras();
+        guardarLarguras();
+      });
+      d.addEventListener('dblclick', () => { larguras[lado] = PADRAO[lado]; aplicarLarguras(); guardarLarguras(); });
+    });
+    window.addEventListener('resize', aplicarLarguras);
+  }
+
   async function render() {
     const alvo = document.getElementById('view_assistente');
     if (!alvo) return;
     if (!box) {
       box = alvo;
+      const divisor = (lado, rotulo) => `<div class="chat-divisor" data-divisor="${lado}" role="separator" aria-orientation="vertical" tabindex="0"
+        aria-label="${rotulo}" aria-valuemin="${LIMITES[lado][0]}" aria-valuemax="${LIMITES[lado][1]}"
+        title="Arraste para ajustar · setas do teclado · dois cliques volta ao padrão"></div>`;
       box.innerHTML = `<div class="chat-app"><aside class="chat-lateral" aria-label="Conversas"></aside>
-        <section class="chat-centro" aria-label="Conversa"></section><aside class="chat-painel" aria-label="Artefatos"></aside></div>`;
+        ${divisor('esq', 'Largura da lista de conversas')}
+        <section class="chat-centro" aria-label="Conversa"></section>
+        ${divisor('dir', 'Largura do painel de artefatos')}
+        <aside class="chat-painel" aria-label="Artefatos"></aside></div>`;
       ligar();
+      ligarDivisores();
+      aplicarLarguras();  // já com as larguras guardadas, antes de carregar as conversas (sem "pulo" na tela)
     }
     await carregarConversas();
     desenhar();

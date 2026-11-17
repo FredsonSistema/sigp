@@ -73,6 +73,7 @@
       pa.onsubmit = async (ev) => {
         ev.preventDefault();
         erro('pa_err');
+        if ($('pa_user').value.trim().toLowerCase() !== $('pa_user2').value.trim().toLowerCase()) { erro('pa_err', 'Os nomes de usuário não coincidem: confira a digitação (é com ele que você vai entrar).'); return; }
         if ($('pa_senha').value !== $('pa_senha2').value) { erro('pa_err', 'As senhas não coincidem.'); return; }
         ocupado(pa, true);
         try {
