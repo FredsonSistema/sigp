@@ -55,18 +55,47 @@ function check(results, name, ok, detail = '') {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${detail ? '  — ' + detail : ''}`);
 }
 
-// Cria o acesso de teste (navegador novo), informa a chave da API de teste e espera o app abrir.
-async function loginFresh(page, chave = API_TEST_KEY) {
+// Login no servidor (desde 17/11/2026). A chave da API de teste é só do "servidor": prepara as pessoas pela API.
+const SENHA_E2E = 'Senha-e2e-2026!';
+const apiAdmin = async (caminho, opcoes = {}) => {
+  const r = await fetch(`${API_TEST_URL}${caminho}`, { ...opcoes, headers: { 'Content-Type': 'application/json', 'X-API-Key': API_TEST_KEY, ...(opcoes.headers || {}) } });
+  return { status: r.status, json: await r.json().catch(() => ({})) };
+};
+// Garante a pessoa (cria ou gera nova senha temporária) e devolve a senha temporária.
+async function garantirPessoa(usuario = 'teste', grupoId = 'admin', nome = '') {
+  const estado = await apiAdmin('/api/auth/estado');
+  if (estado.json.precisaPrimeiroAdmin) {
+    await apiAdmin('/api/auth/primeiro-admin', { method: 'POST', body: JSON.stringify({ chave: API_TEST_KEY, usuario: 'e2e.dono', nome: 'Dono e2e', senha: 'Dono-e2e-2026!' }) });
+  }
+  const lista = (await apiAdmin('/api/acesso/usuarios')).json.items || [];
+  const atual = lista.find((u) => u.usuario === usuario);
+  if (!atual) {
+    const r = await apiAdmin('/api/acesso/usuarios', { method: 'POST', body: JSON.stringify({ tipo: 'pessoa', usuario, nome: nome || usuario, grupoId }) });
+    if (r.status !== 201) throw new Error(`Não foi possível criar ${usuario}: ${r.json.error}`);
+    return r.json.senhaTemporaria;
+  }
+  await apiAdmin(`/api/acesso/usuarios/${atual.id}`, { method: 'PUT', body: JSON.stringify({ grupoId, ativo: true }) });
+  return (await apiAdmin(`/api/acesso/usuarios/${atual.id}/redefinir-senha`, { method: 'POST' })).json.senhaTemporaria;
+}
+// Entra pela tela com a senha temporária, faz a troca obrigatória e espera o app abrir.
+async function entrarComTemporaria(page, usuario, temporaria, nova = SENHA_E2E) {
   await page.goto(APP_URL);
-  await page.waitForSelector('#authScreen');
-  await page.fill('#su_user', 'teste');
-  await page.fill('#su_pass', 'senha1234');
-  await page.fill('#su_pass2', 'senha1234');
-  await page.click('#setupForm button[type=submit]');
-  await page.waitForFunction(() => /recusou/i.test(document.getElementById('apiKeySetupStatus').textContent), null, { timeout: 15000 });
-  await page.fill('#apiKeySetupInput', chave);
-  await page.click('#apiKeySetupForm button[type=submit]');
+  await page.waitForSelector('#loginForm', { state: 'visible', timeout: 20000 });
+  await page.fill('#li_user', usuario);
+  await page.fill('#li_pass', temporaria);
+  await page.click('#loginForm button[type=submit]');
+  await page.waitForSelector('#trocaSenhaForm', { state: 'visible', timeout: 15000 });
+  await page.fill('#ts_atual', temporaria);
+  await page.fill('#ts_nova', nova);
+  await page.fill('#ts_nova2', nova);
+  await page.click('#trocaSenhaForm button[type=submit]');
   await page.waitForFunction(() => getComputedStyle(document.querySelector('#appRoot')).display !== 'none', null, { timeout: 20000 });
+}
+// Navegador novo, entra como administrador de teste ("teste"), ou como outra pessoa: loginFresh(page, { usuario, grupo }).
+async function loginFresh(page, opcoes = {}) {
+  const { usuario = 'teste', grupo = 'admin', nome = '' } = typeof opcoes === 'object' ? opcoes : {};
+  const temporaria = await garantirPessoa(usuario, grupo, nome);
+  await entrarComTemporaria(page, usuario, temporaria);
 }
 
 // PDF mínimo com texto (dados FICTÍCIOS), sem dependências externas.
@@ -101,4 +130,4 @@ function makePdf(lines, file) {
   return file;
 }
 
-module.exports = { APP_URL, API_TEST_URL, API_TEST_KEY, OUT_DIR, launch, shot, visible, check, loginFresh, makePdf, abrirNota };
+module.exports = { APP_URL, API_TEST_URL, API_TEST_KEY, SENHA_E2E, OUT_DIR, launch, shot, visible, check, loginFresh, garantirPessoa, entrarComTemporaria, apiAdmin, makePdf, abrirNota };

@@ -4,7 +4,8 @@
 - Usuários: cada um com chave própria (gerada aqui, mostrada uma vez; o banco guarda só o hash SHA-256),
   um grupo de permissões e ajustes individuais (permitir/negar uma funcionalidade).
 - A regra vale na API: cada rota pertence a uma funcionalidade do catálogo abaixo. A tela só esconde abas.
-- Pedido sem chave: leitura continua liberada (como antes) a menos que SIGP_EXIGIR_CHAVE_LEITURA=1; escrita exige chave.
+- Pessoas entram com usuário e senha (backend/sessoes.py); chaves de API são só para integrações e a chave do .env.
+- Sem login nem chave: nada além das rotas públicas (SIGP_EXIGIR_CHAVE_LEITURA=0 reabre a leitura, só para diagnóstico).
 """
 from __future__ import annotations
 
@@ -94,7 +95,9 @@ CATALOGO: List[Dict[str, Any]] = [
 ]
 # Leitura que sempre exige chave, mesmo com a leitura aberta (dados pessoais e administração).
 LEITURA_PROTEGIDA = {"admin", "config.alertas"}
-ROTAS_PUBLICAS = {("GET", "/api/health"), ("POST", "/api/auth/verify"), ("GET", "/api/acesso/eu")}
+ROTAS_PUBLICAS = {("GET", "/api/health"), ("POST", "/api/auth/verify"), ("GET", "/api/acesso/eu"), ("GET", "/api/auth/estado"),
+                  ("POST", "/api/auth/primeiro-admin"), ("POST", "/api/auth/login"), ("POST", "/api/auth/sair"),
+                  ("POST", "/api/auth/trocar-senha")}
 ESTADO_LEITURA = ("GET", "/api/app-state")
 ESTADO_ESCRITA = {("PUT", "/api/app-state/<state_key>"), ("DELETE", "/api/app-state/<state_key>")}
 
@@ -104,6 +107,7 @@ _ROTA_PARA = {(m, r): f["id"] for f in FUNCIONALIDADES.values() for m, r in f.ge
 _ESTADO_PARA = {k: f["id"] for f in FUNCIONALIDADES.values() for k in f.get("estado", [])}
 
 _VER = [i for i in TODAS if i.endswith(".ver")]
+GRUPO_ADMIN = "admin"  # perfil Administrador para pessoas (todas as permissões); não é um grupo editável
 GRUPOS_PADRAO = [
     {"id": "grp-gerente", "nome": "Gerente", "descricao": "Tudo do operador, mais as decisões do SIG e a manutenção do banco.",
      "permissoes": [i for i in TODAS if i not in ("notas_recebidas.importar", "analises.gravar")]},
@@ -157,6 +161,8 @@ def garantir_tabelas() -> None:
         conn.commit()
     finally:
         conn.close()
+    from backend import sessoes  # import aqui: sessoes depende deste módulo
+    sessoes.garantir_tabelas()
 
 
 # ---------------------------------------------------------------- grupos
@@ -224,8 +230,14 @@ def excluir_grupo(grupo_id: str) -> None:
 
 # ---------------------------------------------------------------- usuários
 def _usuario(row) -> Dict[str, Any]:
+    chaves = row.keys()
+    tipo = row["tipo"] if "tipo" in chaves else "integracao"
     return {"id": row["id"], "nome": row["nome"], "grupoId": row["grupo_id"], "ajustes": json.loads(row["ajustes_json"] or "{}"),
-            "chavePrefixo": row["chave_prefixo"], "ativo": bool(row["ativo"]), "ultimoUso": row["ultimo_uso"], "criadoEm": row["created_at"]}
+            "chavePrefixo": row["chave_prefixo"] if tipo == "integracao" else "", "ativo": bool(row["ativo"]),
+            "ultimoUso": row["ultimo_uso"], "criadoEm": row["created_at"], "tipo": tipo,
+            "usuario": row["usuario"] if "usuario" in chaves else "",
+            "trocarSenha": bool(row["trocar_senha"]) if "trocar_senha" in chaves else False,
+            "bloqueadoAte": row["bloqueado_ate"] if "bloqueado_ate" in chaves else ""}
 
 
 def listar_usuarios() -> List[Dict[str, Any]]:
@@ -236,6 +248,9 @@ def listar_usuarios() -> List[Dict[str, Any]]:
         conn.close()
     grupos = {g["id"]: g for g in listar_grupos()}
     for u in usuarios:
+        if u["grupoId"] == GRUPO_ADMIN:
+            u["permissoes"], u["grupoNome"] = list(TODAS), "Administrador"
+            continue
         u["permissoes"] = efetivas(u, grupos.get(u["grupoId"]))
         u["grupoNome"] = (grupos.get(u["grupoId"]) or {}).get("nome", "—")
     return usuarios
@@ -286,12 +301,23 @@ def atualizar_usuario(usuario_id: str, dados: Dict[str, Any]) -> Dict[str, Any]:
             raise LookupError("Usuário não encontrado.")
         nome = str(dados.get("nome") if dados.get("nome") is not None else row["nome"]).strip()[:80] or row["nome"]
         grupo_id = str(dados.get("grupoId") or row["grupo_id"])
-        if not conn.execute("SELECT 1 FROM acesso_grupos WHERE id = ?", (grupo_id,)).fetchone():
+        pessoa = row["tipo"] == "pessoa"
+        if grupo_id == GRUPO_ADMIN and not pessoa:
+            raise ValueError("Só pessoas (com usuário e senha) podem ser administradoras; integrações usam um grupo.")
+        if grupo_id != GRUPO_ADMIN and not conn.execute("SELECT 1 FROM acesso_grupos WHERE id = ?", (grupo_id,)).fetchone():
             raise ValueError("Grupo de permissões inválido.")
         ajustes = _validar_ajustes(dados["ajustes"]) if "ajustes" in dados else json.loads(row["ajustes_json"] or "{}")
         ativo = bool(dados["ativo"]) if "ativo" in dados else bool(row["ativo"])
+        era_admin = pessoa and row["grupo_id"] == GRUPO_ADMIN and row["ativo"]
+        if era_admin and (grupo_id != GRUPO_ADMIN or not ativo):
+            outros = conn.execute("SELECT COUNT(*) FROM acesso_usuarios WHERE tipo = 'pessoa' AND grupo_id = ? AND ativo = 1 AND id != ?",
+                                  (GRUPO_ADMIN, usuario_id)).fetchone()[0]
+            if not outros:
+                raise ValueError("Este é o único administrador: crie outro administrador antes de mudar o perfil dele ou desativá-lo.")
         conn.execute("UPDATE acesso_usuarios SET nome = ?, grupo_id = ?, ajustes_json = ?, ativo = ?, updated_at = ? WHERE id = ?",
                      (nome, grupo_id, json.dumps(ajustes), int(ativo), _agora(), usuario_id))
+        if not ativo:
+            conn.execute("DELETE FROM acesso_sessoes WHERE usuario_id = ?", (usuario_id,))
         conn.commit()
     finally:
         conn.close()
@@ -302,13 +328,13 @@ def trocar_chave(usuario_id: str) -> Tuple[Dict[str, Any], str]:
     chave = nova_chave()
     conn = database.get_connection()
     try:
-        n = conn.execute("UPDATE acesso_usuarios SET chave_hash = ?, chave_prefixo = ?, updated_at = ? WHERE id = ?",
+        n = conn.execute("UPDATE acesso_usuarios SET chave_hash = ?, chave_prefixo = ?, updated_at = ? WHERE id = ? AND tipo != 'pessoa'",
                          (_hash(chave), chave[:9], _agora(), usuario_id)).rowcount
         conn.commit()
     finally:
         conn.close()
     if not n:
-        raise LookupError("Usuário não encontrado.")
+        raise LookupError("Integração não encontrada (pessoas entram com usuário e senha, sem chave).")
     return next(u for u in listar_usuarios() if u["id"] == usuario_id), chave
 
 
@@ -327,7 +353,7 @@ def identificar(chave: str, chave_admin: str) -> Optional[Dict[str, Any]]:
         return {"perfil": ADMIN, "nome": "Administrador", "id": ADMIN, "grupo": "Administrador", "permissoes": TODAS}
     conn = database.get_connection()
     try:
-        row = conn.execute("SELECT * FROM acesso_usuarios WHERE chave_hash = ?", (_hash(chave),)).fetchone()
+        row = conn.execute("SELECT * FROM acesso_usuarios WHERE chave_hash = ? AND tipo != 'pessoa'", (_hash(chave),)).fetchone()
         if not row or not row["ativo"]:
             return None
         grupo_row = conn.execute("SELECT * FROM acesso_grupos WHERE id = ?", (row["grupo_id"],)).fetchone()

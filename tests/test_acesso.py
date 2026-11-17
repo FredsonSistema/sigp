@@ -101,13 +101,16 @@ class AcessoTests(unittest.TestCase):
             conn.close()
         self.assertNotIn(chave["X-API-Key"], dump)
 
-    def test_sem_chave_leitura_livre_e_escrita_recusada(self):
-        self.assertEqual(self.client.get("/api/locais").status_code, 200)
+    def test_sem_login_nem_chave_nada_e_liberado_alem_do_publico(self):
+        # Desde o login no servidor, a leitura também exige login ou chave (SIGP_EXIGIR_CHAVE_LEITURA=0 reabre).
+        self.assertEqual(self.client.get("/api/locais").status_code, 401)
         self.assertEqual(self.client.post("/api/locais/agencia/item", json={"nome": "A", "cidade": "B"}).status_code, 401)
         self.assertEqual(self.client.get("/api/acesso/usuarios").status_code, 401)
-        with patch.object(app_module, "EXIGIR_CHAVE_LEITURA", True):
-            self.assertEqual(self.client.get("/api/locais").status_code, 401)
-            self.assertEqual(self.client.get("/api/health").status_code, 200)
+        self.assertEqual(self.client.get("/api/health").status_code, 200)
+        self.assertEqual(self.client.get("/api/auth/estado").status_code, 200)
+        with patch.object(app_module, "EXIGIR_CHAVE_LEITURA", False):
+            self.assertEqual(self.client.get("/api/locais").status_code, 200)
+            self.assertEqual(self.client.get("/api/acesso/usuarios").status_code, 401)
 
     def test_auditoria_registra_permitido_e_negado(self):
         _u, chave = self.usuario("Jonata de Jesus", "grp-operador")

@@ -99,7 +99,7 @@
   };
 
   function currentUser() {
-    try { return JSON.parse(localStorage.getItem('sigp_auth') || '{}').user || ''; } catch { return ''; }
+    try { return window.SIGP_LOGIN?.usuarioAtual?.() || ''; } catch { return ''; }
   }
 
   function renderDecisionCard(item) {

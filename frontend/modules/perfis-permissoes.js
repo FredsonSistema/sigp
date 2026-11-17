@@ -33,7 +33,7 @@
       barra.appendChild(chip);
     }
     if (chip) {
-      chip.textContent = eu.perfil === 'administrador' ? 'Administrador' : eu.perfil === 'usuario' ? `${eu.nome} · ${eu.grupo}` : '';
+      chip.textContent = eu.perfil === 'administrador' ? (eu.usuario ? `${eu.usuario} · Administrador` : 'Administrador') : eu.perfil === 'usuario' ? `${eu.usuario || eu.nome} · ${eu.grupo}` : '';
       chip.hidden = !chip.textContent;
     }
     return eu;
@@ -68,36 +68,75 @@
   }
 
   const opcoesGrupo = (sel) => dados.grupos.map((g) => `<option value="${esc(g.id)}"${g.id === sel ? ' selected' : ''}>${esc(g.nome)}</option>`).join('');
+  // Perfis de uma pessoa: Administrador (tudo) ou um dos grupos.
+  const opcoesPerfil = (sel) => `<option value="admin"${sel === 'admin' ? ' selected' : ''}>Administrador (todas as permissões)</option>${opcoesGrupo(sel)}`;
+  const pessoas = () => dados.usuarios.filter((u) => u.tipo === 'pessoa');
+  const integracoes = () => dados.usuarios.filter((u) => u.tipo !== 'pessoa');
+  function situacao(u) {
+    if (!u.ativo) return '<span class="perm-nao">desativado</span>';
+    if (u.bloqueadoAte && u.bloqueadoAte > new Date().toISOString()) return '<span class="perm-nao">bloqueado por tentativas</span>';
+    if (u.trocarSenha) return '<span class="hint">aguardando a troca da senha temporária</span>';
+    return 'ativo';
+  }
 
   function blocoUsuarios() {
-    const linhas = dados.usuarios.map((u) => `<details class="nr-disc perm-usuario" data-usuario="${esc(u.id)}" data-abre="usr:${esc(u.id)}"${abertos.has(`usr:${u.id}`) ? ' open' : ''}>
-      <summary><b>${esc(u.nome)}</b> · ${esc(u.grupoNome)} · ${u.ativo ? 'ativo' : '<span class="perm-nao">desativado</span>'}
-        <span class="hint">chave ${esc(u.chavePrefixo)}… · último uso ${esc(dataHora(u.ultimoUso))} · ${u.permissoes.length} permissão(ões)</span></summary>
+    const linhaPessoa = (u) => `<details class="nr-disc perm-usuario" data-usuario="${esc(u.id)}" data-abre="usr:${esc(u.id)}"${abertos.has(`usr:${u.id}`) ? ' open' : ''}>
+      <summary><b>${esc(u.nome)}</b> · <code>${esc(u.usuario)}</code> · ${esc(u.grupoNome)} · ${situacao(u)}
+        <span class="hint">último acesso ${esc(dataHora(u.ultimoUso))}</span></summary>
+      <div class="nr-disc-body">
+        <div class="nfse-grid">
+          <label>Nome<input class="f" data-campo="nome" maxlength="80" value="${esc(u.nome)}"></label>
+          <label>Perfil<select class="f" data-campo="grupoId">${opcoesPerfil(u.grupoId)}</select></label>
+          <label class="perm-check"><input type="checkbox" data-campo="ativo"${u.ativo ? ' checked' : ''}> Usuário ativo</label>
+        </div>
+        ${u.grupoId === 'admin' ? '' : `<details class="nr-disc"><summary>Ajustes individuais (opcional)</summary><div class="nr-disc-body">
+          <div class="hint" style="margin:4px 0 8px">Valem só para esta pessoa, por cima do perfil.</div>${ajustesUsuario(u)}</div></details>`}
+        <div class="task-add-row" style="margin-top:8px">
+          <button class="primary small" type="button" data-acao="salvar-usuario">Salvar</button>
+          <button class="ghost small" type="button" data-acao="redefinir-senha">Redefinir senha</button>
+          <span class="hint">Gera uma senha temporária; a pessoa troca no próximo acesso.</span>
+        </div>
+      </div></details>`;
+    const linhaIntegracao = (u) => `<details class="nr-disc perm-usuario" data-usuario="${esc(u.id)}" data-abre="usr:${esc(u.id)}"${abertos.has(`usr:${u.id}`) ? ' open' : ''}>
+      <summary><b>${esc(u.nome)}</b> · ${esc(u.grupoNome)} · ${u.ativo ? 'ativa' : '<span class="perm-nao">desativada</span>'}
+        <span class="hint">chave ${esc(u.chavePrefixo)}… · último uso ${esc(dataHora(u.ultimoUso))}</span></summary>
       <div class="nr-disc-body">
         <div class="nfse-grid">
           <label>Nome<input class="f" data-campo="nome" maxlength="80" value="${esc(u.nome)}"></label>
           <label>Grupo de permissões<select class="f" data-campo="grupoId">${opcoesGrupo(u.grupoId)}</select></label>
-          <label class="perm-check"><input type="checkbox" data-campo="ativo"${u.ativo ? ' checked' : ''}> Usuário ativo</label>
+          <label class="perm-check"><input type="checkbox" data-campo="ativo"${u.ativo ? ' checked' : ''}> Integração ativa</label>
         </div>
-        <div class="hint" style="margin:8px 0">Ajustes individuais: valem só para este usuário, por cima do grupo.</div>
-        ${ajustesUsuario(u)}
+        <details class="nr-disc"><summary>Ajustes individuais (opcional)</summary><div class="nr-disc-body">${ajustesUsuario(u)}</div></details>
         <div class="task-add-row" style="margin-top:8px">
-          <button class="primary small" type="button" data-acao="salvar-usuario">Salvar usuário</button>
+          <button class="primary small" type="button" data-acao="salvar-usuario">Salvar</button>
           <button class="ghost small" type="button" data-acao="nova-chave">Gerar nova chave</button>
           <span class="hint">A chave antiga deixa de valer na hora.</span>
         </div>
-      </div></details>`).join('');
-    return `<div class="perm-fixo"><b>Administrador</b> · todas as permissões · fixo <span class="hint">é a chave SIGP_API_KEY do .env (a sua e a do n8n); não pode ser editado nem desativado</span></div>
-      ${linhas || '<div class="dash-empty">Nenhum usuário ainda.</div>'}
+      </div></details>`;
+    return `${pessoas().map(linhaPessoa).join('') || '<div class="dash-empty">Nenhuma pessoa ainda.</div>'}
       <div class="perm-novo">
-        <b>Novo usuário</b>
+        <b>Adicionar usuário</b>
         <div class="nfse-grid">
           <label>Nome<input class="f" id="permNovoNome" maxlength="80" placeholder="ex.: Maciel Lopes"></label>
-          <label>Grupo de permissões<select class="f" id="permNovoGrupo">${opcoesGrupo('grp-operador')}</select></label>
+          <label>Nome de usuário<input class="f" id="permNovoUsuario" maxlength="40" placeholder="ex.: maciel.lopes" autocomplete="off"></label>
+          <label>Perfil<select class="f" id="permNovoGrupo">${opcoesPerfil('grp-operador')}</select></label>
         </div>
-        <div class="task-add-row" style="margin-top:8px"><button class="primary small" type="button" data-acao="criar-usuario">Criar usuário e gerar chave</button></div>
+        <div class="task-add-row" style="margin-top:8px"><button class="primary small" type="button" data-acao="criar-usuario">Adicionar e gerar senha temporária</button>
+          <span class="hint">No primeiro acesso a pessoa é obrigada a trocar a senha.</span></div>
       </div>
-      <div id="permChaveNova" role="alert"></div>`;
+      <div id="permChaveNova" role="alert"></div>
+      <details class="nr-disc" data-abre="sec:integracoes"${abertos.has('sec:integracoes') ? ' open' : ''}><summary>Integrações com chave de API <span class="hint">${integracoes().length} · para outro sistema ou automação; pessoas não usam chave</span></summary>
+        <div class="nr-disc-body">
+          <div class="perm-fixo"><b>Chave do servidor</b> · administrador · fixa <span class="hint">SIGP_API_KEY do .env: usada pelo n8n e no primeiro acesso; não vai para o navegador</span></div>
+          ${integracoes().map(linhaIntegracao).join('')}
+          <div class="perm-novo"><b>Nova integração</b>
+            <div class="nfse-grid">
+              <label>Nome<input class="f" id="permNovaIntNome" maxlength="80" placeholder="ex.: Sistema financeiro"></label>
+              <label>Grupo de permissões<select class="f" id="permNovaIntGrupo">${opcoesGrupo('grp-integracao')}</select></label>
+            </div>
+            <div class="task-add-row" style="margin-top:8px"><button class="ghost small" type="button" data-acao="criar-integracao">Criar integração e gerar chave</button></div>
+          </div>
+        </div></details>`;
   }
 
   function blocoGrupos() {
@@ -152,18 +191,15 @@
     if (!box.dataset.trocaLigada) {
       box.dataset.trocaLigada = '1';
       box.addEventListener('click', (ev) => {
-        if (!ev.target.closest('[data-trocar-chave]')) return;
-        if (!window.confirm('Sair desta chave neste navegador? Na próxima entrada o sistema pede a chave de acesso.')) return;
-        window.SIGP_CONFIG.set({ apiKey: '' });
-        window.location.reload();
+        if (ev.target.closest('[data-trocar-senha]')) window.SIGP_LOGIN?.trocarSenha();
       });
     }
     if (!eu || eu.perfil !== 'administrador') {
       let catalogo = [];
       try { catalogo = (await api('/api/acesso/catalogo')).areas; } catch (e) { catalogo = []; }
       const minhas = new Set(eu?.permissoes || []);
-      box.innerHTML = `<div class="hint">Você entrou como <b>${esc(eu?.nome || 'visitante')}</b>${eu?.grupo ? ` (grupo ${esc(eu.grupo)})` : ''}. Só o administrador altera perfis e permissões.
-          <button class="ghost small" type="button" data-trocar-chave>Trocar chave de acesso</button></div>
+      box.innerHTML = `<div class="hint">Você entrou como <b>${esc(eu?.nome || 'visitante')}</b>${eu?.usuario ? ` (<code>${esc(eu.usuario)}</code>)` : ''}${eu?.grupo ? `, perfil ${esc(eu.grupo)}` : ''}. Só o administrador altera perfis e permissões.
+          <button class="ghost small" type="button" data-trocar-senha>Trocar minha senha</button></div>
         ${catalogo.length ? catalogo.map((a) => `<details class="nr-disc"><summary>${esc(a.area)}</summary><div class="nr-disc-body perm-lista">
           ${a.funcionalidades.map((f) => `<div><span class="${minhas.has(f.id) ? 'perm-sim' : 'perm-nao'}">${minhas.has(f.id) ? '✓' : '✗'}</span> ${esc(f.nome)}</div>`).join('')}</div></details>`).join('')
           : '<div class="hint">Peça ao administrador a lista das suas permissões.</div>'}`;
@@ -180,11 +216,11 @@
     }
     const aberto = (k, padrao) => (abertos.has(k) || (padrao && !abertos.has(`-${k}`)) ? ' open' : '');
     box.innerHTML = `
-      <details class="nr-list cfg-grupo" data-abre="sec:usuarios"${aberto('sec:usuarios', true)}><summary><span class="nr-list-title">Usuários</span><span class="nr-count">${dados.usuarios.length + 1}</span><span class="hint">quem acessa: grupo, ajustes individuais e chave</span></summary><div class="cfg-corpo">${blocoUsuarios()}</div></details>
+      <details class="nr-list cfg-grupo" data-abre="sec:usuarios"${aberto('sec:usuarios', true)}><summary><span class="nr-list-title">Usuários</span><span class="nr-count">${pessoas().length}</span><span class="hint">quem entra no sistema: nome de usuário, perfil e senha</span></summary><div class="cfg-corpo">${blocoUsuarios()}</div></details>
       <details class="nr-list cfg-grupo" data-abre="sec:grupos"${aberto('sec:grupos')}><summary><span class="nr-list-title">Grupos de permissão</span><span class="nr-count">${dados.grupos.length}</span><span class="hint">conjuntos de permissões; crie ou ajuste</span></summary><div class="cfg-corpo">${blocoGrupos()}</div></details>
       <details class="nr-list cfg-grupo" data-abre="sec:catalogo"${aberto('sec:catalogo')}><summary><span class="nr-list-title">Funcionalidades do sistema</span><span class="nr-count">${dados.catalogo.reduce((n, a) => n + a.funcionalidades.length, 0)}</span><span class="hint">tudo o que pode ser liberado, e quem tem</span></summary><div class="cfg-corpo">${blocoCatalogo()}</div></details>
       <details class="nr-list cfg-grupo" data-abre="sec:auditoria"${aberto('sec:auditoria')}><summary><span class="nr-list-title">Auditoria de acesso</span><span class="hint">últimas gravações e recusas</span></summary><div class="cfg-corpo">${blocoAuditoria()}</div></details>
-      <div class="task-add-row"><button class="ghost small" type="button" data-trocar-chave>Trocar chave de acesso</button>
+      <div class="task-add-row"><button class="ghost small" type="button" data-trocar-senha>Trocar minha senha</button>
         <span class="hint" data-perm-status role="status" aria-live="polite"></span></div>`;
     ligar(box);
   }
@@ -195,7 +231,14 @@
     const alvo = box.querySelector('#permChaveNova');
     alvo.innerHTML = `<div class="perm-chave"><b>Chave de ${esc(nome)}</b> (aparece só agora; o sistema guarda apenas um resumo dela):
       <code data-chave>${esc(chave)}</code> <button class="ghost small" type="button" data-acao="copiar-chave">Copiar</button>
-      <div class="hint">Entregue à pessoa por um canal seguro. Ela informa essa chave ao entrar no sistema (pedido de chave da API).</div></div>`;
+      <div class="hint">Configure no outro sistema (cabeçalho X-API-Key). Não use em navegador.</div></div>`;
+  }
+  function mostrarSenha(box, u, senha) {
+    const alvo = box.querySelector('#permChaveNova');
+    alvo.innerHTML = `<div class="perm-chave"><b>Acesso de ${esc(u.nome)}</b> (a senha aparece só agora):
+      usuário <code>${esc(u.usuario)}</code> · senha temporária <code data-chave>${esc(senha)}</code>
+      <button class="ghost small" type="button" data-acao="copiar-chave">Copiar senha</button>
+      <div class="hint">Entregue à pessoa por um canal seguro. No primeiro acesso ela é obrigada a trocar a senha.</div></div>`;
   }
 
   function ligar(box) {
@@ -213,16 +256,34 @@
       try {
         if (acao === 'copiar-chave') {
           await navigator.clipboard.writeText(box.querySelector('[data-chave]').textContent);
-          status(box, 'Chave copiada.');
+          status(box, 'Copiado.');
           return;
         }
         botao.disabled = true;
         if (acao === 'criar-usuario') {
-          const nome = box.querySelector('#permNovoNome').value.trim();
-          const r = await api('/api/acesso/usuarios', { method: 'POST', body: JSON.stringify({ nome, grupoId: box.querySelector('#permNovoGrupo').value }) });
+          const r = await api('/api/acesso/usuarios', { method: 'POST', body: JSON.stringify({
+            tipo: 'pessoa', nome: box.querySelector('#permNovoNome').value.trim(),
+            usuario: box.querySelector('#permNovoUsuario').value.trim(), grupoId: box.querySelector('#permNovoGrupo').value }) });
+          await render(box);
+          mostrarSenha(box, r.item, r.senhaTemporaria);
+          status(box, `Usuário ${r.item.usuario} adicionado.`);
+          return;
+        }
+        if (acao === 'criar-integracao') {
+          const r = await api('/api/acesso/usuarios', { method: 'POST', body: JSON.stringify({
+            tipo: 'integracao', nome: box.querySelector('#permNovaIntNome').value.trim(), grupoId: box.querySelector('#permNovaIntGrupo').value }) });
+          abertos.add('sec:integracoes');
           await render(box);
           mostrarChave(box, r.item.nome, r.chave);
-          status(box, `Usuário ${r.item.nome} criado.`);
+          status(box, `Integração ${r.item.nome} criada.`);
+          return;
+        }
+        if (acao === 'redefinir-senha') {
+          const id = botao.closest('[data-usuario]').dataset.usuario;
+          if (!window.confirm('Gerar uma senha temporária? A senha atual deixa de valer e as sessões abertas desta pessoa são encerradas.')) return;
+          const r = await api(`/api/acesso/usuarios/${encodeURIComponent(id)}/redefinir-senha`, { method: 'POST' });
+          await render(box);
+          mostrarSenha(box, r.item, r.senhaTemporaria);
           return;
         }
         if (acao === 'salvar-usuario' || acao === 'nova-chave') {

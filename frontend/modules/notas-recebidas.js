@@ -156,7 +156,7 @@
   };
 
   function currentOperator() {
-    try { return JSON.parse(localStorage.getItem('sigp_auth') || '{}').user || ''; } catch { return ''; }
+    try { return window.SIGP_LOGIN?.usuarioAtual?.() || ''; } catch { return ''; }
   }
 
   function formatDate(value) {
@@ -329,7 +329,7 @@
       ? newLocationForItem.tipo
       : item.entidade_tipo || suggested?.tipo || 'agencia';
     const auth = (() => {
-      try { return JSON.parse(localStorage.getItem('sigp_auth') || '{}'); } catch { return {}; }
+      try { return ({ user: window.SIGP_LOGIN?.usuarioAtual?.() || '' }); } catch { return {}; }
     })();
     const mailSubject = `Nota fiscal recebida: ${item.assunto || item.nome_arquivo}`;
     const mailBody = `Olá,\n\nSegue a nota fiscal ${item.nome_arquivo} para processamento financeiro.\n\nO PDF deve ser anexado manualmente a este e-mail.\n\nOperador: ${auth.user || ''}`;
@@ -742,7 +742,7 @@
       return;
     }
     const auth = (() => {
-      try { return JSON.parse(localStorage.getItem('sigp_auth') || '{}'); } catch { return {}; }
+      try { return ({ user: window.SIGP_LOGIN?.usuarioAtual?.() || '' }); } catch { return {}; }
     })();
     const button = card.querySelector('[data-action="commit"]');
     if (button) button.disabled = true;

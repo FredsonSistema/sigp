@@ -33,7 +33,7 @@ const api = (caminho, opcoes = {}) => fetch(`${API_TEST_URL}${caminho}`, {
     await shot(page, 'alertas-01-salvo');
     const lido = await api('/api/configuracoes/alertas');
     check(results, 'salvo no banco (o que o WF-06 lê), sem o removido', lido.emails.join(',') === 'contas@exemplo.com.br,terceiro@exemplo.com.br' && lido.origem === 'tela', JSON.stringify(lido.emails));
-    check(results, 'tela mostra quem salvou', /Salvo nesta tela por Administrador/.test(await box.locator('[data-alerta-origem]').innerText()));
+    check(results, 'tela mostra quem salvou', /Salvo nesta tela por teste/.test(await box.locator('[data-alerta-origem]').innerText()));
     // Perfil Leitura: não vê nem altera
     const leitor = await api('/api/acesso/usuarios', { method: 'POST', body: JSON.stringify({ nome: 'Leitor e2e alertas', grupoId: 'grp-leitura' }) });
     const semChave = await fetch(`${API_TEST_URL}/api/configuracoes/alertas`).then((r) => r.status);

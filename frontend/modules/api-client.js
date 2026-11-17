@@ -1,7 +1,6 @@
 // Integração do navegador com a API SIGp, SQLite e n8n.
 (() => {
   const KEYS = {
-    apiKey: 'sigp_api_key',
     backendUrl: 'sigp_nfse_backend_url',
     n8nBase: 'sigp_n8n_base_url',
     entrada: 'sigp_modo_entrada',
@@ -38,12 +37,22 @@
   window.fetch = (input, init = {}) => {
     const url = typeof input === 'string' ? input : input?.url || '';
     const method = String(init.method || (typeof input === 'object' && input?.method) || 'GET').toUpperCase();
-    const apiKey = window.SIGP_CONFIG.get('apiKey');
-    // A chave vai em toda chamada à API (leituras também): é ela que diz o perfil de quem está usando.
-    if (apiKey && backendUrl() && url.startsWith(backendUrl())) {
+    // A sessão do login (frontend/modules/login.js) vai em toda chamada à API: é ela que diz quem está usando.
+    // A tela não envia chave de API: chaves são só para integrações (n8n, outro sistema).
+    let sessao = '';
+    try { sessao = sessionStorage.getItem('sigp_sessao') || ''; } catch (error) { sessao = ''; }
+    if (sessao && backendUrl() && url.startsWith(backendUrl())) {
       const headers = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined) || {});
-      if (!headers.has('X-API-Key')) headers.set('X-API-Key', apiKey);
-      return originalFetch(input, { ...init, headers });
+      if (!headers.has('Authorization')) headers.set('Authorization', `Bearer ${sessao}`);
+      return originalFetch(input, { ...init, headers }).then((resposta) => {
+        // Sessão vencida, encerrada ou usuário desativado: volta para o login (os dados do navegador ficam).
+        if (resposta.status === 401 && !url.includes('/api/auth/')) {
+          resposta.clone().json().then((j) => {
+            if (j && j.sessao === 'expirada') { sessionStorage.removeItem('sigp_sessao'); window.location.reload(); }
+          }).catch(() => {});
+        }
+        return resposta;
+      });
     }
     return originalFetch(input, init);
   };

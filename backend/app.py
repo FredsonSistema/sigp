@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import acesso, avisos_provedor, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco
+from backend import acesso, avisos_provedor, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco, sessoes
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -93,18 +93,39 @@ def normalize_company_name(value: str) -> str:
     return re.sub(r"[^a-z0-9]", "", without_accents)
 
 
-EXIGIR_CHAVE_LEITURA = os.environ.get("SIGP_EXIGIR_CHAVE_LEITURA", "0").strip() == "1"
+# Leitura sem login/chave: desligada por padrão desde o login no servidor (SIGP_EXIGIR_CHAVE_LEITURA=0 reabre, só para diagnóstico).
+EXIGIR_CHAVE_LEITURA = os.environ.get("SIGP_EXIGIR_CHAVE_LEITURA", "1").strip() != "0"
+# Com a senha temporária (ou trocada pelo administrador), só estas rotas funcionam até a pessoa definir a própria senha.
+_ROTAS_TROCA_SENHA = {("POST", "/api/auth/trocar-senha"), ("POST", "/api/auth/sair"), ("GET", "/api/acesso/eu")}
 
 
 @app.before_request
 def require_api_key():
     """Perfis e permissões (backend/acesso.py). Chave do .env (SIGP_API_KEY) = administrador (tudo; é a do n8n).
-    Chave de usuário = permissões do grupo + ajustes individuais. Sem chave: leitura liberada (salvo
-    SIGP_EXIGIR_CHAVE_LEITURA=1) e escrita recusada. Sem SIGP_API_KEY definida (desenvolvimento), nada é exigido."""
+    Chave de integração = permissões do grupo + ajustes individuais. Sem chave nem sessão: recusado (
+    SIGP_EXIGIR_CHAVE_LEITURA=0 reabre a leitura, só diagnóstico). Sessão (Authorization: Bearer) = pessoa com login.
+    Sem SIGP_API_KEY definida (desenvolvimento), nada é exigido."""
     if request.method == "OPTIONS" or not API_KEY or request.url_rule is None or not request.path.startswith("/api/"):
         return None
     regra = request.url_rule.rule
     funcionalidade = acesso.funcionalidade_da_rota(request.method, regra, (request.view_args or {}).get("state_key", ""))
+    token = _token_sessao()
+    if token:
+        # Pessoa com login (usuário e senha). Sessão inválida ou expirada: 401 (a tela volta para o login).
+        quem = sessoes.identificar_sessao(token)
+        if not quem:
+            if funcionalidade is None:
+                return None  # rota pública (login, estado): um token vencido no navegador não atrapalha
+            return jsonify({"ok": False, "error": "Sessão expirada ou encerrada. Entre de novo.", "sessao": "expirada"}), 401
+        g.acesso = quem
+        g.acesso_funcionalidade = funcionalidade or ""
+        if quem.get("trocarSenha") and (request.method, regra) not in _ROTAS_TROCA_SENHA:
+            return jsonify({"ok": False, "error": "Troque a senha temporária antes de continuar.", "trocarSenha": True}), 403
+        if funcionalidade is None or quem["perfil"] == acesso.ADMIN or funcionalidade in quem["permissoes"]:
+            return None
+        nome = "administrar perfis e permissões" if funcionalidade == "admin" else acesso.FUNCIONALIDADES[funcionalidade]["nome"].lower()
+        acesso.registrar(quem["usuario"], request.method, regra, funcionalidade, "negado", 403)
+        return jsonify({"ok": False, "error": f"Seu perfil ({quem['grupo']}) não tem permissão para {nome}.", "permissao": funcionalidade}), 403
     supplied = request.headers.get("X-API-Key", "")
     if not supplied:
         if funcionalidade is None or (request.method in ("GET", "HEAD") and not EXIGIR_CHAVE_LEITURA and funcionalidade not in acesso.LEITURA_PROTEGIDA):
@@ -182,6 +203,88 @@ def health():
     })
 
 
+def _autor(informado: Any, limite: int = 120) -> str:
+    """Quem fez a ação: com login, o usuário da sessão (não dá para se passar por outro);
+    para o n8n e integrações, o nome que eles informam."""
+    quem = getattr(g, "acesso", None) or {}
+    return str(quem.get("usuario") or informado or "").strip()[:limite]
+
+
+def _token_sessao() -> str:
+    cabecalho = request.headers.get("Authorization", "")
+    return cabecalho[7:].strip() if cabecalho.lower().startswith("bearer ") else ""
+
+
+def _ip() -> str:
+    return (request.headers.get("X-Forwarded-For", "") or request.remote_addr or "").split(",")[0].strip()[:45]
+
+
+@app.get("/api/auth/estado")
+def auth_estado_route():
+    """Pública: diz à tela se já existe administrador (senão, mostra o primeiro acesso)."""
+    return jsonify({"ok": True, "precisaPrimeiroAdmin": bool(API_KEY) and not sessoes.existe_administrador(),
+                    "loginObrigatorio": bool(API_KEY)})
+
+
+@app.post("/api/auth/primeiro-admin")
+def auth_primeiro_admin_route():
+    """Primeiro acesso: só funciona enquanto não há administrador, e exige a chave do .env (prova de que é o dono)."""
+    payload = request.get_json(silent=True) or {}
+    chave = str(payload.get("chave") or "")
+    if not API_KEY or not hmac.compare_digest(chave.encode(), API_KEY.encode()):
+        acesso.registrar("primeiro acesso", "POST", "/api/auth/primeiro-admin", "admin", "recusado", 401)
+        return jsonify({"ok": False, "error": "Chave do servidor incorreta (SIGP_API_KEY do arquivo .env)."}), 401
+    if sessoes.existe_administrador():
+        return jsonify({"ok": False, "error": "O administrador já foi criado. Entre com usuário e senha."}), 409
+    try:
+        item, _ = sessoes.criar_pessoa(payload.get("nome") or "", payload.get("usuario"), sessoes.GRUPO_ADMIN,
+                                       senha=payload.get("senha"), trocar=False)
+    except ValueError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 400
+    acesso.registrar(item["usuario"], "POST", "/api/auth/primeiro-admin", "admin", "administrador criado", 201)
+    return jsonify({"ok": True, "item": item}), 201
+
+
+@app.post("/api/auth/login")
+def auth_login_route():
+    payload = request.get_json(silent=True) or {}
+    usuario = str(payload.get("usuario") or "")[:60]
+    try:
+        token, quem = sessoes.entrar(usuario, str(payload.get("senha") or ""))
+    except sessoes.LoginRecusado as erro:
+        acesso.registrar(usuario.strip().lower() or "(vazio)", "POST", "/api/auth/login", "login", f"recusado {_ip()}", 401)
+        return jsonify({"ok": False, "error": str(erro)}), 401
+    acesso.registrar(quem["usuario"], "POST", "/api/auth/login", "login", f"entrou {_ip()}", 200)
+    return jsonify({"ok": True, "token": token, "expiraEm": quem["sessaoExpiraEm"], "trocarSenha": quem["trocarSenha"],
+                    "perfil": quem["perfil"], "nome": quem["nome"], "usuario": quem["usuario"], "grupo": quem["grupo"]})
+
+
+@app.post("/api/auth/sair")
+def auth_sair_route():
+    token = _token_sessao()
+    if token:
+        quem = sessoes.identificar_sessao(token)
+        sessoes.sair(token)
+        if quem:
+            acesso.registrar(quem["usuario"], "POST", "/api/auth/sair", "login", "saiu", 200)
+    return jsonify({"ok": True})
+
+
+@app.post("/api/auth/trocar-senha")
+def auth_trocar_senha_route():
+    quem = getattr(g, "acesso", None) or {}
+    if not quem.get("usuario"):
+        return jsonify({"ok": False, "error": "Entre com usuário e senha para trocar a senha."}), 401
+    payload = request.get_json(silent=True) or {}
+    try:
+        sessoes.trocar_senha(quem["id"], str(payload.get("senhaAtual") or ""), payload.get("novaSenha"), _token_sessao())
+    except ValueError as erro:
+        acesso.registrar(quem["usuario"], "POST", "/api/auth/trocar-senha", "login", "troca recusada", 400)
+        return jsonify({"ok": False, "error": str(erro)}), 400
+    acesso.registrar(quem["usuario"], "POST", "/api/auth/trocar-senha", "login", "senha trocada", 200)
+    return jsonify({"ok": True})
+
+
 @app.post("/api/auth/verify")
 def verify_api_key():
     """Confere a chave informada na tela e devolve o perfil (administrador ou usuário)."""
@@ -197,11 +300,14 @@ def verify_api_key():
 def acesso_eu_route():
     """Quem está usando a tela: perfil, permissões e abas liberadas (a tela esconde o resto)."""
     chave = request.headers.get("X-API-Key", "")
-    quem = (acesso.identificar(chave, API_KEY) if chave else None) if API_KEY else \
-        {"perfil": acesso.ADMIN, "nome": "Administrador", "grupo": "Administrador", "permissoes": acesso.TODAS}
+    quem = getattr(g, "acesso", None) if _token_sessao() else None
+    if not quem:
+        quem = (acesso.identificar(chave, API_KEY) if chave else None) if API_KEY else \
+            {"perfil": acesso.ADMIN, "nome": "Administrador", "grupo": "Administrador", "permissoes": acesso.TODAS}
     if not quem:
         return jsonify({"ok": True, "perfil": "anonimo", "nome": "", "grupo": "", "permissoes": [], "abas": None})
     return jsonify({"ok": True, **{k: quem[k] for k in ("perfil", "nome", "grupo", "permissoes")},
+                    "usuario": quem.get("usuario", ""), "trocarSenha": bool(quem.get("trocarSenha")),
                     "abas": None if quem["perfil"] == acesso.ADMIN else acesso.abas_permitidas(quem["permissoes"])})
 
 
@@ -251,9 +357,25 @@ def acesso_usuarios_route():
 
 @app.post("/api/acesso/usuarios")
 def acesso_criar_usuario_route():
+    """Pessoa (tipo "pessoa"): nome, usuário e perfil; devolve a senha temporária uma única vez.
+    Integração (tipo "integracao"): nome e grupo; devolve a chave de API uma única vez."""
+    dados = request.get_json(silent=True) or {}
     try:
-        usuario, chave = acesso.criar_usuario(request.get_json(silent=True) or {})
+        if dados.get("tipo") == "pessoa":  # sem tipo: integração (compatível com quem já usa a API)
+            usuario, senha = sessoes.criar_pessoa(dados.get("nome") or "", dados.get("usuario"), str(dados.get("grupoId") or ""),
+                                                  dados.get("ajustes") or {})
+            return jsonify({"ok": True, "item": usuario, "senhaTemporaria": senha}), 201
+        usuario, chave = acesso.criar_usuario(dados)
         return jsonify({"ok": True, "item": usuario, "chave": chave}), 201
+    except (ValueError, LookupError) as erro:
+        return _erro_acesso(erro)
+
+
+@app.post("/api/acesso/usuarios/<usuario_id>/redefinir-senha")
+def acesso_redefinir_senha_route(usuario_id: str):
+    try:
+        usuario, senha = sessoes.redefinir_senha(usuario_id)
+        return jsonify({"ok": True, "item": usuario, "senhaTemporaria": senha})
     except (ValueError, LookupError) as erro:
         return _erro_acesso(erro)
 
@@ -1082,7 +1204,7 @@ def reconciliar_todas():
 def _correct(table: str, document_id: str):
     payload = request.get_json(silent=True) or {}
     campos = payload.get("campos") if isinstance(payload.get("campos"), dict) else {}
-    usuario = str(payload.get("usuario") or "").strip()
+    usuario = _autor(payload.get("usuario"))
     motivo = str(payload.get("motivo") or "").strip()
     if not campos:
         return jsonify({"ok": False, "error": "Informe os campos corrigidos em 'campos'."}), 400
@@ -2430,7 +2552,7 @@ def associar_nota_recebida_route(item_id: str):
     payload = request.get_json(silent=True) or {}
     entidade_tipo = str(payload.get("entidadeTipo") or "").strip().lower()
     entidade_id = str(payload.get("entidadeId") or "").strip()
-    operador = str(payload.get("operador") or "").strip()[:120]
+    operador = _autor(payload.get("operador"))
     if entidade_tipo not in LOCAL_TIPOS or not entidade_id:
         return jsonify({"ok": False, "error": "Selecione uma agência, rodoviária ou garagem."}), 400
     local = get_local(entidade_id)
@@ -2635,7 +2757,7 @@ def descartar_nota_recebida_route(item_id: str):
     if motivo not in MOTIVOS_DESCARTE:
         return jsonify({"ok": False, "error": "Informe o motivo do descarte.", "motivos": MOTIVOS_DESCARTE}), 400
     detalhe = str(payload.get("detalhe") or "").strip()
-    operador = str(payload.get("operador") or "").strip()[:120]
+    operador = _autor(payload.get("operador"))
     atual = get_nota_recebida(item_id)
     if not atual:
         return jsonify({"ok": False, "error": "Nota recebida não encontrada."}), 404
@@ -2656,7 +2778,7 @@ def descartar_nota_recebida_route(item_id: str):
 
 @app.patch("/api/notas-recebidas/<item_id>/restaurar")
 def restaurar_nota_recebida_route(item_id: str):
-    operador = str((request.get_json(silent=True) or {}).get("operador") or "").strip()[:120]
+    operador = _autor((request.get_json(silent=True) or {}).get("operador"))
     try:
         item = restaurar_nota_recebida(item_id)
     except ValueError as exc:
@@ -2893,7 +3015,7 @@ def confirmar_ignorados_route():
     """Operador concorda com a IA: os documentos ignorados viram descartados ("não é cobrança"). Aceita lote."""
     payload = request.get_json(silent=True) or {}
     ids = [str(i) for i in (payload.get("ids") or []) if str(i).strip()][:200]
-    operador = str(payload.get("operador") or "").strip()[:120]
+    operador = _autor(payload.get("operador"))
     if not ids:
         return jsonify({"ok": False, "error": "Informe os documentos em 'ids'."}), 400
     confirmados, ignorados_fora = [], []
@@ -2919,7 +3041,7 @@ def confirmar_ignorados_route():
 @app.patch("/api/notas-recebidas/<item_id>/resgatar")
 def resgatar_ignorado_route(item_id: str):
     """A IA errou: o documento volta para a caixa. Vira exemplo rotulado (a IA ignorou uma cobrança)."""
-    operador = str((request.get_json(silent=True) or {}).get("operador") or "").strip()[:120]
+    operador = _autor((request.get_json(silent=True) or {}).get("operador"))
     atual = get_nota_recebida(item_id)
     try:
         item = resgatar_ignorado(item_id, operador)
@@ -2944,7 +3066,7 @@ def colocar_em_analise_route(item_id: str):
     """Nota em dúvida: fica em EM_ANALISE (fora da fila de associação) até o operador decidir."""
     payload = request.get_json(silent=True) or {}
     observacao = str(payload.get("observacao") or "").strip()
-    operador = str(payload.get("operador") or "").strip()[:120]
+    operador = _autor(payload.get("operador"))
     try:
         item = colocar_em_analise(item_id, observacao, operador)
     except ValueError as exc:
@@ -2957,7 +3079,7 @@ def colocar_em_analise_route(item_id: str):
 
 @app.patch("/api/notas-recebidas/<item_id>/liberar")
 def retirar_de_analise_route(item_id: str):
-    operador = str((request.get_json(silent=True) or {}).get("operador") or "").strip()[:120]
+    operador = _autor((request.get_json(silent=True) or {}).get("operador"))
     try:
         item = retirar_de_analise(item_id)
     except ValueError as exc:
@@ -3123,7 +3245,7 @@ def post_decisao_gerente():
     analise_id = str(payload.get("analiseId") or "").strip()
     acao = str(payload.get("acao") or "").strip().lower()
     justificativa = str(payload.get("justificativa") or "").strip()
-    usuario = str(payload.get("usuario") or "").strip()
+    usuario = _autor(payload.get("usuario"))
     conteudo_corrigido = str(payload.get("conteudoCorrigido") or "").strip()
     if not analise_id or acao not in {"validar", "corrigir", "devolver"}:
         return jsonify({"ok": False, "error": "Informe a análise e a ação (validar, corrigir ou devolver)."}), 400

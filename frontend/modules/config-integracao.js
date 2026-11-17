@@ -2,13 +2,13 @@
 //   1) o que o usuário salvou em Configurações > Integração (este navegador);
 //   2) os padrões da instalação (arquivo .env -> nginx -> /sigp-env.js -> window.SIGP_ENV);
 //   3) vazio: a tela avisa que falta configurar.
-// As chaves antigas do navegador (sigp_nfse_backend_url, sigp_api_key...) continuam sendo lidas e são migradas
-// ao salvar. Segredos do servidor (chave da API, token do n8n) ficam no .env; aqui só a cópia que este navegador usa.
+// As chaves antigas do navegador (sigp_nfse_backend_url...) continuam sendo lidas e são migradas
+// ao salvar. Segredos do servidor (chave da API, token do n8n) ficam só no .env: a tela entra com usuário e senha.
 (() => {
   const STORE = 'sigp_integracao_v1';
   const env = () => window.SIGP_ENV || {};
   const LEGADO = {
-    apiUrl: 'sigp_nfse_backend_url', apiKey: 'sigp_api_key', n8nUrl: 'sigp_n8n_base_url', modoEntrada: 'sigp_modo_entrada',
+    apiUrl: 'sigp_nfse_backend_url', n8nUrl: 'sigp_n8n_base_url', modoEntrada: 'sigp_modo_entrada',
     webhookNotas: 'sigp_nfse_webhook_url', webhookFaturaPdf: 'sigp_fatura_pdf_webhook_url',
   };
   const LEGADO_CONTAS = 'sigp_webhook_config_v1';
@@ -22,15 +22,6 @@
         para: 'Esta tela lê e grava tudo por ele. O n8n usa outro endereço, interno da rede Docker (SIGP_API_URL).',
         como: 'http://IP-do-servidor:PORTA, sem barra no fim. No mesmo computador: http://127.0.0.1:5001.',
         onde: 'docker-compose.yml, serviço "api", linha "ports" (ou `docker ps`, container sigp_api). Teste abrindo ENDEREÇO/api/health: deve mostrar "ok".',
-      },
-    },
-    apiKey: {
-      grupo: 'api', rotulo: 'Chave da API (X-API-Key)', tipo: 'segredo', padrao: () => '',
-      ajuda: {
-        oque: 'A chave que a API exige em toda gravação (cabeçalho X-API-Key).',
-        para: 'Impede que outro programa grave dados no sistema. Sem ela, a tela só consegue ler.',
-        como: 'Copie exatamente o valor de SIGP_API_KEY. Fica guardada só neste navegador.',
-        onde: 'Arquivo .env na pasta do sistema, linha SIGP_API_KEY=. Quem instalou o sistema tem esse arquivo.',
       },
     },
     n8nUrl: {
