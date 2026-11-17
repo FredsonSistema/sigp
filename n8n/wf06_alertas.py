@@ -1,4 +1,5 @@
 """Atualiza o resumo diário do WF-06 para incluir as faturas pagas (C-05).
+SUBSTITUÍDO por n8n/wf06/build_wf06.py (alertas com texto amigável): não rode este script, ele desfaz a versão atual.
 
 Os alertas vêm de GET /api/alertas (agora com o tipo "pagamento": PAGO e PAGO_COM_ATRASO).
 Uso, na raiz do projeto:  python n8n/wf06_alertas.py   (idempotente)
