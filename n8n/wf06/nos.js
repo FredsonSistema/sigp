@@ -15,3 +15,10 @@ const base = $('Montar resumo diário').first().json;
 const escolha = escolherAbertura($input.first().json, base.fatos);
 return [{ json: montarMensagem(base.fatos, escolha, base.modelo, Date.now() - base.inicio) }];
 // ==== FIM
+// ==== NO: Juntar destinatários
+// Lista de Configurações > Alertas por e-mail (GET /api/configuracoes/alertas). Sem e-mail: não envia.
+const r = $input.first().json || {};
+const emails = (r.statusCode === 200 && Array.isArray(r.body?.emails)) ? r.body.emails : [];
+if (!emails.length) return [];
+return [{ json: { ...$('Repassar mensagem').first().json, para: emails.join(',') } }];
+// ==== FIM

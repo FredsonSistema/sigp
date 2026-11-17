@@ -87,7 +87,13 @@ CATALOGO: List[Dict[str, Any]] = [
         {"id": "banco.manter", "nome": "Fazer backup, manutenção e reenviar eventos",
          "rotas": [("POST", "/api/saude/banco/backup"), ("POST", "/api/saude/banco/manutencao"), ("POST", "/api/eventos/reenviar")]},
     ]},
+    {"area": "Configurações", "funcionalidades": [
+        {"id": "config.alertas", "nome": "Ver e alterar os e-mails que recebem os alertas diários",
+         "rotas": [("GET", "/api/configuracoes/alertas"), ("PUT", "/api/configuracoes/alertas")]},
+    ]},
 ]
+# Leitura que sempre exige chave, mesmo com a leitura aberta (dados pessoais e administração).
+LEITURA_PROTEGIDA = {"admin", "config.alertas"}
 ROTAS_PUBLICAS = {("GET", "/api/health"), ("POST", "/api/auth/verify"), ("GET", "/api/acesso/eu")}
 ESTADO_LEITURA = ("GET", "/api/app-state")
 ESTADO_ESCRITA = {("PUT", "/api/app-state/<state_key>"), ("DELETE", "/api/app-state/<state_key>")}

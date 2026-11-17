@@ -96,7 +96,7 @@
     {
       "parameters": {
         "operation": "send",
-        "sendTo": "={{ $env.SIGP_RELATORIO_EMAIL }}",
+        "sendTo": "={{ $json.para }}",
         "subject": "={{ $json.assunto }}",
         "emailType": "text",
         "message": "={{ $json.texto }}",
@@ -109,7 +109,7 @@
       "type": "n8n-nodes-base.gmail",
       "typeVersion": 2.1,
       "position": [
-        1960,
+        2400,
         140
       ],
       "credentials": {
@@ -118,7 +118,7 @@
           "name": "Gmail account"
         }
       },
-      "notes": "Envia para SIGP_RELATORIO_EMAIL (.env). Mesma conta Gmail do WF-08."
+      "notes": "Envia para os e-mails de Configurações > Alertas por e-mail. Mesma conta Gmail do WF-08."
     },
     {
       "parameters": {
@@ -203,36 +203,49 @@
     },
     {
       "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "loose"
-          },
-          "conditions": [
+        "method": "GET",
+        "url": "={{ $env.SIGP_API_URL }}/api/configuracoes/alertas",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
             {
-              "id": "e7573007-68c2-5054-a1ea-8ebbd719ec4f",
-              "leftValue": "={{ $env.SIGP_RELATORIO_EMAIL || '' }}",
-              "rightValue": "",
-              "operator": {
-                "type": "string",
-                "operation": "notEmpty",
-                "singleValue": true
-              }
+              "name": "X-API-Key",
+              "value": "={{ $env.SIGP_API_KEY || '' }}"
             }
-          ],
-          "combinator": "and"
+          ]
         },
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "neverError": true
+            }
+          }
+        }
       },
-      "id": "606c062f-9c47-50b4-8b2e-b834af161925",
-      "name": "Tem destinatário?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2,
+      "id": "8c2024a4-bf45-53dd-845a-a5da4d924fde",
+      "name": "Buscar destinatários",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
       "position": [
         1740,
         140
-      ]
+      ],
+      "notes": "Configurações > Alertas por e-mail (sem lista salva, vale SIGP_RELATORIO_EMAIL do .env)."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Lista de Configurações > Alertas por e-mail (GET /api/configuracoes/alertas). Sem e-mail: não envia.\nconst r = $input.first().json || {};\nconst emails = (r.statusCode === 200 && Array.isArray(r.body?.emails)) ? r.body.emails : [];\nif (!emails.length) return [];\nreturn [{ json: { ...$('Repassar mensagem').first().json, para: emails.join(',') } }];\n"
+      },
+      "id": "bc59d6af-f53f-50a3-a50f-f87ffb539a5c",
+      "name": "Juntar destinatários",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1960,
+        140
+      ],
+      "notes": "Sem e-mail configurado: não envia (o resumo já está gravado no SIG)."
     },
     {
       "parameters": {
@@ -286,7 +299,7 @@
       "main": [
         [
           {
-            "node": "Tem destinatário?",
+            "node": "Buscar destinatários",
             "type": "main",
             "index": 0
           },
@@ -325,7 +338,18 @@
         ]
       ]
     },
-    "Tem destinatário?": {
+    "Buscar destinatários": {
+      "main": [
+        [
+          {
+            "node": "Juntar destinatários",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Juntar destinatários": {
       "main": [
         [
           {
@@ -333,8 +357,7 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "Gerar agora": {

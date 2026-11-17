@@ -1,8 +1,8 @@
 """Gera o WF-06 com alertas em texto amigável (abertura escrita pela LLM local e conferida pelo código).
 Base: n8n/wf06/base_wf06.json (cópia do WF-06 anterior, criada na primeira execução).
 Fontes: alertas_lib.js (lógica), nos.js (nós Code), prompt_alerta.md e schema_alerta.json.
-Mudanças: resumo às 08:00, janela de 5 dias, nó da LLM local, nó de conferência, e-mail pelo Gmail só quando
-SIGP_RELATORIO_EMAIL estiver definido. Uso, na raiz do projeto:  python n8n/wf06/build_wf06.py   (idempotente)
+Mudanças: resumo às 08:00, janela de 5 dias, nó da LLM local, nó de conferência, e-mail pelo Gmail para os
+e-mails de Configurações > Alertas por e-mail. Uso, na raiz do projeto:  python n8n/wf06/build_wf06.py   (idempotente)
 """
 import json
 import re
@@ -56,11 +56,12 @@ gmail = no("Gmail - relatório")
 gmail.pop("disabled", None)
 gmail["credentials"] = CREDENCIAL_GMAIL
 gmail["parameters"]["options"] = {"appendAttribution": False}
-gmail["notes"] = "Envia para SIGP_RELATORIO_EMAIL (.env). Mesma conta Gmail do WF-08."
+gmail["notes"] = "Envia para os e-mails de Configurações > Alertas por e-mail. Mesma conta Gmail do WF-08."
+gmail["parameters"]["sendTo"] = "={{ $json.para }}"
 
 for nome in ("Gravar resumo no SIG", "Repassar mensagem", "Gmail - relatório", "Telegram - alerta", "WhatsApp - alerta (Evolution API)"):
     no(nome)["position"][0] += 440
-gmail["position"][0] += 220
+gmail["position"][0] += 660
 
 wf["nodes"] += [
     {
@@ -83,16 +84,21 @@ wf["nodes"] += [
     },
     {
         "parameters": {
-            "conditions": {
-                "options": {"caseSensitive": True, "leftValue": "", "typeValidation": "loose"},
-                "conditions": [{"id": str(uuid.uuid5(uuid.NAMESPACE_URL, "sigpWF06/destinatario-cond")), "leftValue": "={{ $env.SIGP_RELATORIO_EMAIL || '' }}",
-                                "rightValue": "", "operator": {"type": "string", "operation": "notEmpty", "singleValue": True}}],
-                "combinator": "and",
-            },
-            "options": {},
+            "method": "GET",
+            "url": "={{ $env.SIGP_API_URL }}/api/configuracoes/alertas",
+            "sendHeaders": True,
+            "headerParameters": {"parameters": [{"name": "X-API-Key", "value": "={{ $env.SIGP_API_KEY || '' }}"}]},
+            "options": {"response": {"response": {"fullResponse": True, "neverError": True}}},
         },
-        "id": str(uuid.uuid5(uuid.NAMESPACE_URL, "sigpWF06/destinatario")), "name": "Tem destinatário?", "type": "n8n-nodes-base.if", "typeVersion": 2,
-        "position": [1740, 140],
+        "id": str(uuid.uuid5(uuid.NAMESPACE_URL, "sigpWF06/destinatarios")), "name": "Buscar destinatários", "type": "n8n-nodes-base.httpRequest",
+        "typeVersion": 4.2, "position": [1740, 140],
+        "notes": "Configurações > Alertas por e-mail (sem lista salva, vale SIGP_RELATORIO_EMAIL do .env).",
+    },
+    {
+        "parameters": {"jsCode": codigo["Juntar destinatários"]},
+        "id": str(uuid.uuid5(uuid.NAMESPACE_URL, "sigpWF06/juntar-destinatarios")), "name": "Juntar destinatários",
+        "type": "n8n-nodes-base.code", "typeVersion": 2, "position": [1960, 140],
+        "notes": "Sem e-mail configurado: não envia (o resumo já está gravado no SIG).",
     },
 ]
 
@@ -104,8 +110,9 @@ c["Conferir texto da IA"] = {"main": [[{"node": "Gravar resumo no SIG", "type": 
 saidas = c["Repassar mensagem"]["main"][0]
 for s in saidas:
     if s["node"] == "Gmail - relatório":
-        s["node"] = "Tem destinatário?"
-c["Tem destinatário?"] = {"main": [[{"node": "Gmail - relatório", "type": "main", "index": 0}], []]}
+        s["node"] = "Buscar destinatários"
+c["Buscar destinatários"] = {"main": [[{"node": "Juntar destinatários", "type": "main", "index": 0}]]}
+c["Juntar destinatários"] = {"main": [[{"node": "Gmail - relatório", "type": "main", "index": 0}]]}
 
 wf["name"] = "SIGp - WF-06 Vencimentos e alertas diários (texto amigável pela IA local)"
 ATUAL.write_text(json.dumps(wf, ensure_ascii=False, indent=2), encoding="utf-8")

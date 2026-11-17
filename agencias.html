@@ -45,7 +45,10 @@
   }
   h1 span{ color:var(--text-dim); font-weight:400; margin-left:8px; font-size:14px; }
 
-  /* ---- login gate ---- */
+  .sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); border:0}
+.cfg-alertas-lista{list-style:none; margin:4px 0 8px; padding:0; display:flex; flex-wrap:wrap; gap:6px}
+.cfg-alertas-lista li{display:flex; align-items:center; gap:4px; border:1px solid var(--border, #c6d3dc); border-radius:14px; padding:2px 4px 2px 10px; font-size:13px}
+/* ---- login gate ---- */
   #authScreen{
     position:fixed; inset:0; background:var(--bg); z-index:100;
     display:flex; align-items:center; justify-content:center; padding:20px; overflow:auto;
@@ -1501,6 +1504,7 @@
 <script src="frontend/modules/api-client.js?v=20261115-perfis"></script>
 <script src="frontend/modules/config-integracao-tela.js?v=20261115"></script>
 <script src="frontend/modules/perfis-permissoes.js?v=20261115"></script>
+<script src="frontend/modules/config-alertas.js?v=20261117"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -2446,6 +2450,8 @@ function renderConfigTab(){
       <button class="primary small" id="btnSalvarEmpresaOS">Salvar dados da empresa</button>
     </div>
 
+    <div class="section-divider">Alertas por e-mail <span class="hint">quem recebe o resumo diário das contas · um ou mais e-mails</span></div>
+    <div id="cfgAlertas"><div class="dash-empty">Carregando os e-mails dos alertas…</div></div>
     <div class="section-divider">Perfis e permissões <span class="hint">quem acessa o quê · grupos, usuários e ajustes individuais · vale na API</span></div>
     <div id="cfgPermissoes"><div class="dash-empty">Carregando perfis e permissões…</div></div>
     <div class="section-divider">Integração <span class="hint">endereços, chaves e webhooks · nada fica no código · clique em ? para ajuda</span></div>
@@ -2712,6 +2718,7 @@ function renderConfigTab(){
   renderWebhookPainel();
   window.SIGP_CONFIG_TELA.render('cfgIntegracao');
   window.SIGP_PERMISSOES.render('cfgPermissoes');
+  window.SIGP_CONFIG_ALERTAS.render('cfgAlertas');
 
   if(document.getElementById('nfseLista')){
   const renderNFSELista = async ()=>{
