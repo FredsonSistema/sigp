@@ -25,3 +25,5 @@ image-*.png
 !docs/entrega-academica/*.pdf
 # Backups de workflow exportados do n8n (locais; os JSON gerados pelos builds são a fonte)
 n8n/**/backup_*.json
+# Base de conhecimento com dados reais (telefones, e-mails, IPs, CNPJ): nunca vai para o repositório público.
+base_conhecimento*.json

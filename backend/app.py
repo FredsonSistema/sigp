@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import acesso, assistente, avisos_provedor, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco, sessoes
+from backend import acesso, assistente, avisos_provedor, base_conhecimento, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco, sessoes
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -3243,12 +3243,52 @@ def confirmar_etiqueta_nota_recebida_route(item_id: str):
     return jsonify({"ok": True, "item": _serialize_nota_recebida_api(result)})
 
 
+def _pode(permissao: str) -> bool:
+    """Permissão de quem chama (sem SIGP_API_KEY, em desenvolvimento, tudo é liberado)."""
+    if not API_KEY:
+        return True
+    quem = getattr(g, "acesso", None) or {}
+    return quem.get("perfil") == acesso.ADMIN or permissao in (quem.get("permissoes") or [])
+
+
+# Campos com rede e IPs (o atual "redes" e os antigos, que podem existir no registro bruto "dados").
+_CAMPOS_REDE = ("redes", "ipWireguard", "ipWinbox", "ip", "gateway")
+
+
+def _ocultar_rede(local: Dict[str, Any]) -> Dict[str, Any]:
+    """Rede e IPs só para quem tem "rede.ver"; para os demais a lista vem vazia e marcada como restrita
+    (também no registro bruto "dados")."""
+    if _pode("rede.ver"):
+        return local
+    limpo = {k: v for k, v in local.items() if k not in _CAMPOS_REDE}
+    if isinstance(local.get("dados"), dict):
+        limpo["dados"] = {k: v for k, v in local["dados"].items() if k not in _CAMPOS_REDE}
+    return {**limpo, "redes": [], "redesOcultas": True}
+
+
 @app.get("/api/locais")
 def get_locais():
     tipo = str(request.args.get("tipo") or "").strip().lower()
     if tipo and tipo not in LOCAL_TIPOS:
         return jsonify({"ok": False, "error": "Tipo de local inválido."}), 400
-    return jsonify({"items": list_locais(tipo, request.args.get("inativos") == "1")})
+    return jsonify({"items": [_ocultar_rede(l) for l in list_locais(tipo, request.args.get("inativos") == "1")]})
+
+
+@app.get("/api/base-conhecimento")
+def base_conhecimento_route():
+    """Base de conhecimento das unidades (formato RAG-ready), gerada do banco na hora. Rede e IPs só com "rede.ver"."""
+    from flask import Response
+    base = base_conhecimento.gerar(list_locais(), _pode("rede.ver"))
+    corpo = json.dumps(base, ensure_ascii=False, indent=2)
+    if request.args.get("baixar") == "1":
+        return Response(corpo, mimetype="application/json; charset=utf-8",
+                        headers={"Content-Disposition": f"attachment; filename=base_conhecimento_unidades_{base['data_geracao']}.json"})
+    return Response(corpo, mimetype="application/json; charset=utf-8")
+
+
+@app.get("/api/base-conhecimento/qualidade")
+def base_conhecimento_qualidade_route():
+    return jsonify({"ok": True, **base_conhecimento.qualidade(list_locais())})
 
 
 @app.get("/api/locais/item/<local_id>")
@@ -3256,7 +3296,7 @@ def get_local_route(local_id: str):
     local = get_local(local_id)
     if not local:
         return jsonify({"ok": False, "error": "Local não encontrado."}), 404
-    return jsonify({"ok": True, "item": local})
+    return jsonify({"ok": True, "item": _ocultar_rede(local)})
 
 
 @app.put("/api/locais/<tipo>")
@@ -3269,6 +3309,14 @@ def put_locais(tipo: str):
     items = payload.get("items") if isinstance(payload, dict) else None
     if not isinstance(items, list):
         return jsonify({"ok": False, "error": "Envie {'items': [...]}."}), 400
+    if not _pode("rede.ver"):
+        # Quem não vê rede e IPs não pode apagá-los nem alterá-los: mantém o que está gravado.
+        atuais = {str(l["id"]): {k: l[k] for k in _CAMPOS_REDE if k in l} for l in list_locais(tipo, True)}
+        items = [{**{k: v for k, v in i.items() if k not in _CAMPOS_REDE}, "redes": [], **atuais.get(str(i.get("id")), {})}
+                 if isinstance(i, dict) else i for i in items]
+        for i in items:
+            if isinstance(i, dict):
+                i.pop("redesOcultas", None)
     return jsonify({"ok": True, **sync_locais(tipo, [item for item in items if isinstance(item, dict)])})
 
 

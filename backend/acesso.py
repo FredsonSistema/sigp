@@ -23,8 +23,10 @@ ADMIN = "administrador"
 # e as abas da tela que dependem dela.
 CATALOGO: List[Dict[str, Any]] = [
     {"area": "Cadastros", "funcionalidades": [
-        {"id": "locais.ver", "nome": "Ver agências, rodoviárias e garagens", "abas": ["agencias", "rv", "gr"],
-         "rotas": [("GET", "/api/locais"), ("GET", "/api/locais/item/<local_id>")]},
+        {"id": "locais.ver", "nome": "Ver agências, rodoviárias e garagens (e a base de conhecimento delas)", "abas": ["agencias", "rv", "gr"],
+         "rotas": [("GET", "/api/locais"), ("GET", "/api/locais/item/<local_id>"), ("GET", "/api/base-conhecimento"),
+                   ("GET", "/api/base-conhecimento/qualidade")]},
+        {"id": "rede.ver", "nome": "Ver rede e IPs das unidades (dado sensível de infraestrutura)"},
         {"id": "locais.editar", "nome": "Criar e editar locais e provedores (inclui importar CSV)",
          "rotas": [("PUT", "/api/locais/<tipo>"), ("POST", "/api/locais/<tipo>/item")]},
     ]},

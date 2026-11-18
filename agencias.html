@@ -4529,7 +4529,7 @@ function createLocationManager(cfg){
       const tdWg = document.createElement('td');
       const wgTxt = rede0 && rede0.ipWireguard ? rede0.ipWireguard : '';
       tdWg.className = 'mono' + (wgTxt ? '' : ' missing');
-      tdWg.textContent = (wgTxt || 'sem IP') + ((r.redes||[]).length>1 ? ` +${r.redes.length-1}` : '');
+      tdWg.textContent = r.redesOcultas ? '🔒 restrito' : (wgTxt || 'sem IP') + ((r.redes||[]).length>1 ? ` +${r.redes.length-1}` : '');
 
       const tdActions = document.createElement('td');
       tdActions.className = 'actions';
@@ -4596,6 +4596,8 @@ function createLocationManager(cfg){
     providerContainer.dataset.entityType = ({ ag:'agencia', rv:'rodoviaria', gr:'garagem' })[cfg.prefix] || cfg.prefix;
     providerContainer.dataset.entityId = r ? String(r.id) : '';
     renderDynRows(cfg.prefix+'_redeList', r ? (r.redes||[]) : [{}], REDE_FIELDS, redeRowActions);
+    if(r && r.redesOcultas){ document.getElementById(cfg.prefix+'_redeList').innerHTML = '<div class="hint">🔒 Rede e IPs restritos ao seu perfil (permissão "Ver rede e IPs"). Ao salvar, o que está gravado é mantido.</div>'; if(el('btnAddRede')) el('btnAddRede').hidden = true; }
+    else if(el('btnAddRede')) el('btnAddRede').hidden = false;
     window.SIGP_NOTAS_LOCAIS.setRows(cfg.prefix+'_notasFiscaisList', withEmptyRow(r && r.notasFiscais, ()=>({ id: uid() })), ()=>({
       id: state.editingId || '',
       tipo: ({ ag: 'agencia', rv: 'rodoviaria', gr: 'garagem' })[cfg.prefix] || cfg.prefix,
@@ -6546,7 +6548,7 @@ function render(){
     const tdWg = document.createElement('td');
     const wgTxt = rede0 && rede0.ipWireguard ? rede0.ipWireguard : '';
     tdWg.className = 'mono' + (wgTxt ? '' : ' missing');
-    tdWg.textContent = (wgTxt || 'sem IP') + ((r.redes||[]).length>1 ? ` +${r.redes.length-1}` : '');
+    tdWg.textContent = r.redesOcultas ? '🔒 restrito' : (wgTxt || 'sem IP') + ((r.redes||[]).length>1 ? ` +${r.redes.length-1}` : '');
 
     const tdActions = document.createElement('td');
     tdActions.className = 'actions';
@@ -6619,6 +6621,9 @@ function openModal(id){
   document.getElementById('provList').dataset.entityType = 'agencia';
   document.getElementById('provList').dataset.entityId = r ? String(r.id) : '';
   renderDynRows('redeList', r ? (r.redes||[]) : [{}], REDE_FIELDS, redeRowActions);
+  const btnRede = document.getElementById('btnAddRede');
+  if(r && r.redesOcultas){ document.getElementById('redeList').innerHTML = '<div class="hint">🔒 Rede e IPs restritos ao seu perfil (permissão "Ver rede e IPs"). Ao salvar, o que está gravado é mantido.</div>'; if(btnRede) btnRede.hidden = true; }
+  else if(btnRede) btnRede.hidden = false;
   window.SIGP_NOTAS_LOCAIS.setRows('notasFiscaisList', withEmptyRow(r && r.notasFiscais, ()=>({ id: uid() })), ()=>({
     id: editingId || '',
     tipo: 'agencia',
