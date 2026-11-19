@@ -60,6 +60,13 @@ class NotaXmlTests(unittest.TestCase):
         form.update(campos)
         return self.client.post("/api/notas-recebidas", data=form, content_type="multipart/form-data")
 
+    def test_numero_com_zeros_a_esquerda_nao_e_divergencia(self):
+        xml = {"ok": True, "numero": "4572", "cnpjEmissor": "06105013000101", "valorTotal": 1880}
+        r = aplicar_prioridade_xml({"numero": "000004572", "cnpjEmissor": "06.105.013/0001-01", "valorTotal": 1880}, xml)
+        self.assertEqual((r["divergenciasXml"], r["camposParaRevisar"]), ([], []))
+        r = aplicar_prioridade_xml({"numero": "4573", "valorTotal": 1880}, xml)
+        self.assertEqual([d["campo"] for d in r["divergenciasXml"]], ["numero"])
+
     def test_pdf_e_xml_guardados_e_xml_vai_para_a_nota_do_local(self):
         r = self.receber()
         self.assertEqual(r.status_code, 201, r.json)

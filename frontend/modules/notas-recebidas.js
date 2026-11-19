@@ -926,6 +926,9 @@
       if ((result.codigosEmOutroLocal || []).length) {
         providerMessage += ` O código ${result.codigosEmOutroLocal.join(', ')} já está em outro local deste provedor e não foi guardado aqui.`;
       }
+      if (result.documentoAdicional) {
+        providerMessage += ' Esta cobrança já tinha fatura: o documento entrou como adicional (a fatura principal foi mantida).';
+      }
       localStorage.setItem(storageKey, JSON.stringify(records));
       window.dispatchEvent(new CustomEvent('sigp:locais-atualizados', { detail: { tipo: type, id: localId } }));
       await window.SIGP_API.persistLocation(storageKey);

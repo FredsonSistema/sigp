@@ -71,3 +71,11 @@ test('prioridade do XML sobre o PDF e registro das divergências', () => {
   // Sem XML válido, nada muda.
   assert.deepEqual(XF.aplicarPrioridadeXml(pdf, { ok: false }), pdf);
 });
+test('mesmo número com zeros à esquerda e CNPJ com pontuação não são divergência (NFCom Infortel: 000004572 x 4572)', () => {
+  const xml = { ok: true, numero: '4572', cnpjEmissor: '06105013000101', valorTotal: 1880 };
+  const r = XF.aplicarPrioridadeXml({ numero: '000004572', cnpjEmissor: '06.105.013/0001-01', valorTotal: 1880, camposParaRevisar: [] }, xml);
+  assert.deepEqual(r.divergenciasXml, []);
+  assert.ok(!r.camposParaRevisar.includes('divergenciasXml'));
+  const outro = XF.aplicarPrioridadeXml({ numero: '4573', valorTotal: 1880, camposParaRevisar: [] }, xml);
+  assert.deepEqual(outro.divergenciasXml.map((d) => d.campo), ['numero']);
+});

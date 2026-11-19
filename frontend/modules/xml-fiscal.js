@@ -208,6 +208,17 @@ const XmlFiscalSIGp = (() => {
   ];
   const VAZIO_PDF = (v) => v === null || v === undefined || v === '' || String(v).trim() === '999999999';
 
+  // Mesmo número com outra formatação não é divergência: "000004572" (PDF) = "4572" (XML); CNPJ com ou sem pontuação.
+  function mesmoIdentificador(campo, a, b) {
+    const limpo = (v) => String(v ?? '').trim().toUpperCase();
+    if (campo === 'cnpjEmissor') return limpo(a).replace(/\D/g, '') === limpo(b).replace(/\D/g, '');
+    if (campo === 'numero') {
+      const n = (v) => limpo(v).replace(/[^0-9A-Z]/g, '').replace(/^0+(?=.)/, '');
+      return n(a) === n(b);
+    }
+    return limpo(a) === limpo(b);
+  }
+
   // Junta a leitura do PDF (campos) com o XML: o XML vence; as diferenças relevantes ficam registradas.
   function aplicarPrioridadeXml(campos, xmlLido) {
     const saida = { ...campos };
@@ -218,7 +229,7 @@ const XmlFiscalSIGp = (() => {
       if (doXml === '' || doXml === null || doXml === undefined) continue;
       const doPdf = saida[destino];
       if (!VAZIO_PDF(doPdf) && ['numero', 'valorTotal', 'dataVencimento', 'cnpjEmissor'].includes(destino)) {
-        const iguais = destino === 'valorTotal' ? Math.abs(Number(doPdf) - Number(doXml)) < 0.01 : String(doPdf).trim() === String(doXml).trim();
+        const iguais = destino === 'valorTotal' ? Math.abs(Number(doPdf) - Number(doXml)) < 0.01 : mesmoIdentificador(destino, doPdf, doXml);
         if (!iguais) divergencias.push({ campo: destino, pdf: doPdf, xml: doXml });
       }
       saida[destino] = doXml;

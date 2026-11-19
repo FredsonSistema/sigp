@@ -142,6 +142,17 @@ def _vazio_pdf(valor: Any) -> bool:
     return valor is None or str(valor).strip() in ("", VALOR_PADRAO)
 
 
+def _mesmo_identificador(campo: str, a: Any, b: Any) -> bool:
+    """Mesmo número com outra formatação não é divergência: "000004572" (PDF) = "4572" (XML); CNPJ com ou sem pontuação."""
+    limpo = lambda v: str(v if v is not None else "").strip().upper()  # noqa: E731
+    if campo == "cnpjEmissor":
+        return re.sub(r"\D", "", limpo(a)) == re.sub(r"\D", "", limpo(b))
+    if campo == "numero":
+        n = lambda v: re.sub(r"^0+(?=.)", "", re.sub(r"[^0-9A-Z]", "", limpo(v)))  # noqa: E731
+        return n(a) == n(b)
+    return limpo(a) == limpo(b)
+
+
 def aplicar_prioridade_xml(campos: Dict[str, Any], xml: Dict[str, Any]) -> Dict[str, Any]:
     """Junta a leitura do PDF com o XML da nota: o XML vence; diferenças relevantes vão para ``divergenciasXml``."""
     saida = dict(campos)
@@ -155,7 +166,7 @@ def aplicar_prioridade_xml(campos: Dict[str, Any], xml: Dict[str, Any]) -> Dict[
         do_pdf = saida.get(campo)
         if not _vazio_pdf(do_pdf) and campo in _CAMPOS_DIVERGENCIA_XML:
             try:
-                iguais = abs(float(do_pdf) - float(do_xml)) < 0.01 if campo == "valorTotal" else str(do_pdf).strip() == str(do_xml).strip()
+                iguais = abs(float(do_pdf) - float(do_xml)) < 0.01 if campo == "valorTotal" else _mesmo_identificador(campo, do_pdf, do_xml)
             except (TypeError, ValueError):
                 iguais = False
             if not iguais:

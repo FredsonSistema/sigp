@@ -571,7 +571,7 @@
         return `<div class="dash-row" style="display:block;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
             <strong>${escapeHtml(entity?.nome || item.entidade_id)} · ${escapeHtml(providerName || 'Provedor não identificado')}</strong>
-            <span class="r-tag">${currentProvider ? 'FATURA ATUAL' : 'HISTÓRICO'} · ${escapeHtml(status)}</span>
+            <span class="r-tag">${currentProvider ? 'FATURA ATUAL' : data.documentoAdicional ? 'DOCUMENTO DA MESMA COBRANÇA' : 'HISTÓRICO'} · ${escapeHtml(status)}</span>
           </div>
           <div style="font-size:12px;color:var(--text-dim);display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:6px">
             <span>Tipo: ${escapeHtml(item.entidade_tipo)}</span><span>Arquivo: ${escapeHtml(item.nome_arquivo)}</span>

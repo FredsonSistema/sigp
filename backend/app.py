@@ -2692,6 +2692,9 @@ def associar_nota_recebida_route(item_id: str):
         integration = integrar_nota_recebida(
             item_id, entidade_tipo, entidade_id, label, operador, local, data, storage_name,
             selected_note_id=selected_candidate["notaLancadaId"] if selected_candidate else "",
+            # Divergência confirmada (número/valor diferentes) = correção: o documento novo substitui a fatura.
+            # Sem divergência = outro documento da mesma cobrança: entra como adicional, sem substituir.
+            substituir=bool(selected_candidate and selected_candidate["diferencas"]),
         )
     except ValueError as exc:
         storage_path.unlink(missing_ok=True)
@@ -2746,6 +2749,7 @@ def associar_nota_recebida_route(item_id: str):
         "gmailLabel": label,
         "notaLancada": launched_note,
         "notaLancadaCriada": integration["createdNote"],
+        "documentoAdicional": bool(integration.get("documentoAdicional")),
         "provedor": provider_update.get("provedor"),
         "provedorAcao": provider_update.get("acao"),
         "provedorAviso": provider_update.get("aviso", ""),

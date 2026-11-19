@@ -1424,6 +1424,7 @@ def integrar_nota_recebida(
     dados: Dict[str, Any],
     arquivo_storage: str,
     selected_note_id: str = "",
+    substituir: bool = False,
 ) -> Optional[Dict[str, Any]]:
     conn = get_connection()
     try:
@@ -1540,15 +1541,34 @@ def integrar_nota_recebida(
             note_payload,
         )
 
-        previous_invoice = conn.execute(
+        # Documentos da mesma cobrança (local + provedor + mês): o primeiro é a fatura principal; os seguintes (XML/
+        # NFS-e em PDF, boleto à parte, outro e-mail) entram como documentos adicionais e não substituem nada.
+        # Associar de novo o MESMO documento atualiza a linha dele. (Regras de substituição por mês: a definir.)
+        principal = conn.execute(
             """
             SELECT id, arquivo_storage, created_at FROM faturas_locais
-            WHERE nota_lancada_id = ?
-            ORDER BY updated_at DESC LIMIT 1
+            WHERE nota_lancada_id = ? AND COALESCE(json_extract(dados_json, '$.documentoAdicional'), 0) = 0
+            ORDER BY created_at, rowid LIMIT 1
             """,
             (launched_note_id,),
         ).fetchone()
-        invoice_id = str(previous_invoice["id"]) if previous_invoice else f"gmail-{launched_note_id}"
+        previous_invoice = conn.execute(
+            """
+            SELECT id, arquivo_storage, created_at FROM faturas_locais
+            WHERE nota_lancada_id = ? AND json_extract(dados_json, '$.notaRecebidaId') = ?
+            ORDER BY updated_at DESC LIMIT 1
+            """,
+            (launched_note_id, item_id),
+        ).fetchone()
+        if substituir and principal and not previous_invoice:
+            previous_invoice = principal  # correção confirmada: o documento novo ocupa o lugar da fatura principal
+        adicional = bool(principal) and not (previous_invoice and previous_invoice["id"] == principal["id"])
+        if previous_invoice:
+            invoice_id = str(previous_invoice["id"])
+        elif principal:
+            invoice_id = f"gmail-{launched_note_id}-{item_id}"
+        else:
+            invoice_id = f"gmail-{launched_note_id}"
         invoice_data = {
             **dados,
             "provedorEsperado": provider_name,
@@ -1559,6 +1579,7 @@ def integrar_nota_recebida(
             },
             "origem": "gmail",
             "notaRecebidaId": item_id,
+            **({"documentoAdicional": True} if adicional else {}),
         }
         conn.execute(
             """
@@ -1603,7 +1624,9 @@ def integrar_nota_recebida(
         return {
             "item": _serialize_nota_recebida(received_row),
             "notaLancada": serialize_row(note_row),
-            "faturaId": invoice_id,
+            # A fatura atual do provedor continua sendo a principal; o adicional só se soma aos documentos.
+            "faturaId": str(principal["id"]) if adicional else invoice_id,
+            "documentoAdicional": adicional,
             "arquivoAnterior": str(previous_invoice["arquivo_storage"]) if previous_invoice else "",
             "createdNote": existing_note is None,
         }
@@ -2190,13 +2213,16 @@ def latest_fatura_for_nota(nota_lancada_id: str) -> Optional[Dict[str, Any]]:
                     item.get("provedor_nome") or (item.get("dados") or {}).get("provedorEsperado")
                 ) == expected_provider
             ]
+            # Documento adicional da cobrança (XML/NFS-e em PDF) não vira a referência: vale a fatura principal.
+            provider_invoices = [i for i in provider_invoices if not (i.get("dados") or {}).get("documentoAdicional")] or provider_invoices
             if provider_invoices:
                 invoice = provider_invoices[0]
                 return {"id": invoice["id"], "dados": invoice["dados"], "created_at": invoice["created_at"]}
 
     conn = get_connection()
     local = conn.execute(
-        "SELECT * FROM faturas_locais WHERE nota_lancada_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1",
+        "SELECT * FROM faturas_locais WHERE nota_lancada_id = ?"
+        " ORDER BY COALESCE(json_extract(dados_json, '$.documentoAdicional'), 0), created_at DESC, rowid DESC LIMIT 1",
         (nota_lancada_id,),
     ).fetchone()
     legacy = conn.execute("SELECT * FROM faturas_provedores WHERE nota_lancada_id = ?", (nota_lancada_id,)).fetchone()
