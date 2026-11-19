@@ -33,7 +33,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
     // Cadastro: campo Periodicidade; "Sem fatura por e-mail" desliga o alerta.
     await page.evaluate(() => document.querySelector('.tab[data-view="agencias"]').click());
     await page.evaluate((id) => openModal(id), local.id);
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="rede"]'); // formulário em abas
     const sel = page.locator('#provList .dyn-row select[data-f="periodicidade"]').first();
     check(results, 'cadastro do provedor tem "Periodicidade" (padrão mensal)', await sel.count() === 1 && await sel.inputValue() === '');
     await sel.selectOption('sem_fatura');

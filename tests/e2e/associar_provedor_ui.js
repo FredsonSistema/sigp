@@ -60,7 +60,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh, abrirNota } = require('./
     // Abrir o local e salvar de novo não pode desfazer a atualização.
     await page.evaluate(() => document.querySelector('.tab[data-view="agencias"]').click());
     await page.evaluate((id) => openModal(id), local.id);
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="rede"]'); // formulário em abas
     const linha = await page.evaluate(() => {
       const r = document.querySelector('#provList .dyn-row');
       return { nome: r.querySelector('[data-f="nome"]').value, valor: r.querySelector('[data-f="valor"]').value, dia: r.querySelector('[data-f="diaVencimento"]').value, venc: r.querySelector('[data-f="dataVencimento"]').value, dot: r.querySelector('.dyn-status-dot')?.title || '' };

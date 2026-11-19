@@ -23,6 +23,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
     await page.fill('#f_cidade', 'Itabuna');
 
     async function lancarNota(numero, venc, valor, provedor) {
+      await page.click('#overlay [data-loc-tab="nf"]'); // formulário em abas
       if (!(await page.locator('#notasFiscaisList .nf-local-row').count())) {
         await page.click('[data-nf-add-for="notasFiscaisList"]');
       }
@@ -47,7 +48,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
 
     // Mesmo mês, sem número, outro nome da mesma empresa (o boleto do mesmo mês)
     await page.evaluate((localId) => openModal(localId), id);
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="nf"]'); // formulário em abas
     await page.click('[data-nf-add-for="notasFiscaisList"]');
     await lancarNota('', '2026-11-10', '120.50', 'OPIX SERVICOS DE TECNOLOGIA EIRELI');
     await page.click('#form button[type=submit]');
@@ -63,7 +64,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
 
     // Mês seguinte: nota nova
     await page.evaluate((localId) => openModal(localId), id);
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="nf"]'); // formulário em abas
     await page.click('[data-nf-add-for="notasFiscaisList"]');
     await lancarNota('', '2026-12-10', '129.90', 'OPIX INTERNET');
     await page.click('#form button[type=submit]');
@@ -74,7 +75,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
     const prov = await page.evaluate(async ({ base, localId }) => (await (await fetch(`${base}/api/locais/item/${localId}`)).json()).item.provedores, { base: API_TEST_URL, localId: id });
     check(results, 'provedor: um só, com a fatura de dezembro', prov.length === 1 && prov[0].dataVencimento === '2026-12-10' && prov[0].valor === '129.90', JSON.stringify(prov));
     await page.evaluate((localId) => openModal(localId), id);
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="nf"]'); // formulário em abas
     await shot(page, 'recorrencia-01-local');
   } catch (error) {
     check(results, 'execução do teste', false, error.message.split('\n')[0]);

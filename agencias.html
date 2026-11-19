@@ -761,6 +761,49 @@
   .dyn-remove:hover{ color:var(--danger); border-color:var(--danger); }
   .modal-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:22px; }
   .modal-actions .right{ display:flex; gap:8px; }
+  /* Formulário do local em abas (frontend/modules/abas-local.js): cabeçalho, abas e rodapé fixos; só o conteúdo rola */
+  .overlay:has(> .loc-modal){ align-items:center; padding:20px; }
+  .loc-modal{ max-width:920px; padding:0; display:flex; flex-direction:column; max-height:calc(100vh - 40px); overflow:hidden; border-radius:14px; box-shadow:0 30px 80px rgba(0,0,0,.55); }
+  .loc-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; padding:18px 24px 10px; }
+  .loc-head h2{ margin:0; font-size:17px; font-weight:600; }
+  .loc-head .sub{ margin:3px 0 0; font-size:12px; }
+  .loc-nome{ color:var(--text-dim); font-weight:400; }
+  .loc-nome:not(:empty)::before{ content:' · '; }
+  .loc-fechar{ width:32px; height:32px; flex:none; border-radius:8px; background:none; border:1px solid var(--line); color:var(--text-dim); cursor:pointer; }
+  .loc-fechar:hover{ color:var(--text); border-color:var(--text-dim); }
+  .loc-form{ display:flex; flex-direction:column; min-height:0; flex:1; }
+  .loc-tabs{ display:flex; gap:4px; padding:0 24px; border-bottom:1px solid var(--line); overflow-x:auto; flex:none; }
+  .loc-tab{ background:none; border:0; border-bottom:2px solid transparent; border-radius:0; color:var(--text-dim); height:40px; padding:0 14px; display:flex; align-items:center; gap:8px; cursor:pointer; font:inherit; white-space:nowrap; }
+  .loc-tab:hover{ color:var(--text); }
+  .loc-tab.active{ color:var(--text); border-bottom-color:var(--accent); }
+  .loc-tab:focus-visible{ outline:2px solid var(--accent); outline-offset:-2px; }
+  .loc-count{ font-size:11px; min-width:20px; text-align:center; padding:1px 6px; border-radius:999px; background:var(--panel-2); color:var(--text-dim); }
+  .loc-count:empty{ display:none; }
+  .loc-count.alerta{ background:rgba(217,154,78,.15); color:var(--warn); }
+  .loc-conteudo{ flex:1; overflow:auto; padding:20px 24px; min-height:0; }
+  .loc-painel{ display:none; } .loc-painel.active{ display:block; }
+  .loc-modal input.f, .loc-modal select.f, .loc-modal textarea.f{ min-width:0; width:100%; }
+  .loc-modal .field-grid > div > div[style*="display:flex"] input.f{ width:auto; flex:1; }
+  .loc-tab{ font-size:13.5px; transition:none; } .loc-tab:hover{ background:none; }
+  .loc-modal [id$="ndList"] > .hint{ font-size:12.5px; color:var(--text-dim); padding:14px; border:1px dashed var(--line); border-radius:8px; }
+  .loc-modal .section-label .hint{ text-transform:none; letter-spacing:0; font-weight:400; }
+  .loc-modal .field-grid{ grid-template-columns:repeat(12,minmax(0,1fr)); gap:16px; }
+  .loc-modal .field-grid > *{ grid-column:1 / -1; }
+  .loc-modal .field-grid > .c2{ grid-column:span 2; } .loc-modal .field-grid > .c3{ grid-column:span 3; }
+  .loc-modal .field-grid > .c5{ grid-column:span 5; } .loc-modal .field-grid > .c6{ grid-column:span 6; }
+  .loc-modal .section-label{ font-size:11.5px; font-weight:600; letter-spacing:.9px; text-transform:uppercase; color:var(--text-dim); padding-top:16px; }
+  .loc-painel .field-grid > .section-label:first-child{ border-top:0; padding-top:0; }
+  .loc-modal .modal-actions{ margin:0; padding:14px 24px; border-top:1px solid var(--line); background:var(--panel); flex:none; }
+  .loc-modal .modal-actions button.primary{ padding:0 24px; min-height:38px; font-weight:600; }
+  /* Rede e links: cada provedor como cartão */
+  .loc-modal .dyn-row.provider-row{ border:1px solid var(--line); border-radius:10px; padding:12px; background:var(--panel-2); gap:10px; }
+  /* Responsáveis: linhas como tabela */
+  .loc-modal [id$="respList"] .dyn-row{ padding:6px 0; border-bottom:1px solid var(--line); }
+  @media (max-width: 760px){
+    .loc-modal .field-grid > .c2, .loc-modal .field-grid > .c3, .loc-modal .field-grid > .c5, .loc-modal .field-grid > .c6{ grid-column:1 / -1; }
+    .overlay:has(> .loc-modal){ padding:8px; }
+    .loc-modal{ max-height:calc(100vh - 16px); }
+  }
 
   .toast{
     position:fixed; bottom:22px; left:50%; transform:translateX(-50%);
@@ -1287,16 +1330,27 @@
 </div>
 
 <div class="overlay" id="overlay">
-  <div class="modal">
-    <h2 id="modalTitle">Nova agência</h2>
-    <div class="sub">Os campos ficam salvos automaticamente neste navegador ao clicar em Salvar.</div>
-    <form id="form">
+  <div class="modal loc-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <header class="loc-head">
+      <div><h2><span id="modalTitle">Nova agência</span><span class="loc-nome" data-loc-nome></span></h2>
+        <div class="sub">Os campos ficam salvos neste navegador e no servidor ao clicar em Salvar.</div></div>
+      <button type="button" class="loc-fechar" data-loc-fechar aria-label="Fechar">✕</button>
+    </header>
+    <form id="form" class="loc-form">
+      <nav class="loc-tabs" role="tablist" aria-label="Partes do cadastro">
+        <button type="button" class="loc-tab active" role="tab" data-loc-tab="geral">Geral</button>
+        <button type="button" class="loc-tab" role="tab" data-loc-tab="resp">Responsáveis <span class="loc-count" data-loc-count="respList"></span></button>
+        <button type="button" class="loc-tab" role="tab" data-loc-tab="rede">Rede e links <span class="loc-count" data-loc-count="provList"></span></button>
+        <button type="button" class="loc-tab" role="tab" data-loc-tab="nf">Notas fiscais <span class="loc-count" data-loc-count="notasFiscaisList" data-loc-alerta="1"></span></button>
+      </nav>
+      <div class="loc-conteudo">
+      <section class="loc-painel active" data-loc-painel="geral" role="tabpanel">
       <div class="field-grid">
-        <div class="full">
+        <div class="c6">
           <label>Nome da agência</label>
           <input class="f" type="text" id="f_nome" required>
         </div>
-        <div>
+        <div class="c3">
           <label>Tipo</label>
           <select class="f" id="f_tipo">
             <option value="ag">Agência</option>
@@ -1304,15 +1358,15 @@
             <option value="gr">Garagem</option>
           </select>
         </div>
-        <div>
+        <div class="c3">
           <label>Cidade</label>
           <input class="f" type="text" id="f_cidade">
         </div>
-        <div>
-          <label>Vencimento da fatura (opcional)</label>
+        <div class="c2">
+          <label title="Vencimento da fatura (opcional)">Venc. fatura</label>
           <input class="f mono-in" type="date" id="f_vencimentoFatura">
         </div>
-        <div>
+        <div class="c3">
           <label>CEP</label>
           <div style="display:flex; gap:6px">
             <input class="f mono-in" type="text" id="f_cep" placeholder="00000-000" style="flex:1">
@@ -1320,11 +1374,11 @@
           </div>
           <div class="cep-status" id="f_cepStatus"></div>
         </div>
-        <div class="full">
+        <div class="c5">
           <label>Endereço</label>
           <input class="f" type="text" id="f_endereco">
         </div>
-        <div>
+        <div class="c2">
           <label>Número</label>
           <input class="f mono-in" type="text" id="f_numero" placeholder="Ex: 123 ou S/N">
         </div>
@@ -1334,10 +1388,14 @@
         <div class="full dyn-list" id="visitaList"></div>
         <div class="full"><button type="button" class="ghost small" id="btnAddVisita">+ registrar visita</button></div>
 
+        </div></section>
+      <section class="loc-painel" data-loc-painel="resp" role="tabpanel" hidden><div class="field-grid">
         <div class="section-label">Responsáveis</div>
         <div class="full dyn-list" id="respList"></div>
         <div class="full"><button type="button" class="ghost small" id="btnAddResp">+ responsável</button></div>
 
+        </div></section>
+      <section class="loc-painel" data-loc-painel="rede" role="tabpanel" hidden><div class="field-grid">
         <div class="section-label">Provedores de link</div>
         <div class="full dyn-list" id="provList"></div>
         <div class="full"><button type="button" class="ghost small" id="btnAddProv">+ provedor</button></div>
@@ -1346,6 +1404,8 @@
         <div class="full dyn-list" id="redeList"></div>
         <div class="full"><button type="button" class="ghost small" id="btnAddRede">+ rede / Mikrotik</button></div>
 
+        </div></section>
+      <section class="loc-painel" data-loc-painel="nf" role="tabpanel" hidden><div class="field-grid">
         <div class="section-label">Notas fiscais do local</div>
         <div class="full nf-local-list" id="notasFiscaisList"></div>
         <div class="full"><button type="button" class="ghost small" data-nf-add-for="notasFiscaisList">+ adicionar linha de nota</button></div>
@@ -1357,6 +1417,7 @@
           <label>Observações</label>
           <textarea class="f" id="f_obs"></textarea>
         </div>
+      </div></section>
       </div>
       <div class="modal-actions">
         <button type="button" class="ghost" id="btnDelete" style="display:none;color:var(--danger);border-color:var(--danger)">Excluir</button>
@@ -1735,7 +1796,8 @@
 <script src="frontend/modules/qualidade-cadastro.js?v=20261118b"></script>
 <script src="frontend/modules/marcadores.js?v=20261120b"></script>
 <script src="frontend/modules/situacao-conta.js?v=20261120a"></script>
-<script src="frontend/modules/notas-disponiveis.js?v=20261120a"></script>
+<script src="frontend/modules/notas-disponiveis.js?v=20261120a"></script>
+<script src="frontend/modules/abas-local.js?v=20261120b"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -4468,16 +4530,27 @@ function locationViewHTML(cfg){
 function locationModalHTML(cfg){
   return `
   <div class="overlay" id="${cfg.prefix}_overlay">
-    <div class="modal">
-      <h2 id="${cfg.prefix}_modalTitle">Nova ${cfg.nome}</h2>
-      <div class="sub">Os campos ficam salvos automaticamente neste navegador ao clicar em Salvar.</div>
-      <form id="${cfg.prefix}_form">
+    <div class="modal loc-modal" role="dialog" aria-modal="true" aria-labelledby="${cfg.prefix}_modalTitle">
+      <header class="loc-head">
+        <div><h2><span id="${cfg.prefix}_modalTitle">Nova ${cfg.nome}</span><span class="loc-nome" data-loc-nome></span></h2>
+          <div class="sub">Os campos ficam salvos neste navegador e no servidor ao clicar em Salvar.</div></div>
+        <button type="button" class="loc-fechar" data-loc-fechar aria-label="Fechar">✕</button>
+      </header>
+      <form id="${cfg.prefix}_form" class="loc-form">
+        <nav class="loc-tabs" role="tablist" aria-label="Partes do cadastro">
+        <button type="button" class="loc-tab active" role="tab" data-loc-tab="geral">Geral</button>
+        <button type="button" class="loc-tab" role="tab" data-loc-tab="resp">Responsáveis <span class="loc-count" data-loc-count="respList"></span></button>
+        <button type="button" class="loc-tab" role="tab" data-loc-tab="rede">Rede e links <span class="loc-count" data-loc-count="provList"></span></button>
+        <button type="button" class="loc-tab" role="tab" data-loc-tab="nf">Notas fiscais <span class="loc-count" data-loc-count="notasFiscaisList" data-loc-alerta="1"></span></button>
+      </nav>
+      <div class="loc-conteudo">
+      <section class="loc-painel active" data-loc-painel="geral" role="tabpanel">
         <div class="field-grid">
-          <div class="full">
+          <div class="c6">
             <label>Nome</label>
             <input class="f" type="text" id="${cfg.prefix}_f_nome" required>
           </div>
-          <div>
+          <div class="c3">
             <label>Tipo</label>
             <select class="f" id="${cfg.prefix}_f_tipo">
               <option value="ag">Agência</option>
@@ -4485,15 +4558,15 @@ function locationModalHTML(cfg){
               <option value="gr">Garagem</option>
             </select>
           </div>
-          <div>
+          <div class="c3">
             <label>Cidade</label>
             <input class="f" type="text" id="${cfg.prefix}_f_cidade">
           </div>
-          <div>
-            <label>Vencimento da fatura (opcional)</label>
+          <div class="c2">
+            <label title="Vencimento da fatura (opcional)">Venc. fatura</label>
             <input class="f mono-in" type="date" id="${cfg.prefix}_f_vencimentoFatura">
           </div>
-          <div>
+          <div class="c3">
             <label>CEP</label>
             <div style="display:flex; gap:6px">
               <input class="f mono-in" type="text" id="${cfg.prefix}_f_cep" placeholder="00000-000" style="flex:1">
@@ -4501,11 +4574,11 @@ function locationModalHTML(cfg){
             </div>
             <div class="cep-status" id="${cfg.prefix}_f_cepStatus"></div>
           </div>
-          <div class="full">
+          <div class="c5">
             <label>Endereço</label>
             <input class="f" type="text" id="${cfg.prefix}_f_endereco">
           </div>
-          <div>
+          <div class="c2">
             <label>Número</label>
             <input class="f mono-in" type="text" id="${cfg.prefix}_f_numero" placeholder="Ex: 123 ou S/N">
           </div>
@@ -4515,11 +4588,15 @@ function locationModalHTML(cfg){
           <div class="full dyn-list" id="${cfg.prefix}_visitaList"></div>
           <div class="full"><button type="button" class="ghost small" id="${cfg.prefix}_btnAddVisita">+ registrar visita</button></div>
 
-          <div class="section-label">Responsáveis</div>
+          </div></section>
+      <section class="loc-painel" data-loc-painel="resp" role="tabpanel" hidden><div class="field-grid">
+        <div class="section-label">Responsáveis</div>
           <div class="full dyn-list" id="${cfg.prefix}_respList"></div>
           <div class="full"><button type="button" class="ghost small" id="${cfg.prefix}_btnAddResp">+ responsável</button></div>
 
-          <div class="section-label">Provedores de link</div>
+          </div></section>
+      <section class="loc-painel" data-loc-painel="rede" role="tabpanel" hidden><div class="field-grid">
+        <div class="section-label">Provedores de link</div>
           <div class="full dyn-list" id="${cfg.prefix}_provList"></div>
           <div class="full"><button type="button" class="ghost small" id="${cfg.prefix}_btnAddProv">+ provedor</button></div>
 
@@ -4527,7 +4604,9 @@ function locationModalHTML(cfg){
           <div class="full dyn-list" id="${cfg.prefix}_redeList"></div>
           <div class="full"><button type="button" class="ghost small" id="${cfg.prefix}_btnAddRede">+ rede / Mikrotik</button></div>
 
-          <div class="section-label">Notas fiscais do local</div>
+          </div></section>
+      <section class="loc-painel" data-loc-painel="nf" role="tabpanel" hidden><div class="field-grid">
+        <div class="section-label">Notas fiscais do local</div>
           <div class="full nf-local-list" id="${cfg.prefix}_notasFiscaisList"></div>
           <div class="full"><button type="button" class="ghost small" data-nf-add-for="${cfg.prefix}_notasFiscaisList">+ adicionar linha de nota</button></div>
 
@@ -4538,6 +4617,7 @@ function locationModalHTML(cfg){
             <label>Observações</label>
             <textarea class="f" id="${cfg.prefix}_f_obs"></textarea>
           </div>
+        </div></section>
         </div>
         <div class="modal-actions">
           <button type="button" class="ghost" id="${cfg.prefix}_btnDelete" style="display:none;color:var(--danger);border-color:var(--danger)">Excluir</button>
@@ -4697,6 +4777,7 @@ function createLocationManager(cfg){
     cepMap.reset();
     window.SIGP_MARCADORES.montarEditor(cfg.prefix+'_marcList', r ? r.marcadores : [], r ? r.id : '');
     window.SIGP_NOTAS_DISPONIVEIS.render(cfg.prefix+'_ndList', cfg.prefix, r ? r.id : '');
+    window.SIGP_ABAS_LOCAL.abrir(el('overlay'));
 
     ['nome','cidade','endereco','numero','cep','vencimentoFatura','obs'].forEach(f=>{
       el('f_'+f).value = r ? (r[f]||'') : '';
@@ -6748,6 +6829,7 @@ function openModal(id){
   agenciaCepMap.reset();
   window.SIGP_MARCADORES.montarEditor('marcList', r ? r.marcadores : [], r ? r.id : '');
   window.SIGP_NOTAS_DISPONIVEIS.render('ndList', 'ag', r ? r.id : '');
+  window.SIGP_ABAS_LOCAL.abrir(document.getElementById('overlay'));
 
   const simpleFields = ['nome','cidade','endereco','numero','cep','vencimentoFatura','obs'];
   simpleFields.forEach(f=>{

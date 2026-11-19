@@ -78,7 +78,7 @@ const ARQUIVO = path.join(__dirname, '..', '..', 'docs', 'XML para testes', '01-
     check(results, 'o local não ganhou linha de "nota lançada"', linhas === 0, String(linhas));
     await page.evaluate(() => document.querySelector('.tab[data-view="agencias"]').click());
     await page.evaluate((id) => openModal(id), local.id);
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="nf"]'); // formulário em abas
     const cartao = page.locator('#ndList .nd-card').first();
     await cartao.waitFor({ timeout: 10000 });
     const textoCartao = await cartao.innerText();

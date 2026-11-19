@@ -29,7 +29,7 @@ const WEBHOOK = 'http://127.0.0.1:5678/webhook/sigp-faturas-pdf';
 
     // ---- Cenário 1: LOCAL NOVO + PROVEDOR SEM NOME ----
     await page.evaluate(() => document.getElementById('btnNew').click());
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="rede"]'); // formulário em abas
     // O local novo já abre com uma linha de provedor vazia (sem precisar clicar em "+ provedor").
     check(results, 'cenário 1: local novo já abre com 1 linha de provedor vazia', (await page.locator('#provList .dyn-row').count()) === 1);
     const anexar = page.locator('#provList .dyn-row-actions button[title^="Anexar"]');

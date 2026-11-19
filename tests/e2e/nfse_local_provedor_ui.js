@@ -20,7 +20,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
     await page.waitForFunction(() => !document.getElementById('overlay').classList.contains('open'), null, { timeout: 15000 });
     const id = await page.evaluate((n) => JSON.parse(localStorage.getItem('ti_agencias_v1')).find((l) => l.nome === n).id, nome);
     await page.evaluate((localId) => openModal(localId), id);
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="nf"]'); // formulário em abas
 
     // NFS-e na linha de nota do local (modal "Importar NF · Nota lançada"), preenchida à mão
     if (!(await page.locator('#notasFiscaisList button', { hasText: 'Nota lançada' }).count())) {
@@ -48,7 +48,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
     check(results, 'navegador: mesmo provedor no cadastro local', nav.some((x) => /OPIX/i.test(x.nome || '') && x.dataVencimento === venc), JSON.stringify(nav));
 
     await page.evaluate((localId) => openModal(localId), id);
-    await page.waitForSelector('#overlay.open');
+    await page.waitForSelector('#overlay.open'); await page.click('#overlay [data-loc-tab="nf"]'); // formulário em abas
     const linha = await page.evaluate(() => [...document.querySelectorAll('#provList .dyn-row')].map((r) => ({
       nome: r.querySelector('[data-f="nome"]').value, valor: r.querySelector('[data-f="valor"]').value, venc: r.querySelector('[data-f="dataVencimento"]').value,
     })));
