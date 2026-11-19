@@ -193,6 +193,8 @@ def qualidade(locais: List[Dict[str, Any]]) -> Dict[str, Any]:
         if len({chave(n) for n in distintos}) > 1:
             itens.insert(0, {"problema": "Nome de provedor com variantes", "unidade": "—",
                              "detalhe": f"{', '.join(chave(n) for n in distintos)} → unificar como {nome}"})
+    from backend import marcadores  # aqui dentro: marcadores importa este módulo
+    itens.extend(marcadores.problemas(locais))
     resumo: Dict[str, int] = {}
     for i in itens:
         resumo[i["problema"]] = resumo.get(i["problema"], 0) + 1

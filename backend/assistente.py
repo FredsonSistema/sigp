@@ -24,7 +24,7 @@ from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from backend import base_conhecimento, database
+from backend import base_conhecimento, database, marcadores
 
 PASTA_CONHECIMENTO = Path(__file__).resolve().parent / "conhecimento_assistente"
 FERRAMENTAS = ("contar_contas", "listar_contas", "buscar_local", "listar_locais", "gerar_relatorio", "resumo_geral",
@@ -239,6 +239,51 @@ def _significados_de_local(pergunta: str) -> str:
                     and normalizar(v) not in ("endereco", "valor", "contato", "provedor", "relatorio"))
 
 
+def _marcador_citado(pergunta: str, locais: List[Dict[str, Any]], provedor: str = "") -> str:
+    """Marcador ou grupo citado pelo nome ou apelido ("Regional Itabuna", "Rota" = RT, grupo "He-Net").
+    Nome que também é cidade de um local ou o provedor citado fica como cidade/provedor (filtro do cadastro)."""
+    m = marcadores.citado_na_pergunta(pergunta)
+    if not m:
+        return ""
+    k = base_conhecimento.chave(m["nome"])
+    if m["tipo"] == "marcador" and (k in {base_conhecimento.chave(l.get("cidade")) for l in locais}
+                                    or (provedor and k == base_conhecimento.chave(provedor))):
+        return ""
+    return m["nome"]
+
+
+def _com_marcador(params: Dict[str, Any], marcador: str) -> Dict[str, Any]:
+    if marcador:
+        params["marcador"] = marcador
+    return params
+
+
+def _item_marcador(p: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """Marcador ou grupo do parâmetro (nome exato ou apelido; vindo da regra, da continuação ou da IA)."""
+    nome = str(p.get("marcador") or "").strip()
+    if not nome:
+        return None
+    k = base_conhecimento.chave(nome)
+    for m in marcadores.catalogo():
+        if k in {base_conhecimento.chave(x) for x in [m["nome"], *m["apelidos"]]}:
+            return m
+    return marcadores.citado_na_pergunta(nome)
+
+
+def _rotulo_marcador(m: Optional[Dict[str, Any]]) -> str:
+    if not m:
+        return ""
+    if m["tipo"] == "grupo":
+        return f"do grupo {m['nome']}"
+    return f"com o marcador {m['nome']}" + (f" ({m['descricao']})" if m.get("descricao") else "")
+
+
+def _ids_do_marcador(m: Optional[Dict[str, Any]], ctx: "Contexto") -> Optional[set]:
+    if not m:
+        return None
+    return {str(l["id"]) for l in ctx.locais() if marcadores.pertence(l, m)}
+
+
 def entender_por_regras(pergunta: str, locais: List[Dict[str, Any]]) -> Optional[Tuple[str, Dict[str, Any]]]:
     texto = _com_termos(pergunta)
     busca_local = f"{pergunta} {_significados_de_local(pergunta)}"
@@ -254,21 +299,26 @@ def entender_por_regras(pergunta: str, locais: List[Dict[str, Any]]) -> Optional
     if not provedor:
         provedor = _provedor_citado(pergunta)
     redundancia = "sim" if "redundancia" in marcas else ""
+    marcador = _marcador_citado(pergunta, locais, provedor)
     if "relatorio" in marcas:
         base = "qualidade" if "qualidade" in marcas else ("contas" if situacao else "locais")
-        return "gerar_relatorio", {"base": base, "situacao": situacao, "tipo": tipo, "provedor": provedor, "redundancia": redundancia}
+        return "gerar_relatorio", _com_marcador({"base": base, "situacao": situacao, "tipo": tipo, "provedor": provedor,
+                                                 "redundancia": redundancia}, marcador)
     if "qualidade" in marcas:
         return "qualidade_cadastro", {}
     if "resumo" in marcas or re.search(r"\bquant[oa]s (provedores|operadoras|links|contas de internet|unidades|pontos)\b", texto):
         return "resumo_geral", {}
     if redundancia and not situacao:
-        return "listar_locais", {"tipo": tipo, "provedor": provedor, "redundancia": "sim"}
+        return "listar_locais", _com_marcador({"tipo": tipo, "provedor": provedor, "redundancia": "sim"}, marcador)
     if re.search(r"\b(terceirizad\w*|tercerizad\w*|proprietario paga|quem paga|empresa paga|paga a conexao|desconta do agente|"
                  r"nao confirmado|observac\w*|cobra do agente)\b", texto):
         return "buscar_texto", {"texto": pergunta}
     if situacao:
         contar = re.search(r"\b(quant[ao]s|numero de|total de|quanto)\b", texto)
-        return ("contar_contas" if contar else "listar_contas"), {"situacao": situacao, "tipo": tipo, "provedor": provedor}
+        return ("contar_contas" if contar else "listar_contas"), _com_marcador({"situacao": situacao, "tipo": tipo, "provedor": provedor}, marcador)
+    if marcador and not assunto:
+        # "locais da Regional Itabuna", "quantas agências da Rota?", "quais locais do grupo He-Net"
+        return "listar_locais", _com_marcador({"tipo": tipo, "provedor": provedor, "contar": bool(re.search(r"\bquant[ao]s\b", texto))}, marcador)
     citados = achar_locais(busca_local, locais)
     if assunto or (citados and re.search(r"\b(me fala|fale|informacoes|dados|detalhes|sobre)\b", texto)):
         if citados:
@@ -294,7 +344,7 @@ ESQUEMA_LLM = {"type": "object", "properties": {
         "local": {"type": "string"}, "cidade": {"type": "string"}, "provedor": {"type": "string"},
         "assunto": {"type": "string", "enum": ["endereco", "valor", "contato", "provedor", "rede", ""]},
         "base": {"type": "string", "enum": ["locais", "contas", "qualidade", ""]},
-        "redundancia": {"type": "string", "enum": ["sim", ""]}, "texto": {"type": "string"}}},
+        "redundancia": {"type": "string", "enum": ["sim", ""]}, "texto": {"type": "string"}, "marcador": {"type": "string"}}},
     "pergunta_de_volta": {"type": "string"}}, "required": ["ferramenta", "parametros"]}
 
 
@@ -327,7 +377,7 @@ def entender_por_llm(pergunta: str) -> Tuple[Optional[Tuple[str, Dict[str, Any]]
     ferramenta = conteudo.get("ferramenta")
     if ferramenta not in FERRAMENTAS:
         return None, str(conteudo.get("pergunta_de_volta") or "")[:200]
-    permitidos = {"situacao", "tipo", "local", "cidade", "provedor", "assunto", "base", "redundancia", "texto"}
+    permitidos = {"situacao", "tipo", "local", "cidade", "provedor", "assunto", "base", "redundancia", "texto", "marcador"}
     params = {k: str(v)[:80] for k, v in (conteudo.get("parametros") or {}).items() if k in permitidos and isinstance(v, str)}
     if params.get("situacao") and params["situacao"] not in SITUACOES:
         params["situacao"] = ""
@@ -377,17 +427,27 @@ def _linha_conta(a: Dict[str, Any]) -> Dict[str, str]:
             "valor": _brl(a.get("valor")) or "não informado"}
 
 
-def contar_contas(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
+def _contas(p: Dict[str, Any], ctx: "Contexto") -> Tuple[List[Dict[str, Any]], Optional[Dict[str, Any]]]:
     itens = _filtrar_contas(ctx.alertas(), p)
+    m = _item_marcador(p)
+    ids = _ids_do_marcador(m, ctx)
+    if ids is not None:
+        itens = [a for a in itens if str(a.get("entidadeId")) in ids]
+    return itens, m
+
+
+def contar_contas(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
+    itens, m = _contas(p, ctx)
+    rot = f" {_rotulo_marcador(m)}" if m else ""
     situacao = p.get("situacao") or "todas"
     locais = sorted({a.get("local", "") for a in itens})
     tipo = p.get("tipo") or ""
     alvo = TIPOS.get(tipo, ("local", "locais"))
     hoje = _data_br(ctx.hoje.isoformat())
     if not itens:
-        texto = f"Hoje, {hoje}, nenhuma {alvo[0] if tipo else 'localidade'} está com {NOME_SITUACAO[situacao][0]}."
+        texto = f"Hoje, {hoje}, nenhuma {alvo[0] if tipo else 'localidade'}{rot} está com {NOME_SITUACAO[situacao][0]}."
     else:
-        texto = (f"Hoje, {hoje}, {_plural(len(locais), alvo)} {'está' if len(locais) == 1 else 'estão'} com "
+        texto = (f"Hoje, {hoje}, {_plural(len(locais), alvo)}{rot} {'está' if len(locais) == 1 else 'estão'} com "
                  f"{NOME_SITUACAO[situacao][0 if len(itens) == 1 else 1]} ({_plural(len(itens), ('conta', 'contas'))} no total).")
         # Lista curta no texto; a completa vai para a tabela (painel de artefatos ou relatório).
         if len(locais) <= 5:
@@ -395,23 +455,24 @@ def contar_contas(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
         else:
             texto += f" Entre eles: {', '.join(locais[:3])} e mais {len(locais) - 3}. A lista completa está na tabela."
     return {"texto": texto, "linhas": [_linha_conta(a) for a in itens], "total": len(itens), "locais": len(locais), "colunas": "contas",
-            "titulo": f"{NOME_SITUACAO[situacao][1].capitalize()}" + (f" · {TIPOS[tipo][1]}" if tipo else "")}
+            "titulo": f"{NOME_SITUACAO[situacao][1].capitalize()}" + (f" · {TIPOS[tipo][1]}" if tipo else "") + (f" · {m['nome']}" if m else "")}
 
 
 def listar_contas(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
-    itens = _filtrar_contas(ctx.alertas(), p)
+    itens, m = _contas(p, ctx)
+    rot = f" {_rotulo_marcador(m)}" if m else ""
     situacao = p.get("situacao") or "todas"
     linhas = [_linha_conta(a) for a in itens]
     if not itens:
-        return {"texto": f"Não há {NOME_SITUACAO[situacao][1]} agora.", "linhas": [], "total": 0, "colunas": "contas"}
-    texto = f"Encontrei {_plural(len(itens), NOME_SITUACAO[situacao])}:"
+        return {"texto": f"Não há {NOME_SITUACAO[situacao][1]}{rot} agora.", "linhas": [], "total": 0, "colunas": "contas"}
+    texto = f"Encontrei {_plural(len(itens), NOME_SITUACAO[situacao])}{rot}:"
     for l in linhas[:MAX_LINHAS_RESPOSTA]:
         texto += f"\n- {l['local']} · {l['provedor'] or 'provedor não informado'}" + (f" · venc. {l['vencimento']}" if l["vencimento"] else "") \
                  + (f" · {l['valor']}" if l["valor"] != "não informado" else "")
     if len(linhas) > MAX_LINHAS_RESPOSTA:
         texto += f"\n… e mais {len(linhas) - MAX_LINHAS_RESPOSTA}. A lista completa está na tabela; peça \"gere um relatório\" para PDF e Excel."
     return {"texto": texto, "linhas": linhas, "total": len(linhas), "colunas": "contas",
-            "titulo": NOME_SITUACAO[situacao][1].capitalize() + (f" · {TIPOS[p['tipo']][1]}" if p.get("tipo") else "")}
+            "titulo": NOME_SITUACAO[situacao][1].capitalize() + (f" · {TIPOS[p['tipo']][1]}" if p.get("tipo") else "") + (f" · {m['nome']}" if m else "")}
 
 
 def _rotulo_tipo(local: Dict[str, Any]) -> str:
@@ -511,14 +572,18 @@ def _filtrar_locais(p: Dict[str, Any], ctx: "Contexto") -> List[Dict[str, Any]]:
                                            for n, _, _ in _provedores_validos(l))]
     if p.get("redundancia") == "sim":
         locais = [l for l in locais if len(_provedores_validos(l)) >= 2]
+    m = _item_marcador(p)
+    if m:
+        locais = [l for l in locais if marcadores.pertence(l, m)]
     return sorted(locais, key=lambda l: (l.get("tipo", ""), normalizar(l.get("nome"))))
 
 
 def listar_locais(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
     locais = _filtrar_locais(p, ctx)
     alvo = TIPOS.get(p.get("tipo") or "", ("local", "locais"))
+    m = _item_marcador(p)
     filtros = " ".join(x for x in (f"em {p['cidade']}" if p.get("cidade") else "", f"com {p['provedor']}" if p.get("provedor") else "",
-                                   "com link reserva (2 ou mais links)" if p.get("redundancia") == "sim" else "") if x)
+                                   "com link reserva (2 ou mais links)" if p.get("redundancia") == "sim" else "", _rotulo_marcador(m)) if x)
     if not locais:
         return {"texto": f"Não encontrei {alvo[1]} {filtros}.".replace("  ", " "), "linhas": [], "total": 0}
     texto = f"{'Temos' if p.get('contar') else 'Encontrei'} {_plural(len(locais), alvo)} {filtros}".strip() + ":"
@@ -529,7 +594,8 @@ def listar_locais(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
     if len(locais) > MAX_LINHAS_RESPOSTA:
         texto += f"\n… e mais {len(locais) - MAX_LINHAS_RESPOSTA}. Peça \"gere um relatório\" para a lista completa em PDF e Excel."
     return {"texto": texto, "linhas": [_linha_local(l) for l in locais], "total": len(locais), "colunas": "locais",
-            "titulo": (TIPOS[p["tipo"]][1].capitalize() if p.get("tipo") else "Locais") + (f" em {p['cidade']}" if p.get("cidade") else "")}
+            "titulo": (TIPOS[p["tipo"]][1].capitalize() if p.get("tipo") else "Locais") + (f" em {p['cidade']}" if p.get("cidade") else "")
+            + (f" · {m['nome']}" if m else "")}
 
 
 def resumo_geral(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
@@ -632,6 +698,8 @@ def gerar_relatorio(p: Dict[str, Any], ctx: "Contexto") -> Dict[str, Any]:
         titulo += f" em {p['cidade']}"
     if p.get("provedor"):
         titulo += f" com {p['provedor']}"
+    if base != "qualidade" and _item_marcador(p):
+        titulo += f" · {_item_marcador(p)['nome']}"
     rel_id = f"rel-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(3)}"
     pasta = ctx.pasta_relatorios
     pasta.mkdir(parents=True, exist_ok=True)
@@ -754,6 +822,10 @@ def continuar(pergunta: str, anterior: Optional[Dict[str, Any]], locais: List[Di
         novo["situacao"] = situacao
     if assunto:
         novo["assunto"] = assunto
+    marcador = _marcador_citado(pergunta, locais)
+    if marcador and anterior["ferramenta"] in ("listar_locais", "listar_contas", "contar_contas", "gerar_relatorio"):
+        novo["marcador"] = marcador
+        return anterior["ferramenta"], novo
     citados = achar_locais(pergunta, locais)
     if citados:
         local = citados[0][1]

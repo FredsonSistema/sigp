@@ -3,7 +3,7 @@
   "descricao": "Agências, rodoviárias e garagens: endereço, cidade, responsáveis (nome, telefone, e-mail), provedores de internet e o valor e o vencimento da conta de cada local.",
   "ferramentas": {
     "buscar_local": "Mostra um local pelo nome ou cidade: endereço, contatos, provedores, valor e vencimento da conta. Parâmetros: local (nome ou cidade), assunto (endereco, valor, contato, provedor ou vazio para tudo).",
-    "listar_locais": "Lista os locais. Parâmetros: tipo (agencia, rodoviaria, garagem ou vazio), cidade, provedor."
+    "listar_locais": "Lista os locais. Parâmetros: tipo (agencia, rodoviaria, garagem ou vazio), cidade, provedor, marcador (marcador ou grupo, ex.: Regional Itabuna)."
   },
   "termos": {
     "agências": "agencia",

@@ -357,6 +357,9 @@ def init_db() -> None:
     # Assistente da IA local (backend/assistente.py): perguntas, avaliações e o que ele aprendeu.
     from backend import assistente
     assistente.garantir_tabelas()
+    # Marcadores e grupos de localidades (backend/marcadores.py): catálogo e migração dos marcadores antigos.
+    from backend import marcadores
+    marcadores.garantir_tabelas()
 
 
 def _now() -> str:

@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import acesso, assistente, avisos_provedor, base_conhecimento, correcoes_cadastro, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco, sessoes
+from backend import acesso, assistente, avisos_provedor, base_conhecimento, correcoes_cadastro, config_alertas, fatura_esperada, identificadores, marcadores, metricas_llm, saude_banco, sessoes
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -3341,6 +3341,52 @@ def base_conhecimento_qualidade_route():
     return jsonify({"ok": True, **base_conhecimento.qualidade(list_locais())})
 
 
+@app.get("/api/marcadores")
+def marcadores_route():
+    """Catálogo de marcadores e grupos, com quantos e quais locais (ativos e válidos) estão em cada um."""
+    return jsonify({"ok": True, "items": marcadores.com_contagem(list_locais()), "camposRegra": sorted(marcadores.CAMPOS_REGRA)})
+
+
+def _salvar_marcador(marcador_id: str = ""):
+    try:
+        item = marcadores.salvar(request.get_json(silent=True) or {}, marcador_id or None)
+    except LookupError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 404
+    except ValueError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 400
+    log_event("marcador_salvo", {"id": item["id"], "nome": item["nome"], "tipo": item["tipo"], "quem": _autor("")})
+    return jsonify({"ok": True, "item": item}), (200 if marcador_id else 201)
+
+
+@app.post("/api/marcadores")
+def criar_marcador_route():
+    return _salvar_marcador()
+
+
+@app.put("/api/marcadores/<marcador_id>")
+def editar_marcador_route(marcador_id: str):
+    return _salvar_marcador(marcador_id)
+
+
+@app.delete("/api/marcadores/<marcador_id>")
+def excluir_marcador_route(marcador_id: str):
+    try:
+        feito = marcadores.excluir(marcador_id)
+    except LookupError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 404
+    log_event("marcador_excluido", {"id": marcador_id, **feito, "quem": _autor("")})
+    return jsonify({"ok": True, **feito})
+
+
+@app.post("/api/marcadores/previa")
+def previa_grupo_route():
+    """Quais locais entrariam num grupo com esta regra (antes de salvar)."""
+    try:
+        return jsonify({"ok": True, **marcadores.previa(list_locais(), (request.get_json(silent=True) or {}).get("regra"))})
+    except ValueError as erro:
+        return jsonify({"ok": False, "error": str(erro)}), 400
+
+
 @app.get("/api/locais/item/<local_id>")
 def get_local_route(local_id: str):
     local = get_local(local_id)
@@ -3361,6 +3407,8 @@ def put_locais(tipo: str):
         return jsonify({"ok": False, "error": "Envie {'items': [...]}."}), 400
     # Nome antigo de provedor já unificado (Qualidade do cadastro) vira o nome novo: cópia antiga da tela não desfaz.
     items = correcoes_cadastro.aplicar_mapa_nomes(items)
+    # Marcadores com a grafia do catálogo (aceita apelido); renomeado/excluído não volta; novo entra no catálogo.
+    items = marcadores.normalizar_itens(items)
     # Unidade inválida já desativada (cabeçalho de planilha) não volta por uma cópia antiga da tela.
     inativas = {str(l["id"]) for l in list_locais(tipo, True) if not l.get("ativo")}
     items = [i for i in items if not (isinstance(i, dict) and str(i.get("id")) in inativas and not base_conhecimento.unidade_valida(i))]

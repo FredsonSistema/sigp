@@ -25,12 +25,13 @@ CATALOGO: List[Dict[str, Any]] = [
     {"area": "Cadastros", "funcionalidades": [
         {"id": "locais.ver", "nome": "Ver agências, rodoviárias e garagens (e a base de conhecimento delas)", "abas": ["agencias", "rv", "gr"],
          "rotas": [("GET", "/api/locais"), ("GET", "/api/locais/item/<local_id>"), ("GET", "/api/base-conhecimento"),
-                   ("GET", "/api/base-conhecimento/qualidade")]},
+                   ("GET", "/api/base-conhecimento/qualidade"), ("GET", "/api/marcadores")]},
         {"id": "rede.ver", "nome": "Ver rede e IPs das unidades (dado sensível de infraestrutura)"},
         {"id": "locais.editar", "nome": "Criar e editar locais e provedores (inclui importar CSV)",
          "rotas": [("PUT", "/api/locais/<tipo>"), ("POST", "/api/locais/<tipo>/item"), ("GET", "/api/cadastro/correcoes"),
                    ("POST", "/api/cadastro/correcoes/unificar"), ("POST", "/api/cadastro/correcoes/vencimento"),
-                   ("POST", "/api/cadastro/correcoes/desativar")]},
+                   ("POST", "/api/cadastro/correcoes/desativar"), ("POST", "/api/marcadores"), ("PUT", "/api/marcadores/<marcador_id>"),
+                   ("DELETE", "/api/marcadores/<marcador_id>"), ("POST", "/api/marcadores/previa")]},
     ]},
     {"area": "Notas recebidas (Gmail)", "funcionalidades": [
         {"id": "notas_recebidas.ver", "nome": "Ver a caixa de notas recebidas, PDFs e XMLs", "abas": ["notas-recebidas"],

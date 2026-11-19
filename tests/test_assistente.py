@@ -62,6 +62,34 @@ class AssistenteTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.json)
         return r.json
 
+    def test_filtra_por_marcador_apelido_e_grupo(self):
+        locais = self.client.get("/api/locais", headers=ADMIN).json["items"]
+        por_tipo = {}
+        for l in locais:
+            marc = {"a1": ["Regional Itabuna", "rota"], "r1": ["Cidade Sol"]}.get(l["id"], [])
+            por_tipo.setdefault(l["tipo"], []).append({**l, "marcadores": marc})
+        for tipo, itens in por_tipo.items():
+            self.client.put(f"/api/locais/{tipo}", headers=ADMIN, json={"items": itens})
+        self.client.post("/api/marcadores", headers=ADMIN, json={"nome": "Com reserva", "tipo": "grupo",
+                                                                 "regra": {"condicoes": [{"campo": "reserva", "valores": ["sim"]}]}})
+        r = self.perguntar("contas vencidas da Regional Itabuna")
+        self.assertEqual((r["ferramenta"], r["parametros"].get("marcador")), ("listar_contas", "Regional Itabuna"))
+        self.assertIn("ITACAR", r["resposta"])
+        self.assertNotIn("JEQUI", r["resposta"])
+        self.assertNotIn("ITABUNA CENTRO", r["resposta"])
+        r = self.perguntar("quais locais são da Rota?")
+        self.assertEqual((r["ferramenta"], r["parametros"].get("marcador"), r["total"]), ("listar_locais", "RT", 1))
+        self.assertIn("com o marcador RT (Rota Transportes Rodoviários)", r["resposta"])
+        conversa = r["conversaId"]
+        r2 = self.client.post("/api/assistente/perguntar", headers=ADMIN, json={"pergunta": "e da Cidade Sol?", "conversaId": conversa}).json
+        self.assertEqual((r2["ferramenta"], r2["parametros"].get("marcador"), r2["total"]), ("listar_locais", "CS", 1))
+        r = self.perguntar("gere um relatório do grupo Com reserva")
+        self.assertEqual((r["ferramenta"], r["parametros"].get("marcador"), r["total"]), ("gerar_relatorio", "Com reserva", 1))
+        self.assertIn("Com reserva", r["artefato"]["titulo"])
+        # Cidade continua cidade: "agências em Itabuna" não vira marcador.
+        r = self.perguntar("quais agências temos em Itabuna?")
+        self.assertNotIn("marcador", r["parametros"])
+
     def test_quantas_agencias_em_atraso(self):
         r = self.perguntar("Quantas agências estão em atraso?")
         self.assertEqual((r["ferramenta"], r["parametros"]["situacao"], r["parametros"]["tipo"], r["origem"]), ("contar_contas", "vencida", "agencia", "regra"))
@@ -133,7 +161,7 @@ class AssistenteTests(unittest.TestCase):
         parecidos = assistente.trechos_parecidos("endereço da matriz por favor")
         self.assertEqual((parecidos[0]["fonte"], parecidos[0]["ferramenta"]), ("aprendido", "buscar_local"))
         conhecimento = self.client.get("/api/assistente/conhecimento", headers=ADMIN).json
-        self.assertEqual({t["arquivo"] for t in conhecimento["temas"]}, {"base.json", "contas.json", "locais.json", "provedores.json", "relatorios.json"})
+        self.assertEqual({t["arquivo"] for t in conhecimento["temas"]}, {"base.json", "contas.json", "locais.json", "marcadores.json", "provedores.json", "relatorios.json"})
         self.assertEqual(len(conhecimento["aprendido"]["termos"]), 1)
 
     def test_llm_so_escolhe_a_ferramenta_e_pergunta_fora_do_tema(self):

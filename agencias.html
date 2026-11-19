@@ -158,6 +158,20 @@
 .qc-chips{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 6px} .qc-chip{border:1px solid var(--line); border-radius:12px; padding:2px 10px; font-size:12.5px}
 .qc-grupo{border:1px solid var(--line); border-radius:8px; margin:8px 0; padding:6px 10px} .qc-grupo ul{margin:4px 0 0 18px; padding:0; max-height:180px; overflow:auto}
 .qc-dias{max-height:420px; overflow:auto} .qc-dia{width:70px}
+/* ---- marcadores e grupos ---- */
+.mk-pills{display:flex; flex-wrap:wrap; gap:4px; margin:3px 0} .mk-na-lista{margin-top:4px}
+.mk-pill{display:inline-flex; align-items:center; gap:3px; border-radius:11px; padding:1px 9px; font-size:11.5px; line-height:18px; white-space:nowrap}
+.mk-x{background:none; border:0; color:inherit; cursor:pointer; padding:0 0 0 3px; font-size:13px; line-height:1}
+.mk-add{display:flex; gap:6px; align-items:center; margin:4px 0} .mk-add input{flex:1; min-width:0}
+.mk-filtro{background:var(--panel-2); border:1px solid var(--line); color:var(--text); padding:7px 8px; border-radius:5px; font-size:13px; max-width:240px}
+.mk-cards{display:flex; flex-direction:column; gap:6px; margin:4px 0 10px} .mk-card{border:1px solid var(--line); border-radius:8px; padding:7px 10px}
+.mk-card-topo{display:flex; align-items:center; gap:8px; flex-wrap:wrap} .mk-card-acoes{margin-left:auto; display:flex; gap:6px}
+.mk-membros{margin:6px 0 0 18px; padding:0; max-height:200px; overflow:auto; font-size:12.5px}
+.mk-form{border:1px solid var(--accent-dim); border-radius:8px; padding:10px 12px; margin:8px 0; display:flex; flex-direction:column; gap:8px}
+.mk-form h4{margin:0} .mk-form label{display:flex; flex-direction:column; gap:3px} .mk-form-linha{display:flex; gap:10px; align-items:flex-end} .mk-form-linha label:first-child{flex:1}
+.mk-cond{display:flex; gap:6px; align-items:center; margin:4px 0} .mk-cond > select{max-width:210px} .mk-cond-valor{flex:1; display:flex; gap:8px; align-items:center; flex-wrap:wrap} .mk-cond-valor input[type=text]{flex:1; min-width:0}
+.mk-check{display:inline-flex !important; flex-direction:row !important; align-items:center; gap:4px} .mk-previa{font-size:13px}
+.mk-card > .hint, .mk-editor > .hint, .mk-pills > .hint, .mk-previa .hint, .mk-form .task-add-row .hint, #cfgMarcadores > .hint{font-size:12px; color:var(--text-dim); letter-spacing:normal; margin-top:3px}
 .cfg-alertas-lista{list-style:none; margin:4px 0 8px; padding:0; display:flex; flex-wrap:wrap; gap:6px}
 .cfg-alertas-lista li{display:flex; align-items:center; gap:4px; border:1px solid var(--border, #c6d3dc); border-radius:14px; padding:2px 4px 2px 10px; font-size:13px}
 /* ---- login gate ---- */
@@ -934,6 +948,7 @@
     </div>
     <div class="toolbar" id="toolbarAgencias">
       <input type="text" id="search" placeholder="Buscar por nome, cidade ou provedor…">
+      <select id="filtroMarcador" class="mk-filtro" title="Filtrar por marcador ou grupo" aria-label="Filtrar por marcador ou grupo"><option value="">Todos os marcadores e grupos</option></select>
       <button class="ghost small" id="btnExport">Exportar backup</button>
       <button class="ghost small" id="btnExportCSV">Exportar CSV</button>
       <button class="ghost small" id="btnImportCSV" title="Importar agências de um CSV (mesmo formato do Exportar CSV), com prévia antes de gravar">Importar CSV</button>
@@ -1245,6 +1260,8 @@
           <label>Número</label>
           <input class="f mono-in" type="text" id="f_numero" placeholder="Ex: 123 ou S/N">
         </div>
+        <div class="section-label">Marcadores <span class="hint">etiquetas do local (regional, empresa, terceirizado…) · grupos aparecem sozinhos</span></div>
+        <div class="full mk-editor" id="marcList"></div>
         <div class="section-label">Histórico de visitas <span class="hint">a mais recente vira a "última visita"</span></div>
         <div class="full dyn-list" id="visitaList"></div>
         <div class="full"><button type="button" class="ghost small" id="btnAddVisita">+ registrar visita</button></div>
@@ -1640,11 +1657,12 @@
 <script src="sigp-env.js"></script>
 <script src="frontend/modules/config-integracao.js?v=20261115"></script>
 <script src="frontend/modules/login.js?v=20261117b"></script>
-<script src="frontend/modules/api-client.js?v=20261118-perfis"></script>
+<script src="frontend/modules/api-client.js?v=20261120-marcadores"></script>
 <script src="frontend/modules/config-integracao-tela.js?v=20261115"></script>
 <script src="frontend/modules/perfis-permissoes.js?v=20261117"></script>
 <script src="frontend/modules/config-alertas.js?v=20261117"></script>
-<script src="frontend/modules/qualidade-cadastro.js?v=20261118b"></script>
+<script src="frontend/modules/qualidade-cadastro.js?v=20261118b"></script>
+<script src="frontend/modules/marcadores.js?v=20261120a"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -2589,6 +2607,8 @@ function renderConfigTab(){
       <button class="primary small" id="btnSalvarEmpresaOS">Salvar dados da empresa</button>
     </div>
 
+    <div class="section-divider">Marcadores e grupos <span class="hint">marcadores postos à mão em cada local · grupos automáticos pelo cadastro (provedor, cidade, tipo…)</span></div>
+    <div id="cfgMarcadores"><div class="dash-empty">Carregando marcadores e grupos…</div></div>
     <div class="section-divider">Qualidade do cadastro <span class="hint">o que falta ou está inconsistente · corrigir com prévia e backup</span></div>
     <div id="cfgQualidade"><div class="dash-empty">Carregando a qualidade do cadastro…</div></div>
     <div class="section-divider">Alertas por e-mail <span class="hint">quem recebe o resumo diário das contas · um ou mais e-mails</span></div>
@@ -2861,6 +2881,7 @@ function renderConfigTab(){
   window.SIGP_PERMISSOES.render('cfgPermissoes');
   window.SIGP_CONFIG_ALERTAS.render('cfgAlertas');
   window.SIGP_QUALIDADE_CADASTRO.render('cfgQualidade');
+  window.SIGP_MARCADORES.render('cfgMarcadores');
 
   if(document.getElementById('nfseLista')){
   const renderNFSELista = async ()=>{
@@ -4339,6 +4360,7 @@ const agendaPessoal  = createAgenda({ prefix:'ps', storageKey:'sigp_eventos_pess
 function locationToolbarHTML(cfg){
   return `
     <input type="text" id="${cfg.prefix}_search" placeholder="Buscar por nome, cidade ou provedor…">
+    <select id="${cfg.prefix}_filtroMarcador" class="mk-filtro" title="Filtrar por marcador ou grupo" aria-label="Filtrar por marcador ou grupo"><option value="">Todos os marcadores e grupos</option></select>
     <button class="ghost small" id="${cfg.prefix}_btnExport">Exportar backup</button>
     <button class="ghost small" id="${cfg.prefix}_btnExportCSV">Exportar CSV</button>
     <button class="ghost small" id="${cfg.prefix}_btnImportCSV" title="Importar de um CSV (mesmo formato do Exportar CSV), com prévia antes de gravar">Importar CSV</button>
@@ -4413,6 +4435,8 @@ function locationModalHTML(cfg){
             <label>Número</label>
             <input class="f mono-in" type="text" id="${cfg.prefix}_f_numero" placeholder="Ex: 123 ou S/N">
           </div>
+          <div class="section-label">Marcadores <span class="hint">etiquetas do local (regional, empresa, terceirizado…) · grupos aparecem sozinhos</span></div>
+          <div class="full mk-editor" id="${cfg.prefix}_marcList"></div>
           <div class="section-label">Histórico de visitas <span class="hint">a mais recente vira a "última visita"</span></div>
           <div class="full dyn-list" id="${cfg.prefix}_visitaList"></div>
           <div class="full"><button type="button" class="ghost small" id="${cfg.prefix}_btnAddVisita">+ registrar visita</button></div>
@@ -4486,11 +4510,13 @@ function createLocationManager(cfg){
 
   function render(){
     const q = el('search').value.trim().toLowerCase();
+    const fm = el('filtroMarcador').value;
     const filtered = state.data.filter(r=>{
+      if(!window.SIGP_MARCADORES.passaNoFiltro(r, fm)) return false;
       if(!q) return true;
       const provNomes = (r.provedores||[]).map(p=>p.nome).join(' ');
       const respNomes = (r.responsaveis||[]).map(p=>p.nome).join(' ');
-      return [r.nome, r.cidade, provNomes, respNomes].join(' ').toLowerCase().includes(q);
+      return [r.nome, r.cidade, provNomes, respNomes, window.SIGP_MARCADORES.textoBusca(r)].join(' ').toLowerCase().includes(q);
     }).sort((a,b)=> (a.nome||'').localeCompare(b.nome||''));
 
     el('count').textContent = filtered.length + (filtered.length===1 ? ` ${cfg.nome}` : ` ${cfg.nomePlural.toLowerCase()}`) +
@@ -4518,7 +4544,7 @@ function createLocationManager(cfg){
         else if(dias <= 5) cls = ' style="color:var(--warn)"';
         vencimentoHtml = ` · <span${cls}>Fatura: ${esc(formatDateBR(r.vencimentoFatura))}${dias<0 ? ' (atrasada)' : dias<=5 ? ` (em ${dias}d)` : ''}</span>`;
       }
-      tdName.innerHTML = `<div class="n">${esc(r.nome||'—')}</div><div class="c">${esc(r.cidade||'')}${r.cidade ? ' · ' : ''}${esc(visitaTxt)}${vencimentoHtml}</div>`;
+      tdName.innerHTML = `<div class="n">${esc(r.nome||'—')}</div><div class="c">${esc(r.cidade||'')}${r.cidade ? ' · ' : ''}${esc(visitaTxt)}${vencimentoHtml}</div>${window.SIGP_MARCADORES.pilulas(r)}`;
       tdName.onclick = ()=>openLocalDetails(cfg.prefix, r.id);
 
       const tdResp = document.createElement('td');
@@ -4590,6 +4616,7 @@ function createLocationManager(cfg){
     el('btnDelete').style.display = r ? '' : 'none';
     el('f_tipo').value = cfg.prefix;
     cepMap.reset();
+    window.SIGP_MARCADORES.montarEditor(cfg.prefix+'_marcList', r ? r.marcadores : [], r ? r.id : '');
 
     ['nome','cidade','endereco','numero','cep','vencimentoFatura','obs'].forEach(f=>{
       el('f_'+f).value = r ? (r[f]||'') : '';
@@ -4643,6 +4670,7 @@ function createLocationManager(cfg){
     record.redes       = readRows(cfg.prefix+'_redeList', REDE_FIELDS.map(f=>f.key));
     record.notasFiscais = window.SIGP_NOTAS_LOCAIS.getRows(cfg.prefix+'_notasFiscaisList');
     record.historicoVisitas = readRows(cfg.prefix+'_visitaList', VISITA_FIELDS.map(f=>f.key)).map(v=> ({ id: uid(), ...v }));
+    record.marcadores = window.SIGP_MARCADORES.lerEditor(cfg.prefix+'_marcList');
     if(state.editingId) record.id = state.editingId;
     recomputeUltimaVisita(record);
 
@@ -4756,6 +4784,7 @@ function createLocationManager(cfg){
   };
 
   el('search').addEventListener('input', render);
+  el('filtroMarcador').addEventListener('change', render);
 
   el('btnExport').onclick = ()=>{
     requestPasswordExport(()=> state.data, `${cfg.prefix}-backup`);
@@ -5743,6 +5772,12 @@ window.addEventListener('sigp:locais-atualizados', ()=>{
   locRodoviarias.load();
   locGaragens.load();
 });
+// Marcadores e grupos (frontend/modules/marcadores.js): catálogo carregado ou alterado redesenha as listas.
+window.addEventListener('sigp:marcadores-atualizados', ()=>{
+  render();
+  locRodoviarias.refresh();
+  locGaragens.refresh();
+});
 
 function switchTab(view){
   document.querySelectorAll('.tab').forEach(t=> t.classList.toggle('active', t.dataset.view===view));
@@ -5821,6 +5856,7 @@ async function showApp(){
   // Perfis e permissões: mostra o perfil ativo e esconde as abas sem permissão (a regra vale na API).
   window.SIGP_PERMISSOES?.aplicar();
   document.getElementById('appRoot').style.display = 'block';
+  window.SIGP_MARCADORES.carregar();
   loadConfig();
   loadLog();
   load();
@@ -6504,11 +6540,13 @@ function formatAgencyText(r){
 
 function render(){
   const q = document.getElementById('search').value.trim().toLowerCase();
+  const fm = document.getElementById('filtroMarcador').value;
   const filtered = data.filter(r=>{
+    if(!window.SIGP_MARCADORES.passaNoFiltro(r, fm)) return false;
     if(!q) return true;
     const provNomes = (r.provedores||[]).map(p=>p.nome).join(' ');
     const respNomes = (r.responsaveis||[]).map(p=>p.nome).join(' ');
-    return [r.nome, r.cidade, provNomes, respNomes].join(' ').toLowerCase().includes(q);
+    return [r.nome, r.cidade, provNomes, respNomes, window.SIGP_MARCADORES.textoBusca(r)].join(' ').toLowerCase().includes(q);
   }).sort((a,b)=> (a.nome||'').localeCompare(b.nome||''));
 
   document.getElementById('count').textContent =
@@ -6537,7 +6575,7 @@ function render(){
       else if(dias <= 5) cls = ' style="color:var(--warn)"';
       vencimentoHtml = ` · <span${cls}>Fatura: ${esc(formatDateBR(r.vencimentoFatura))}${dias<0 ? ' (atrasada)' : dias<=5 ? ` (em ${dias}d)` : ''}</span>`;
     }
-    tdName.innerHTML = `<div class="n">${esc(r.nome||'—')}</div><div class="c">${esc(r.cidade||'')}${r.cidade ? ' · ' : ''}${esc(visitaTxt)}${vencimentoHtml}</div>`;
+    tdName.innerHTML = `<div class="n">${esc(r.nome||'—')}</div><div class="c">${esc(r.cidade||'')}${r.cidade ? ' · ' : ''}${esc(visitaTxt)}${vencimentoHtml}</div>${window.SIGP_MARCADORES.pilulas(r)}`;
     tdName.onclick = ()=>openLocalDetails('ag', r.id);
 
     const tdResp = document.createElement('td');
@@ -6615,6 +6653,7 @@ function openModal(id){
   document.getElementById('btnDelete').style.display = r ? '' : 'none';
   document.getElementById('f_tipo').value = 'ag';
   agenciaCepMap.reset();
+  window.SIGP_MARCADORES.montarEditor('marcList', r ? r.marcadores : [], r ? r.id : '');
 
   const simpleFields = ['nome','cidade','endereco','numero','cep','vencimentoFatura','obs'];
   simpleFields.forEach(f=>{
@@ -6666,6 +6705,7 @@ document.getElementById('form').addEventListener('submit', async (e)=>{
   record.redes       = readRows('redeList', REDE_FIELDS.map(f=>f.key));
   record.notasFiscais = window.SIGP_NOTAS_LOCAIS.getRows('notasFiscaisList');
   record.historicoVisitas = readRows('visitaList', VISITA_FIELDS.map(f=>f.key)).map(v=> ({ id: uid(), ...v }));
+  record.marcadores = window.SIGP_MARCADORES.lerEditor('marcList');
   if(editingId) record.id = editingId;
   recomputeUltimaVisita(record);
 
@@ -6780,6 +6820,7 @@ document.getElementById('btnDelete').onclick = async ()=>{
 
 
 document.getElementById('search').addEventListener('input', render);
+document.getElementById('filtroMarcador').addEventListener('change', render);
 
 document.getElementById('btnExport').onclick = ()=>{
   requestPasswordExport(()=> data, 'agencias-backup');

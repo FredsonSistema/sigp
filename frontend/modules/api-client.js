@@ -153,6 +153,38 @@
     if (!Array.isArray(items)) throw new Error(`O conteúdo local de ${storageKey} não é uma lista.`);
     await putLocationItems(storageKey, items);
     setPending(storageKey, false);
+    window.dispatchEvent(new CustomEvent('sigp:locais-gravados', { detail: { storageKey } }));
+  }
+
+  // Marcadores: a API grava com a grafia do catálogo (apelido "Rota" vira "RT") e renomear/excluir no catálogo
+  // muda todos os locais. Traz os marcadores da API para este navegador (sem gravar de volta); cadastro com
+  // alteração ainda não enviada fica como está.
+  async function atualizarMarcadoresLocais() {
+    const response = await window.fetch(`${backendUrl()}/api/locais?inativos=1`);
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok || !Array.isArray(result.items)) return false;
+    const daApi = new Map(result.items.map((item) => [String(item.id), item.marcadores || []]));
+    const pending = readPending();
+    let mudou = false;
+    for (const storageKey of Object.keys(LOCAL_KEYS)) {
+      if (pending.has(storageKey)) continue;
+      const records = JSON.parse(read(storageKey, '[]'));
+      if (!Array.isArray(records)) continue;
+      let alterado = false;
+      records.forEach((record) => {
+        const novos = daApi.get(String(record.id));
+        if (novos && JSON.stringify(novos) !== JSON.stringify(record.marcadores || [])) {
+          record.marcadores = novos;
+          alterado = true;
+        }
+      });
+      if (alterado) {
+        originalSetItem.call(localStorage, storageKey, JSON.stringify(records));
+        mudou = true;
+      }
+    }
+    if (mudou) window.dispatchEvent(new CustomEvent('sigp:locais-atualizados', { detail: { marcadores: true } }));
+    return mudou;
   }
 
   async function loadAndMigrateLocations() {
@@ -376,5 +408,6 @@
     persistLocation: syncLocation,
     persistAppState: syncAppState,
     refreshLocationProviders,
+    atualizarMarcadoresLocais,
   };
 })();

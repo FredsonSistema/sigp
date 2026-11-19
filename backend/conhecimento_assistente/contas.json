@@ -3,7 +3,7 @@
   "descricao": "Contas de internet das localidades: vencidas (em atraso), que vencem hoje, que vencem nos próximos dias, que não chegaram e pagas com atraso. Os números vêm dos alertas do SIGp.",
   "ferramentas": {
     "contar_contas": "Conta locais e contas numa situação. Parâmetros: situacao (vencida, vence_hoje, vence_em_breve, nao_recebida, paga_com_atraso, todas), tipo (agencia, rodoviaria, garagem ou vazio).",
-    "listar_contas": "Lista as contas numa situação, com local, provedor, vencimento e valor. Mesmos parâmetros de contar_contas, mais cidade e provedor."
+    "listar_contas": "Lista as contas numa situação, com local, provedor, vencimento e valor. Mesmos parâmetros de contar_contas, mais cidade, provedor e marcador (marcador ou grupo, ex.: Regional Itabuna)."
   },
   "termos": {
     "em atraso": "vencida",
