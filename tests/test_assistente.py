@@ -89,6 +89,27 @@ class AssistenteTests(unittest.TestCase):
         # Cidade continua cidade: "agências em Itabuna" não vira marcador.
         r = self.perguntar("quais agências temos em Itabuna?")
         self.assertNotIn("marcador", r["parametros"])
+        # De qual regional é o local; dados do local trazem a regional; lista das regionais.
+        r = self.perguntar("de qual regional é a agência de Itacaré?")
+        self.assertEqual((r["ferramenta"], r["parametros"]["assunto"]), ("buscar_local", "marcadores"))
+        self.assertIn("Regional: Regional Itabuna.", r["resposta"])
+        self.assertIn("Marcadores: RT (Rota Transportes Rodoviários).", r["resposta"])
+        r = self.perguntar("qual o endereço da agência de Itacaré?")
+        self.assertNotIn("Regional:", r["resposta"])
+        r = self.perguntar("me fala da agência de Itacaré")
+        self.assertIn("Regional: Regional Itabuna.", r["resposta"])
+        r = self.perguntar("quais regionais existem?")
+        self.assertEqual((r["ferramenta"], r["total"]), ("listar_marcadores", 1))
+        self.assertIn("Regional Itabuna: 1 local", r["resposta"])
+        self.assertIn("2 locais estão sem regional", r["resposta"])
+        # Base de conhecimento: regional e marcadores no texto de cada unidade e no resumo.
+        base = self.client.get("/api/base-conhecimento", headers=ADMIN).json
+        doc = next(d for d in base["documentos_rag"] if d["metadata"].get("local_id") == "a1")
+        self.assertEqual(doc["metadata"]["regional"], "Regional Itabuna")
+        self.assertIn("Regional: Regional Itabuna. Marcadores: Regional Itabuna, RT (Rota Transportes Rodoviários).", doc["texto_para_embedding"])
+        self.assertIn("Unidades por regional: Regional Itabuna (1); 2 sem regional.", base["documentos_rag"][0]["texto_para_embedding"])
+        doc2 = next(d for d in base["documentos_rag"] if d["metadata"].get("local_id") == "a2")
+        self.assertIn("Grupos: Com reserva.", doc2["texto_para_embedding"])
 
     def test_quantas_agencias_em_atraso(self):
         r = self.perguntar("Quantas agências estão em atraso?")

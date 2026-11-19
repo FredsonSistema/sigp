@@ -84,7 +84,9 @@ def _ultima_visita(local: Dict[str, Any]) -> Optional[str]:
     return d if "/" in d else f"{d[8:]}/{d[5:7]}/{d[:4]}"
 
 
-def documento(local: Dict[str, Any], pode_rede: bool) -> Dict[str, Any]:
+def documento(local: Dict[str, Any], pode_rede: bool, catalogo: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    from backend import marcadores  # aqui dentro: marcadores importa este módulo
+    marc = marcadores.do_local(local, catalogo or [])
     tipo = local.get("tipo", "")
     rotulo = TIPO_ROTULO.get(tipo, tipo)
     provedores = []
@@ -110,16 +112,22 @@ def documento(local: Dict[str, Any], pode_rede: bool) -> Dict[str, Any]:
              + (f"Tem redundância (link reserva). " if links >= 2 else "")
              + f"Endereço: {endereco or 'não informado'}, {numero or 'S/N'} (CEP: {local.get('cep') or 'não informado'}). "
              + (f"Rede/Gateway: {rede or 'não informado'}. " if pode_rede else "")
-             + f"Responsável local: {gestao['responsaveis'] or 'não informado'}. Observações: {gestao['observacoes'] or 'nenhuma'}.")
+             + f"Responsável local: {gestao['responsaveis'] or 'não informado'}. Observações: {gestao['observacoes'] or 'nenhuma'}."
+             + (f" Regional: {marc['regional']}." if marc["regional"] else "")
+             + (f" Marcadores: {marcadores.texto_marcadores(marc)}." if marc["marcadores"] else "")
+             + (f" Grupos: {', '.join(marc['grupos'])}." if marc["grupos"] else ""))
     return {
         "id": f"{tipo[:3]}_{local.get('id', '')}",
         "metadata": {"tipo_unidade": rotulo, "tipo": tipo, "local_id": local.get("id"), "nome_unidade": local.get("nome", ""),
                      "cidade": local.get("cidade", ""), "quantidade_links": links, "provedores_nomes": nomes,
-                     "possui_redundancia": links >= 2, "arquivo_origem": "sigp (banco de dados)"},
+                     "possui_redundancia": links >= 2, "regional": marc["regional"] or None,
+                     "marcadores": [m["nome"] for m in marc["marcadores"]], "grupos": marc["grupos"],
+                     "arquivo_origem": "sigp (banco de dados)"},
         "dados_estruturados": {
             "localizacao": {"endereco": endereco, "numero": numero, "cep": local.get("cep") or None, "cidade": local.get("cidade") or None},
             "infraestrutura": {"provedores": validos, **({"redes_ips": rede} if pode_rede else {"redes_ips": "restrito (permissão Ver rede e IPs)"})},
             "gestao": gestao,
+            "marcadores": marc,
         },
         "texto_para_embedding": texto,
     }
@@ -129,9 +137,16 @@ def unidade_valida(local: Dict[str, Any]) -> bool:
     return chave(local.get("nome")) not in UNIDADES_INVALIDAS and bool(chave(local.get("nome")))
 
 
-def gerar(locais: List[Dict[str, Any]], pode_rede: bool, hoje: Optional[date] = None) -> Dict[str, Any]:
+def gerar(locais: List[Dict[str, Any]], pode_rede: bool, hoje: Optional[date] = None,
+          catalogo: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
+    from backend import marcadores  # aqui dentro: marcadores importa este módulo
+    cat = catalogo if catalogo is not None else marcadores.catalogo_seguro()
     validos = [l for l in locais if unidade_valida(l)]
-    docs = [documento(l, pode_rede) for l in sorted(validos, key=lambda x: (x.get("tipo", ""), chave(x.get("nome"))))]
+    docs = [documento(l, pode_rede, cat) for l in sorted(validos, key=lambda x: (x.get("tipo", ""), chave(x.get("nome"))))]
+    por_regional: Dict[str, int] = {}
+    for d in docs:
+        if d["metadata"]["regional"]:
+            por_regional[d["metadata"]["regional"]] = por_regional.get(d["metadata"]["regional"], 0) + 1
     unicos = sorted({n for d in docs for n in d["metadata"]["provedores_nomes"]}, key=chave)
     contagem = {TIPO_ROTULO_PLURAL[t]: sum(1 for d in docs if d["metadata"]["tipo"] == t) for t in ("garagem", "rodoviaria", "agencia")}
     links = sum(d["metadata"]["quantidade_links"] for d in docs)
@@ -142,12 +157,15 @@ def gerar(locais: List[Dict[str, Any]], pode_rede: bool, hoje: Optional[date] = 
         "metadata": {"tipo_unidade": "Resumo Global", "nome_unidade": "Consolidação Geral de Infraestrutura e Provedores",
                      "total_unidades": len(docs), "total_links_ativos": links, "total_provedores_unicos": len(unicos)},
         "dados_estruturados": {"contagem_por_tipo": contagem, "lista_provedores_unicos": unicos,
-                               "unidades_com_redundancia": redund, "unidades_sem_provedor": sem},
+                               "unidades_com_redundancia": redund, "unidades_sem_provedor": sem,
+                               "unidades_por_regional": dict(sorted(por_regional.items(), key=lambda x: (-x[1], chave(x[0]))))},
         "texto_para_embedding": (f"Resumo geral da rede e provedores de internet da empresa: ao todo, {len(docs)} unidades cadastradas "
                                  f"({contagem['Garagens']} garagens, {contagem['Rodoviárias']} rodoviárias e {contagem['Agências']} agências), "
                                  f"com {links} links/contas de internet de {len(unicos)} provedores únicos. "
                                  f"{len(redund)} unidade(s) com redundância e {len(sem)} sem provedor cadastrado. "
-                                 f"Provedores: {', '.join(unicos)}."),
+                                 f"Provedores: {', '.join(unicos)}."
+                                 + (" Unidades por regional: " + ", ".join(f"{n} ({q})" for n, q in sorted(por_regional.items(), key=lambda x: (-x[1], chave(x[0]))))
+                                    + f"; {len(docs) - sum(por_regional.values())} sem regional." if por_regional else "")),
     }
     return {"schema_version": "1.0-rag-ready", "data_geracao": (hoje or date.today()).isoformat(), "gerado_por": "SIGp",
             "rede_incluida": pode_rede,

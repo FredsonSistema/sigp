@@ -128,6 +128,17 @@ class MarcadoresTests(unittest.TestCase):
         q = self.client.get("/api/base-conhecimento/qualidade", headers=ADMIN).json
         self.assertNotIn("Marcador com nome de cidade", q["resumo"])
 
+    def test_alertas_trazem_a_regional_do_local(self):
+        from datetime import date, timedelta
+        venc = (date.today() - timedelta(days=5)).isoformat()
+        itens = [{**LOCAIS["agencia"][0], "provedores": [{"id": "p1", "nome": "HE-NET", "dataVencimento": venc}]},
+                 {**LOCAIS["agencia"][1], "provedores": [{"id": "p2", "nome": "Vox", "dataVencimento": venc}]}]
+        self.client.put("/api/locais/agencia", headers=ADMIN, json={"items": itens})
+        r = self.client.get("/api/alertas?dias=5", headers=ADMIN).json
+        por_local = {a["entidadeId"]: a.get("regional") for a in r["items"] if a.get("status") == "VENCIDO"}
+        self.assertEqual(por_local, {"a1": "Regional Itabuna", "a2": "Regional Jequié"})
+        self.assertNotIn("regional", self.client.get("/api/locais/item/a1", headers=ADMIN).json["item"])
+
     def test_citado_na_pergunta_por_nome_e_apelido(self):
         self.assertEqual(marcadores.citado_na_pergunta("contas vencidas da Regional Itabuna")["nome"], "Regional Itabuna")
         self.assertEqual(marcadores.citado_na_pergunta("quais locais da Rota?")["nome"], "RT")

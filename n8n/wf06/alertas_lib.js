@@ -185,18 +185,44 @@ function escolherAbertura(respostaOllama, f) {
   return { abertura, origem: 'llm', motivo: '' };
 }
 
-// Mensagem final: abertura + lista completa (direto da API) + rodapé dizendo de onde veio o texto.
+// Contas por regional (marcador "Regional ..." do local, vindo da API em "regional"), para quem lê o resumo geral.
+// Só aparece se algum local tiver regional; contas de local sem regional ficam em "Sem regional", no fim.
+function resumoPorRegional(itens) {
+  const contas = itens.filter((a) => Object.prototype.hasOwnProperty.call(a, 'regional'));
+  if (!contas.some((a) => a.regional)) return [];
+  const mapa = {};
+  for (const a of contas) {
+    const r = a.regional || 'Sem regional';
+    mapa[r] = mapa[r] || { total: 0, status: {} };
+    mapa[r].total += 1;
+    mapa[r].status[a.status] = (mapa[r].status[a.status] || 0) + 1;
+  }
+  return Object.entries(mapa)
+    .sort((x, y) => (x[0] === 'Sem regional') - (y[0] === 'Sem regional') || y[1].total - x[1].total || x[0].localeCompare(y[0], 'pt-BR'))
+    .map(([nome, r]) => ({
+      nome, total: r.total,
+      detalhe: [...ORDEM_STATUS, ...Object.keys(r.status).filter((s) => !ORDEM_STATUS.includes(s))]
+        .filter((s) => r.status[s]).map((s) => `${NOMES_STATUS[s] || s} ${r.status[s]}`).join(' · '),
+    }));
+}
+
+// Mensagem final: abertura + resumo por regional + lista completa (direto da API) + rodapé dizendo de onde veio o texto.
 function montarMensagem(f, escolha, modelo, duracaoMs) {
   const grupos = {};
   for (const a of f.itens) (grupos[a.status] = grupos[a.status] || []).push(a);
   const linhas = [escolha.abertura];
+  const porRegional = resumoPorRegional(f.itens);
+  if (porRegional.length) {
+    linhas.push('', 'Por regional:');
+    porRegional.forEach((r) => linhas.push(`- ${r.nome}: ${r.total} (${r.detalhe})`));
+  }
   const ordem = [...ORDEM_STATUS, ...Object.keys(grupos).filter((s) => !ORDEM_STATUS.includes(s))];
   for (const s of ordem) {
     if (!grupos[s]) continue;
     linhas.push('', `${NOMES_STATUS[s] || s} (${grupos[s].length}):`);
     grupos[s].slice(0, MAX_POR_GRUPO).forEach((a) => {
       const valor = formatarBRL(a.valor);
-      linhas.push(`- ${a.mensagem}${valor ? ` · R$ ${valor}` : ''}`);
+      linhas.push(`- ${a.mensagem}${valor ? ` · R$ ${valor}` : ''}${a.regional ? ` · ${a.regional}` : ''}`);
     });
     if (grupos[s].length > MAX_POR_GRUPO) linhas.push(`  … e mais ${grupos[s].length - MAX_POR_GRUPO}`);
   }
@@ -215,6 +241,7 @@ function montarMensagem(f, escolha, modelo, duracaoMs) {
     dados: {
       total: f.total,
       grupos: Object.fromEntries(f.grupos.map((g) => [g.status, g.qtd])),
+      porRegional: Object.fromEntries(porRegional.map((r) => [r.nome, r.total])),
       textoAbertura: { origem: escolha.origem, motivo: escolha.motivo, ...(escolha.recusada ? { recusada: escolha.recusada } : {}), duracaoMs: duracaoMs || null },
     },
   };

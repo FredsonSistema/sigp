@@ -3480,8 +3480,15 @@ def _lista_alertas(today: date, window: int, tipos=None) -> List[Dict[str, Any]]
     excluidos = {str(item["id"]) for item in list_locais(incluir_inativos=True) if not item.get("ativo")}
     notas = [note for note in list_nota_lancadas() if str(note.get("entidade_id") or "") not in excluidos]
     recebidas = list_notas_recebidas()
-    return build_alerts(list_locais(), notas, list_nota_pagas(), list_conciliacoes(), today, window, tipos,
-                        received_notes=recebidas, ultima_leitura=fatura_esperada.ultima_leitura_gmail(recebidas))
+    locais = list_locais()
+    itens = build_alerts(locais, notas, list_nota_pagas(), list_conciliacoes(), today, window, tipos,
+                         received_notes=recebidas, ultima_leitura=fatura_esperada.ultima_leitura_gmail(recebidas))
+    # Regional do local (marcador "Regional ..."): o resumo diário agrupa por ela; só leitura, nada é gravado.
+    regional = {str(l["id"]): marcadores.regional(l.get("marcadores") or []) for l in locais}
+    for item in itens:
+        if item.get("entidadeId"):
+            item["regional"] = regional.get(str(item["entidadeId"]), "")
+    return itens
 
 
 @app.get("/api/alertas")

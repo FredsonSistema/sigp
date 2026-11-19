@@ -430,6 +430,32 @@ def problemas(locais: List[Dict[str, Any]]) -> List[Dict[str, str]]:
     return itens
 
 
+def catalogo_seguro() -> List[Dict[str, Any]]:
+    """Catálogo, ou vazio se o banco ainda não tem a tabela (base de conhecimento gerada fora da API)."""
+    try:
+        return catalogo()
+    except Exception:  # noqa: BLE001 (sem catálogo, os textos saem sem marcadores)
+        return []
+
+
+def regional(nomes: List[str]) -> str:
+    """Regional do local: o marcador que começa com "Regional" (ex.: Regional Itabuna); vazio se não tiver."""
+    return next((n for n in nomes or [] if bc.chave(n).startswith("REGIONAL ")), "")
+
+
+def do_local(local: Dict[str, Any], cat: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Marcadores (com a descrição do catálogo, ex.: RT = Rota Transportes Rodoviários), grupos e regional do local."""
+    por_chave = {bc.chave(m["nome"]): m for m in cat if m["tipo"] == "marcador"}
+    nomes = [m for m in (local.get("marcadores") or []) if isinstance(m, str) and m.strip()]
+    marc = [{"nome": n, "descricao": (por_chave.get(bc.chave(n)) or {}).get("descricao", "")} for n in nomes]
+    return {"marcadores": marc, "grupos": grupos_do_local(local, cat), "regional": regional(nomes)}
+
+
+def texto_marcadores(info: Dict[str, Any]) -> str:
+    """ "RT (Rota Transportes Rodoviários), Terceirizado" """
+    return ", ".join(m["nome"] + (f" ({m['descricao']})" if m["descricao"] else "") for m in info["marcadores"])
+
+
 def pertence(local: Dict[str, Any], m: Dict[str, Any]) -> bool:
     if m["tipo"] == "grupo":
         return bc.unidade_valida(local) and atende(local, m["regra"])

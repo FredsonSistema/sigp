@@ -162,3 +162,20 @@ test('consequência inventada (multa, penalidade, corte) é recusada (visto com 
 test('o texto padrão passa na própria conferência', () => {
   assert.deepStrictEqual(L.conferirAbertura(L.textoModelo(fatos), fatos), { ok: true, motivo: '' });
 });
+test('resumo por regional: contagem por regional (sem regional no fim) e a regional em cada conta', () => {
+  const comRegional = {
+    hoje: '2026-11-17',
+    items: [
+      { ...API.items[0], regional: 'Regional Jequié' }, { ...API.items[1], regional: 'Regional Itabuna' },
+      { ...API.items[2], regional: 'Regional Jequié' }, { ...API.items[3], regional: '' },
+    ],
+  };
+  const f = L.montarFatos(comRegional);
+  const m = L.montarMensagem(f, { abertura: 'Bom dia.', origem: 'padrao', motivo: 'teste' }, 'qwen', 1);
+  assert.match(m.texto, /Por regional:\n- Regional Jequié: 2 \(Vencidas 1 · Vencem em breve 1\)\n- Regional Itabuna: 1 \(Vencem hoje 1\)\n- Sem regional: 1 \(Faturas que não chegaram 1\)/);
+  assert.match(m.texto, /- Agência ANDARAI · Provedor Beta: vencido \(2026-10-20\) · Regional Jequié/);
+  assert.deepStrictEqual(m.dados.porRegional, { 'Regional Jequié': 2, 'Regional Itabuna': 1, 'Sem regional': 1 });
+  // Sem regional em nenhum local: o e-mail fica como antes.
+  const semNada = L.montarMensagem(fatos, { abertura: 'Bom dia.', origem: 'padrao', motivo: 'teste' }, 'qwen', 1);
+  assert.doesNotMatch(semNada.texto, /Por regional/);
+});
