@@ -19,8 +19,8 @@ const { API_TEST_URL, launch, shot, check, loginFresh, abrirNota } = require('./
     const card = await abrirNota(page, noteId);
     check(results, 'cartão tem o botão "Descartar nota"', await card.locator('[data-action="discard"]').count() === 1);
     check(results, 'emissão deixou de ser obrigatória', !(await card.locator('[data-role="issue-date"]').getAttribute('required')));
-    const dica = await card.locator('[data-role="number"] + .hint').textContent();
-    check(results, 'número mostra a regra do valor padrão', /999999999/.test(dica), dica.trim());
+    const dica = await card.locator('label:has([data-role="number"]) .nr-tip').getAttribute('title');
+    check(results, 'número mostra a regra do valor padrão (ⓘ)', /999999999/.test(dica), dica.trim());
     await card.scrollIntoViewIfNeeded();
     await shot(page, 'nr-01-cartao');
 

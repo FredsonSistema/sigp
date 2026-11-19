@@ -353,43 +353,49 @@
         ${classification.palavrasFiscais?.length || classification.palavrasInternet?.length ? `<div class="hint">Evidências: ${[...(classification.palavrasFiscais || []), ...(classification.palavrasInternet || [])].map(escapeHtml).join(', ')}</div>` : ''}
         ${classification.revisaoManual ? '<div class="hint">A classificação não é conclusiva; revise este PDF. Ele foi mantido na caixa.</div>' : ''}</div>` : ''}`;
 
-    const dadosBody = `<div class="nfse-grid">
-        ${item.leituraDesatualizada ? '<div class="full hint" role="note" data-role="stale-reading">Lida com regras antigas de extração. Clique em “Extrair dados do PDF” (em Outras ações) para reler com as regras atuais (a leitura nova é gravada).</div>' : ''}
-        ${xmlBlock(item, data)}
-        <label>Provedor / emissor da nota
+    // Ajuda curta vira ⓘ com tooltip no rótulo; só o caso "valor padrão usado" aparece escrito.
+    const tip = (texto) => `<span class="nr-tip" title="${escapeHtml(texto)}" aria-label="${escapeHtml(texto)}">ⓘ</span>`;
+    const numeroPadrao = data.numero === DEFAULT_ID;
+    const chavePadrao = data.chave === DEFAULT_ID;
+    const dadosBody = `
+      ${item.leituraDesatualizada ? '<div class="nr-aviso" role="note" data-role="stale-reading">Lida com regras antigas de extração. Use “Extrair dados do PDF” (no rodapé) para reler com as regras atuais (a leitura nova é gravada).</div>' : ''}
+      ${xmlBlock(item, data)}
+      <div class="nr-g12">
+        <label class="c6">Provedor / emissor da nota
           <input class="f" data-role="issuer" maxlength="300" value="${escapeHtml(data.emissorNome || '')}" required>
         </label>
-        <label>Número da nota
-          <input class="f" data-role="number" maxlength="80" value="${escapeHtml(data.numero || '')}" placeholder="${DEFAULT_ID}">
-          <span class="hint">${data.numero === DEFAULT_ID ? `Não identificado${data.numeroOriginal ? ` (lido: “${escapeHtml(data.numeroOriginal)}”)` : ''}: usado o valor padrão.` : `Se vazio ou inválido, vale ${DEFAULT_ID}.`}</span>
+        <label class="c3"><span class="nr-l">Nº da nota ${tip(`Se vazio ou inválido, vale ${DEFAULT_ID}.`)}</span>
+          <input class="f nr-mono" data-role="number" maxlength="80" value="${escapeHtml(data.numero || '')}" placeholder="${DEFAULT_ID}">
+          ${numeroPadrao ? `<span class="hint">Não identificado${data.numeroOriginal ? ` (lido: “${escapeHtml(data.numeroOriginal)}”)` : ''}: valor padrão.</span>` : ''}
         </label>
-        <label>Chave da nota
-          <input class="f" data-role="key" maxlength="160" value="${escapeHtml(data.chave || '')}" placeholder="${DEFAULT_ID}">
-          <span class="hint">${data.chave === DEFAULT_ID ? `Não identificada${data.chaveOriginal ? ` (lida: “${escapeHtml(data.chaveOriginal)}”)` : ''}: usado o valor padrão.` : `Se vazia ou inválida, vale ${DEFAULT_ID}.`}</span>
+        <label class="c3">Série
+          <input class="f nr-mono" data-role="serie" maxlength="20" value="${escapeHtml(data.serie || '')}" readonly title="Lida do documento">
         </label>
-        <label>Valor total
+        <label class="c3">Valor total
           <input class="f" data-role="amount" type="number" min="0.01" step="0.01" value="${escapeHtml(data.valorTotal ?? '')}" required>
         </label>
-        <label>Data de emissão
+        <label class="c3"><span class="nr-l">Emissão ${tip('Se vazia, vale a data de recebimento.')}</span>
           <input class="f" data-role="issue-date" type="date" value="${escapeHtml(dateInputValue(data.dataEmissao))}">
-          <span class="hint" data-role="issue-origin">${data.dataEmissaoOrigem === 'recebimento' ? 'Não encontrada no documento: usada a data de recebimento.' : 'Se vazia, será usada a data de recebimento.'}</span>
+          <span class="hint" data-role="issue-origin">${data.dataEmissaoOrigem === 'recebimento' ? 'Não encontrada: usada a data de recebimento.' : ''}</span>
         </label>
-        <label>Data de vencimento
+        <label class="c3">Vencimento
           <input class="f" data-role="due-date" type="date" value="${escapeHtml(dateInputValue(data.dataVencimento))}" required>
         </label>
-        <label class="full">Descrição do serviço
+        <div class="c3 nr-campo"><span class="nr-rotulo">CNPJ no PDF</span><div class="nr-valor nr-mono" data-role="cnpj">${escapeHtml(data.cnpjDestinatario || data.cnpjTomador || data.cnpjEmissor || '—')}</div></div>
+        <label class="c12"><span class="nr-l">Chave da nota ${tip(`Se vazia ou inválida, vale ${DEFAULT_ID}.`)}</span>
+          <input class="f nr-mono" data-role="key" maxlength="160" value="${escapeHtml(data.chave || '')}" placeholder="${DEFAULT_ID}">
+          ${chavePadrao ? `<span class="hint">Não identificada${data.chaveOriginal ? ` (lida: “${escapeHtml(data.chaveOriginal)}”)` : ''}: valor padrão.</span>` : ''}
+        </label>
+        <label class="c12">Descrição do serviço
           <input class="f" data-role="description" maxlength="1000" value="${escapeHtml(data.descricaoServico || '')}">
         </label>
-        ${(data.identificadoresCliente || []).length ? `<div class="full" data-role="codigos-cliente"><b>Código do cliente / contrato / instalação</b><div>${data.identificadoresCliente.map((i) => `${escapeHtml({ cliente: 'Cliente', contrato: 'Contrato', instalacao: 'Instalação' }[i.tipo] || i.tipo)}: ${escapeHtml(i.valor)}`).join(' · ')}</div></div>` : ''}
-        <div><b>CNPJ no PDF</b><div data-role="cnpj">${escapeHtml(data.cnpjDestinatario || data.cnpjTomador || data.cnpjEmissor || '—')}</div></div>
+        ${(data.identificadoresCliente || []).length ? `<div class="c12 nr-campo" data-role="codigos-cliente"><span class="nr-rotulo">Código do cliente / contrato / instalação</span><div class="nr-valor">${data.identificadoresCliente.map((i) => `${escapeHtml({ cliente: 'Cliente', contrato: 'Contrato', instalacao: 'Instalação' }[i.tipo] || i.tipo)}: ${escapeHtml(i.valor)}`).join(' · ')}</div></div>` : ''}
       </div>`;
 
-    const associarBody = `<div class="nfse-grid">
-        ${suggestions.length ? `<div class="full"><b>Sugestão de associação (confirme antes de salvar)</b><div>${suggestions.map((candidate) =>
-          `${escapeHtml(TYPE_LABELS[candidate.tipo] || candidate.tipo)}: ${escapeHtml(candidate.nome)}${candidate.cidade ? ` — ${escapeHtml(candidate.cidade)}` : ''} (${escapeHtml(candidate.motivo)})`
-        ).join('<br>')}</div></div>` : ''}
-        ${item.provedorEmVariosLocais ? `<div class="full hint" role="note" data-role="varios-locais">Este provedor atende ${item.provedorEmVariosLocais} locais e a fatura não tem código do cliente já conhecido: confira o local. Depois desta associação, o código lido fica guardado e as próximas faturas vêm com o local certo.</div>` : ''}
-        ${assigned ? `<div class="full"><b>Local associado</b><div>${escapeHtml(assigned)}</div></div>` : ''}
+    const podeAssociar = !(ignored || item.status === 'AVISO' || data.semArquivo);
+    const associarCard = podeAssociar ? `<section class="nr-card">
+        <h5 class="nr-card-t">Associar a um local</h5>
+        ${assigned ? `<div class="nr-campo"><span class="nr-rotulo">Local associado</span><div class="nr-valor">${escapeHtml(assigned)}</div></div>` : ''}
         <label>Tipo de local
           <select class="f" data-role="type">
             ${Object.entries(TYPE_LABELS).map(([type, label]) => `<option value="${type}" ${selectedType === type ? 'selected' : ''}>${label}</option>`).join('')}
@@ -398,60 +404,80 @@
         <label>Local
           <select class="f" data-role="location">${optionsForLocations(selectedType, selectedLocation)}</select>
         </label>
-      </div>
-      <div class="task-add-row" style="margin-top:10px">
-        <button class="primary small" type="button" data-action="compare">Validar nota no local</button>
-        <span class="hint">Confira os dados da nota antes de validar.</span>
-      </div>
-      <div class="nfse-grid" data-role="comparison" aria-live="polite"></div>`;
+        ${suggestions.length ? `<div class="hint">Sugestão (confirme antes de validar): ${suggestions.slice(0, 3).map((candidate) =>
+          `${escapeHtml(TYPE_LABELS[candidate.tipo] || candidate.tipo)}: ${escapeHtml(candidate.nome)}${candidate.cidade ? ` — ${escapeHtml(candidate.cidade)}` : ''} (${escapeHtml(candidate.motivo)})`
+        ).join('; ')}${suggestions.length > 3 ? ` e mais ${suggestions.length - 3}` : ''}</div>` : ''}
+        ${item.provedorEmVariosLocais ? `<div class="hint" role="note" data-role="varios-locais">Este provedor atende ${item.provedorEmVariosLocais} locais e a fatura não tem código do cliente já conhecido: confira o local. Depois desta associação, o código lido fica guardado e as próximas faturas vêm com o local certo.</div>` : ''}
+        <div class="nr-comparacao" data-role="comparison" aria-live="polite"></div>
+      </section>` : '';
 
-    const acoesBody = `
-      <div class="task-add-row">
-        ${data.semPdf ? '' : '<button class="ghost small" type="button" data-action="extract">Extrair dados do PDF</button>'}
-        ${!['ASSOCIADA', 'DESCARTADA', 'EM_ANALISE'].includes(item.status) ? '<button class="ghost small" type="button" data-action="analysis" title="Nota em dúvida: sai da fila e fica separada até você decidir">Deixar em análise</button>' : ''}
-        ${item.status === 'EM_ANALISE' ? '<button class="ghost small" type="button" data-action="release">Voltar para a fila</button>' : ''}
-        ${!finalStatus ? '<button class="ghost small" type="button" data-action="discard">Descartar nota</button>' : ''}
-        ${item.status === 'DESCARTADA' ? '<button class="ghost small" type="button" data-action="restore">Restaurar nota</button>' : ''}
-      </div>
-      <div class="nfse-grid" data-role="analysis-form" hidden>
-        <label class="full">O que precisa ser conferido? (opcional)
+    const formularios = `
+      <div class="nr-aviso" data-role="analysis-form" hidden>
+        <label>O que precisa ser conferido? (opcional)
           <input class="f" data-role="analysis-note" maxlength="500" value="${escapeHtml(data.analise?.observacao || '')}" placeholder="Ex.: confirmar com o gerente qual local, valor diferente do contrato">
         </label>
-        <div class="full task-add-row">
+        <div class="task-add-row">
           <button class="primary small" type="button" data-action="analysis-confirm">Confirmar: deixar em análise</button>
           <button class="ghost small" type="button" data-action="analysis-cancel">Cancelar</button>
-          <span class="hint">Nada é associado nem apagado. A nota sai da fila de associação e fica no filtro “Em análise”; de lá você associa, descarta ou volta para a fila. O Gmail não sobrescreve.</span>
         </div>
+        <div class="hint">Nada é associado nem apagado. A nota sai da fila e fica no filtro “Em análise”; de lá você associa, descarta ou volta para a fila.</div>
       </div>
-      <div class="nfse-grid" data-role="discard-form" hidden>
-        <label>Motivo do descarte
-          <select class="f" data-role="discard-reason">
-            <option value="">Selecione o motivo</option>
-            ${Object.entries(DISCARD_REASONS).map(([value, label]) => `<option value="${value}">${escapeHtml(label)}</option>`).join('')}
-          </select>
-        </label>
-        <label>Detalhe (opcional)
-          <input class="f" data-role="discard-detail" maxlength="500" placeholder="Ex.: conta de energia, boleto de hotel">
-        </label>
-        <div class="full task-add-row">
+      <div class="nr-aviso nr-aviso--risco" data-role="discard-form" hidden>
+        <div class="nr-g12">
+          <label class="c6">Motivo do descarte
+            <select class="f" data-role="discard-reason">
+              <option value="">Selecione o motivo</option>
+              ${Object.entries(DISCARD_REASONS).map(([value, label]) => `<option value="${value}">${escapeHtml(label)}</option>`).join('')}
+            </select>
+          </label>
+          <label class="c6">Detalhe (opcional)
+            <input class="f" data-role="discard-detail" maxlength="500" placeholder="Ex.: conta de energia, boleto de hotel">
+          </label>
+        </div>
+        <div class="task-add-row">
           <button class="primary small" type="button" data-action="discard-confirm">Confirmar descarte</button>
           <button class="ghost small" type="button" data-action="discard-cancel">Cancelar</button>
-          <span class="hint">O PDF e o registro não são apagados. A nota sai da fila e pode ser restaurada no filtro “Descartada”. O descarte ajuda a ensinar o sistema o que não é cobrança.</span>
         </div>
-      </div>
-      <div class="hint" data-role="extract-status" aria-live="polite"></div>`;
-
-    const arquivosBody = `
-      ${item.status === 'ASSOCIADA' ? `<div class="hint">Etiqueta Gmail: ${escapeHtml(item.etiqueta_gmail || 'aguardando')}</div>
-        <div class="hint">Estado da etiqueta: ${escapeHtml(item.etiqueta_status || 'pendente')}</div>
-        ${item.notaDisponivelId ? `<div class="hint">Nota disponível no local: ${escapeHtml(item.notaDisponivelId)}${item.notaLancadaId ? ` · lançada pelo financeiro: ${escapeHtml(item.notaLancadaId)}` : ' · aguardando o lançamento do financeiro'}</div>` : ''}
-        ${item.etiqueta_erro ? `<div class="hint" role="alert">Falha ao organizar no Gmail: ${escapeHtml(item.etiqueta_erro)}</div>` : ''}` : ''}
-      ${data.semArquivo ? `<div class="hint">E-mail sem anexo. Trecho: ${escapeHtml(data.descricaoServico || '—')}</div>` : ''}
-      <div class="task-add-row" style="margin-top:6px"${data.semArquivo ? ' hidden' : ''}>
-        <a class="note-file" href="${escapeHtml(backendUrl() + item.downloadUrl)}" target="_blank" rel="noopener">${data.semPdf ? 'Abrir XML' : 'Abrir / imprimir PDF'}</a>
-        <a class="note-file" href="${escapeHtml(backendUrl() + item.downloadUrl)}" download="${escapeHtml(item.nome_arquivo)}">Baixar cópia</a>
-        <a class="note-file" href="mailto:?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}">Preparar e-mail ao financeiro</a>
+        <div class="hint">O PDF e o registro não são apagados; a nota pode ser restaurada no filtro “Descartada”. O descarte ensina o sistema o que não é cobrança.</div>
       </div>`;
+
+    const docTipo = data.semPdf ? 'XML' : 'PDF';
+    const arquivosCard = `<section class="nr-card">
+        <h5 class="nr-card-t">Arquivos e e-mail</h5>
+        ${item.status === 'ASSOCIADA' ? `<div class="hint">Etiqueta Gmail: ${escapeHtml(item.etiqueta_gmail || 'aguardando')} · ${escapeHtml(item.etiqueta_status || 'pendente')}</div>
+          ${item.notaDisponivelId ? `<div class="hint">Nota disponível no local: ${escapeHtml(item.notaDisponivelId)}${item.notaLancadaId ? ` · lançada pelo financeiro: ${escapeHtml(item.notaLancadaId)}` : ' · aguardando o lançamento do financeiro'}</div>` : ''}
+          ${item.etiqueta_erro ? `<div class="hint" role="alert">Falha ao organizar no Gmail: ${escapeHtml(item.etiqueta_erro)}</div>` : ''}` : ''}
+        ${data.semArquivo ? `<div class="hint">E-mail sem anexo. Trecho: ${escapeHtml(data.descricaoServico || '—')}</div>` : `
+        <div class="nr-anexo">
+          <span class="nr-anexo-ico${data.semPdf ? ' nr-anexo-ico--xml' : ''}" aria-hidden="true">${docTipo}</span>
+          <span class="nr-anexo-info"><span class="nr-anexo-nome" title="${escapeHtml(item.nome_arquivo)}">${escapeHtml(item.nome_arquivo)}</span>
+            <span class="nr-anexo-meta">Documento original · anexo do e-mail${item.xmlUrl && !data.semPdf ? ' · com XML da nota' : ''}</span></span>
+        </div>
+        <div class="nr-anexo-acoes">
+          <a class="note-file" href="${escapeHtml(backendUrl() + item.downloadUrl)}" target="_blank" rel="noopener">${data.semPdf ? 'Abrir XML' : 'Abrir / imprimir PDF'}</a>
+          <a class="note-file" href="${escapeHtml(backendUrl() + item.downloadUrl)}" download="${escapeHtml(item.nome_arquivo)}">Baixar cópia</a>
+          ${item.xmlUrl && !data.semPdf ? `<a class="note-file" href="${escapeHtml(backendUrl() + item.xmlUrl)}" download="${escapeHtml(data.xmlArquivo?.nome || 'nota-fiscal.xml')}">XML</a>` : ''}
+        </div>`}
+        <a class="note-file nr-anexo-email" href="mailto:?subject=${encodeURIComponent(mailSubject)}&body=${encodeURIComponent(mailBody)}">✉ Preparar e-mail ao financeiro</a>
+      </section>`;
+
+    const acoesRodape = `
+      ${data.semPdf || ignored || item.status === 'AVISO' ? '' : '<button class="ghost small" type="button" data-action="extract">Extrair dados do PDF</button>'}
+      ${!ignored && item.status !== 'AVISO' && !['ASSOCIADA', 'DESCARTADA', 'EM_ANALISE'].includes(item.status) ? '<button class="ghost small" type="button" data-action="analysis" title="Nota em dúvida: sai da fila e fica separada até você decidir">Deixar em análise</button>' : ''}
+      ${item.status === 'EM_ANALISE' ? '<button class="ghost small" type="button" data-action="release">Voltar para a fila</button>' : ''}
+      ${!ignored && item.status !== 'AVISO' && !finalStatus ? '<button class="ghost small nr-risco" type="button" data-action="discard">Descartar nota</button>' : ''}
+      ${item.status === 'DESCARTADA' ? '<button class="ghost small" type="button" data-action="restore">Restaurar nota</button>' : ''}`;
+
+    const subtitulo = (() => {
+      const mes = /^(\d{4})-(\d{2})/.exec(String(data.competencia || data.dataVencimento || ''));
+      const xml = data.xmlFiscal?.ok ? data.xmlFiscal : null;
+      const partes = [
+        mes ? `${data.tipoDocumento === 'nota_fiscal' ? 'Nota fiscal' : 'Fatura'} do mês ${mes[2]}/${mes[1]}` : (item.assunto || ''),
+        xml ? `${XML_TYPES[xml.tipoXml] || 'Nota fiscal'} nº ${xml.numero || '—'}${xml.serie ? ` · série ${xml.serie}` : ''}` : '',
+      ].filter(Boolean);
+      return partes.join(' · ');
+    })();
+    const remetente = String(item.remetente || '').replace('[object Object]', '').trim() || '— (não informado pelo Gmail)';
 
     return `<div class="nr-item${open ? ' is-open' : ''}" data-note-id="${escapeHtml(item.id)}" data-group="${group}">
       <h4 class="nr-item-h">
@@ -463,21 +489,45 @@
           <span class="nr-acc-icon" aria-hidden="true"></span>
         </button>
       </h4>
-      <div class="nr-acc-panel" id="${pid}-pan" role="region" aria-labelledby="${pid}-btn"${open ? '' : ' hidden'}>
-        <div class="nfse-grid">
-          <div><b>Status</b><div>${escapeHtml(statusLabel(item.status))}</div></div>
-          <div><b>Remetente</b><div>${escapeHtml(String(item.remetente || '').replace('[object Object]', '').trim() || '— (não informado pelo Gmail)')}</div></div>
-          <div><b>Documento</b><div>${escapeHtml(item.nome_arquivo)}</div></div>
+      <div class="nr-acc-panel nr-modal" id="${pid}-pan" role="dialog" aria-modal="true" aria-labelledby="${pid}-tit"${open ? '' : ' hidden'}>
+        <div class="nr-modal-box">
+          <header class="nr-m-head">
+            <div class="nr-m-id"><h3 class="nr-m-tit" id="${pid}-tit">${escapeHtml(issuer)}</h3><div class="nr-m-sub">${escapeHtml(subtitulo)}</div></div>
+            <div class="nr-m-dir">
+              <div class="nr-m-valor-box"><div class="nr-m-valor">${escapeHtml(formatMoney(data.valorTotal))}</div><div class="nr-m-venc">venc. ${escapeHtml(shortDate(data.dataVencimento))}</div></div>
+              ${badge(item, aval)}
+              <button type="button" class="nr-m-fechar" data-action="close-note" aria-label="Fechar">✕</button>
+            </div>
+          </header>
+          <div class="nr-m-meta">
+            <span>Status: <b class="nr-m-status">${escapeHtml(statusLabel(item.status))}</b></span>
+            <span>Remetente: <b>${escapeHtml(remetente)}</b></span>
+            <span>Recebido em: <b>${escapeHtml(formatDate(item.recebida_em || item.created_at))}</b></span>
+          </div>
+          <div class="nr-m-corpo">
+            <div class="nr-m-esq">
+              ${formularios}
+              ${ignored ? triageBlock(data) : ''}
+              ${avisoBlock(data)}
+              ${item.status === 'DESCARTADA' ? `<div class="nr-aviso" role="note">Descartada: ${escapeHtml(DISCARD_REASONS[data.descarte?.motivo] || data.descarte?.motivo || '—')}${data.descarte?.detalhe ? ` · ${escapeHtml(data.descarte.detalhe)}` : ''}${data.descarte?.operador ? ` · por ${escapeHtml(data.descarte.operador)}` : ''}</div>` : ''}
+              ${item.status === 'EM_ANALISE' ? `<div class="nr-aviso" role="note">Em análise desde ${escapeHtml(formatDate(data.analise?.em))}${data.analise?.operador ? ` · por ${escapeHtml(data.analise.operador)}` : ''}${data.analise?.observacao ? ` · ${escapeHtml(data.analise.observacao)}` : ''}</div>` : ''}
+              <section class="nr-card">
+                <h5 class="nr-card-t">Dados da nota <small>${data.xmlFiscal?.ok ? 'Fonte: XML (prioridade sobre o PDF)' : 'Fonte: leitura do PDF'}</small></h5>
+                ${dadosBody}
+              </section>
+              ${disclosure(item.id, 'motivo', 'ⓘ Por que está nesta lista', motivoBody, false)}
+            </div>
+            <div class="nr-m-dir-col">
+              ${associarCard}
+              ${arquivosCard}
+            </div>
+          </div>
+          <footer class="nr-m-rodape">
+            <div class="nr-m-rodape-esq">${acoesRodape}<span class="hint" data-role="extract-status" aria-live="polite"></span></div>
+            ${podeAssociar ? `<div class="nr-m-rodape-dir"><span class="hint">Confira os dados da nota antes de validar.</span>
+              <button class="primary" type="button" data-action="compare"${selectedLocation ? '' : ' disabled'}>Validar nota no local</button></div>` : ''}
+          </footer>
         </div>
-        ${ignored ? triageBlock(data) : ''}
-        ${avisoBlock(data)}
-        ${item.status === 'DESCARTADA' ? `<div class="hint" role="note">Descartada: ${escapeHtml(DISCARD_REASONS[data.descarte?.motivo] || data.descarte?.motivo || '—')}${data.descarte?.detalhe ? ` · ${escapeHtml(data.descarte.detalhe)}` : ''}${data.descarte?.operador ? ` · por ${escapeHtml(data.descarte.operador)}` : ''}</div>` : ''}
-        ${item.status === 'EM_ANALISE' ? `<div class="hint" role="note">Em análise desde ${escapeHtml(formatDate(data.analise?.em))}${data.analise?.operador ? ` · por ${escapeHtml(data.analise.operador)}` : ''}${data.analise?.observacao ? ` · ${escapeHtml(data.analise.observacao)}` : ''}</div>` : ''}
-        ${disclosure(item.id, 'motivo', 'Por que está nesta lista', motivoBody, false)}
-        ${disclosure(item.id, 'dados', 'Dados da nota (campos fiscais)', dadosBody, missingRequired && !ignored && !finalStatus)}
-        ${ignored || item.status === 'AVISO' || data.semArquivo ? '' : disclosure(item.id, 'associar', 'Associar a um local', associarBody, !finalStatus)}
-        ${ignored || item.status === 'AVISO' ? '' : disclosure(item.id, 'acoes', 'Outras ações (reler PDF, análise, descarte)', acoesBody, false)}
-        ${disclosure(item.id, 'arquivos', 'Arquivos e e-mail ao financeiro', arquivosBody, false)}
       </div>
     </div>`;
   }
@@ -503,11 +553,15 @@
     button.setAttribute('aria-expanded', String(open));
     panel.hidden = !open;
     card.classList.toggle('is-open', open);
+    document.body.classList.toggle('nr-modal-aberto', Boolean(document.querySelector('#notasRecebidasLista .nr-item.is-open')));
+    if (open) panel.querySelector('.nr-m-fechar')?.focus({ preventScroll: true });
   }
+  // A nota aberta é um modal: abrir uma fecha a que estava aberta (em qualquer lista).
   function toggleNote(card) {
     const group = card.dataset.group;
     const opening = openNotes.get(group) !== card.dataset.noteId;
-    card.parentElement.querySelectorAll(':scope > .nr-item.is-open').forEach((other) => setNoteOpen(other, false));
+    document.querySelectorAll('#notasRecebidasLista .nr-item.is-open').forEach((other) => setNoteOpen(other, false));
+    openNotes.clear();
     if (opening) setNoteOpen(card, true);
     openNotes.set(group, opening ? card.dataset.noteId : null);
   }
@@ -558,6 +612,7 @@
       list.innerHTML = items.length
         ? renderGroups()
         : '<div class="dash-empty">Nenhuma nota recebida para este filtro.</div>';
+      document.body.classList.toggle('nr-modal-aberto', Boolean(list.querySelector('.nr-item.is-open')));
       renderTriageSummary();
     } catch (error) {
       list.innerHTML = '<div class="dash-empty">Não foi possível carregar as notas recebidas.</div>';
@@ -974,6 +1029,11 @@
       const locationSelect = card.querySelector('[data-role="location"]');
       locationSelect.innerHTML = optionsForLocations(event.target.value);
     }
+    if (['type', 'location'].includes(event.target.dataset.role)) {
+      // "Validar nota no local" (único botão primário) só com o local escolhido.
+      const validar = card.querySelector('[data-action="compare"]');
+      if (validar) validar.disabled = !card.querySelector('[data-role="location"]')?.value;
+    }
     if (event.target.dataset.role === 'confirm-update') {
       const button = card.querySelector('[data-action="commit"]');
       if (button) button.disabled = !event.target.checked;
@@ -985,19 +1045,31 @@
       return;
     }
     comparisons.delete(card.dataset.noteId);
-    card.querySelector('[data-role="comparison"]').replaceChildren();
+    card.querySelector('[data-role="comparison"]')?.replaceChildren();
   });
   byId('notasRecebidasLista').addEventListener('input', (event) => {
     const card = event.target.closest('[data-note-id]');
     if (!card || !event.target.dataset.role || event.target.dataset.role === 'confirm-update') return;
     comparisons.delete(card.dataset.noteId);
-    card.querySelector('[data-role="comparison"]').replaceChildren();
+    card.querySelector('[data-role="comparison"]')?.replaceChildren();
+  });
+  // Modal da nota: Esc ou clique fora da caixa fecha (o cabeçalho na lista também fecha).
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    const aberto = document.querySelector('#notasRecebidasLista .nr-item.is-open');
+    if (aberto && !aberto.querySelector('.nr-modal')?.hidden) toggleNote(aberto);
+  });
+  byId('notasRecebidasLista').addEventListener('mousedown', (event) => {
+    if (!event.target.classList?.contains('nr-modal')) return;
+    const card = event.target.closest('[data-note-id]');
+    if (card) toggleNote(card);
   });
   byId('notasRecebidasLista').addEventListener('click', (event) => {
     const button = event.target.closest('[data-action]');
     if (!button) return;
     const card = button.closest('[data-note-id]');
     if (button.dataset.action === 'toggle-note') toggleNote(card);
+    if (button.dataset.action === 'close-note' && card.classList.contains('is-open')) toggleNote(card);
     if (button.dataset.action === 'extract') extractFields(card);
     if (button.dataset.action === 'compare') compareTarget(card);
     if (button.dataset.action === 'commit') commitAssociation(card);

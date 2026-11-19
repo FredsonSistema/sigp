@@ -850,7 +850,70 @@
   .nr-badge{ font-size:11px; padding:3px 8px; border-radius:999px; border:1px solid var(--line); color:var(--text-dim); white-space:nowrap; }
   .nr-badge--ok{ border-color:rgba(79,184,172,.45); color:var(--accent); }
   .nr-badge--warn{ border-color:rgba(217,154,78,.45); color:var(--warn); }
-  .nr-acc-panel{ padding:4px 14px 14px; }
+  /* Nota recebida aberta = modal: cabeçalho e rodapé fixos, corpo em duas colunas (65/35) que rola */
+  body.nr-modal-aberto{ overflow:hidden; }
+  .nr-modal{ position:fixed; inset:0; z-index:70; background:rgba(5,8,12,.72); display:flex; align-items:center; justify-content:center; padding:24px; }
+  .nr-modal[hidden]{ display:none; }
+  .nr-modal-box{ width:100%; max-width:1100px; max-height:calc(100vh - 48px); display:flex; flex-direction:column; background:var(--panel);
+    border:1px solid var(--line); border-radius:14px; box-shadow:0 30px 80px rgba(0,0,0,.55); overflow:hidden; }
+  .nr-m-head{ display:flex; justify-content:space-between; align-items:flex-start; gap:24px; padding:20px 24px 14px; border-bottom:1px solid var(--line); }
+  .nr-m-tit{ margin:0; font-size:17px; font-weight:600; color:var(--text); }
+  .nr-m-sub{ color:var(--text-dim); font-size:12.5px; margin-top:2px; }
+  .nr-m-dir{ display:flex; align-items:center; gap:16px; text-align:right; }
+  .nr-m-valor{ font-size:22px; font-weight:600; line-height:1.1; color:var(--text); }
+  .nr-m-venc{ color:var(--text-dim); font-size:12px; }
+  .nr-m-fechar{ width:32px; height:32px; border-radius:8px; background:none; border:1px solid var(--line); color:var(--text-dim); cursor:pointer; font-size:15px; }
+  .nr-m-fechar:hover{ color:var(--text); border-color:var(--text-dim); }
+  .nr-m-meta{ display:flex; flex-wrap:wrap; gap:6px 28px; padding:10px 24px; background:var(--panel-2); border-bottom:1px solid var(--line); font-size:12.5px; color:var(--text-dim); }
+  .nr-m-meta b{ color:var(--text); font-weight:500; }
+  .nr-m-status{ color:var(--warn) !important; }
+  .nr-m-corpo{ flex:1; overflow:auto; display:grid; grid-template-columns:minmax(0,1.85fr) minmax(0,1fr); gap:20px; padding:20px 24px; align-items:start; }
+  .nr-m-esq, .nr-m-dir-col{ display:flex; flex-direction:column; gap:20px; min-width:0; }
+  .nr-card{ background:var(--panel-2); border:1px solid var(--line); border-radius:10px; padding:18px; display:flex; flex-direction:column; gap:14px; }
+  .nr-card-t{ margin:0; display:flex; justify-content:space-between; gap:8px; font-size:11.5px; font-weight:600; letter-spacing:.9px; text-transform:uppercase; color:var(--text-dim); }
+  .nr-card-t small{ text-transform:none; letter-spacing:0; font-weight:400; font-size:12px; color:var(--text-dim); opacity:.8; }
+  .nr-g12{ display:grid; grid-template-columns:repeat(12,minmax(0,1fr)); gap:16px; }
+  .nr-g12 .c3{ grid-column:span 3; } .nr-g12 .c6{ grid-column:span 6; } .nr-g12 .c12{ grid-column:span 12; }
+  .nr-modal label{ display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--text-dim); min-width:0; }
+  .nr-modal label .f, .nr-modal select.f{ height:40px; font-size:14px; }
+  .nr-modal .hint{ font-size:12px; }
+  .nr-campo{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .nr-rotulo{ font-size:12px; color:var(--text-dim); }
+  .nr-valor{ min-height:40px; display:flex; align-items:center; padding:0 12px; border:1px solid var(--line); border-radius:8px; color:var(--text); font-size:14px; overflow:hidden; text-overflow:ellipsis; }
+  .nr-mono{ font-family:var(--mono); font-size:13px; letter-spacing:.3px; }
+  .nr-tip{ display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border:1px solid var(--line); border-radius:50%; font-size:9px; color:var(--text-dim); cursor:help; margin-left:4px; vertical-align:1px; }
+  .nr-aviso{ padding:10px 12px; border-radius:8px; background:rgba(79,184,172,.07); border:1px solid rgba(79,184,172,.25); font-size:12.5px; display:flex; flex-direction:column; gap:8px; }
+  .nr-aviso--risco{ background:rgba(193,97,79,.07); border-color:rgba(193,97,79,.35); }
+  .nr-modal [data-role="xml-info"]{ padding:10px 12px; border-radius:8px; background:rgba(79,184,172,.07); border:1px solid rgba(79,184,172,.25); font-size:12.5px; }
+  .nr-anexo{ display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--bg); }
+  .nr-anexo-ico{ flex:none; width:36px; height:44px; border-radius:5px; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700;
+    background:rgba(193,97,79,.12); border:1px solid rgba(193,97,79,.4); color:#e48a78; }
+  .nr-anexo-ico--xml{ background:rgba(79,184,172,.12); border-color:rgba(79,184,172,.4); color:var(--accent); }
+  .nr-anexo-info{ min-width:0; display:flex; flex-direction:column; }
+  .nr-anexo-nome{ font-size:13px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .nr-anexo-meta{ font-size:11.5px; color:var(--text-dim); }
+  .nr-anexo-acoes{ display:flex; gap:6px; flex-wrap:wrap; }
+  .nr-anexo-acoes .note-file{ flex:1; text-align:center; }
+  .nr-anexo-email{ display:block; text-align:center; }
+  .nr-m-rodape{ display:flex; justify-content:space-between; align-items:center; gap:16px; padding:14px 24px; border-top:1px solid var(--line); background:var(--panel); }
+  .nr-m-rodape-esq, .nr-m-rodape-dir{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .nr-m-rodape-dir .hint{ margin-right:6px; }
+  .nr-m-rodape button.primary{ height:40px; padding:0 22px; font-weight:600; }
+  .nr-m-rodape button.primary:disabled{ opacity:.45; cursor:not-allowed; }
+  .nr-risco{ color:var(--danger) !important; }
+  .nr-modal .note-file{ display:inline-flex; align-items:center; justify-content:center; min-height:36px; padding:0 12px; border:1px solid var(--line); border-radius:8px; color:var(--text); text-decoration:none; font-size:13px; background:transparent; }
+  .nr-modal .note-file:hover{ border-color:var(--text-dim); background:rgba(255,255,255,.03); }
+  .nr-l{ display:inline; } .nr-valor{ white-space:nowrap; }
+  .nr-modal .nr-disc{ margin-top:0; }
+  @media (max-width: 900px){
+    .nr-modal{ padding:8px; }
+    .nr-modal-box{ max-height:calc(100vh - 16px); }
+    .nr-m-corpo{ grid-template-columns:1fr; }
+    .nr-g12 .c3, .nr-g12 .c6{ grid-column:span 6; }
+    .nr-m-head{ flex-direction:column; gap:10px; }
+    .nr-m-rodape{ flex-direction:column; align-items:stretch; }
+    .nr-m-rodape-esq, .nr-m-rodape-dir{ justify-content:space-between; }
+  }
   .nr-disc{ border:1px solid var(--line); border-radius:8px; margin-top:10px; }
   .nr-disc > summary{ padding:8px 12px; cursor:pointer; font-size:13px; color:var(--text); }
   .nr-disc > summary:focus-visible{ outline:2px solid var(--accent); }
@@ -1680,7 +1743,7 @@
 <script src="frontend/modules/analysis-dispatcher.js?v=20261010-manual-analysis"></script>
 <script src="frontend/modules/notas-locais.js?v=20261120-disp"></script>
 <script src="frontend/modules/faturas-provedores.js?v=20261120-disp"></script>
-<script src="frontend/modules/notas-recebidas.js?v=20261120-disp"></script>
+<script src="frontend/modules/notas-recebidas.js?v=20261120-modal"></script>
 <script src="frontend/modules/painel-ia.js?v=20261114"></script>
 <script src="frontend/modules/assistente.js?v=20261117e"></script>
 <script src="frontend/modules/webhook-client.js"></script>
