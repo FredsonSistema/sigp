@@ -155,6 +155,9 @@
   .chat-app.lateral-aberta .chat-lateral{display:flex; position:fixed; left:0; top:0; bottom:0; width:min(300px,86vw); z-index:61}
   .chat-so-mobile{display:inline-block}
 }
+.qc-chips{display:flex; flex-wrap:wrap; gap:6px; margin:4px 0 6px} .qc-chip{border:1px solid var(--line); border-radius:12px; padding:2px 10px; font-size:12.5px}
+.qc-grupo{border:1px solid var(--line); border-radius:8px; margin:8px 0; padding:6px 10px} .qc-grupo ul{margin:4px 0 0 18px; padding:0; max-height:180px; overflow:auto}
+.qc-dias{max-height:420px; overflow:auto} .qc-dia{width:70px}
 .cfg-alertas-lista{list-style:none; margin:4px 0 8px; padding:0; display:flex; flex-wrap:wrap; gap:6px}
 .cfg-alertas-lista li{display:flex; align-items:center; gap:4px; border:1px solid var(--border, #c6d3dc); border-radius:14px; padding:2px 4px 2px 10px; font-size:13px}
 /* ---- login gate ---- */
@@ -1637,10 +1640,11 @@
 <script src="sigp-env.js"></script>
 <script src="frontend/modules/config-integracao.js?v=20261115"></script>
 <script src="frontend/modules/login.js?v=20261117b"></script>
-<script src="frontend/modules/api-client.js?v=20261115-perfis"></script>
+<script src="frontend/modules/api-client.js?v=20261118-perfis"></script>
 <script src="frontend/modules/config-integracao-tela.js?v=20261115"></script>
 <script src="frontend/modules/perfis-permissoes.js?v=20261117"></script>
 <script src="frontend/modules/config-alertas.js?v=20261117"></script>
+<script src="frontend/modules/qualidade-cadastro.js?v=20261118b"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -2585,6 +2589,8 @@ function renderConfigTab(){
       <button class="primary small" id="btnSalvarEmpresaOS">Salvar dados da empresa</button>
     </div>
 
+    <div class="section-divider">Qualidade do cadastro <span class="hint">o que falta ou está inconsistente · corrigir com prévia e backup</span></div>
+    <div id="cfgQualidade"><div class="dash-empty">Carregando a qualidade do cadastro…</div></div>
     <div class="section-divider">Alertas por e-mail <span class="hint">quem recebe o resumo diário das contas · um ou mais e-mails</span></div>
     <div id="cfgAlertas"><div class="dash-empty">Carregando os e-mails dos alertas…</div></div>
     <div class="section-divider">Perfis e permissões <span class="hint">quem acessa o quê · grupos, usuários e ajustes individuais · vale na API</span></div>
@@ -2854,6 +2860,7 @@ function renderConfigTab(){
   window.SIGP_CONFIG_TELA.render('cfgIntegracao');
   window.SIGP_PERMISSOES.render('cfgPermissoes');
   window.SIGP_CONFIG_ALERTAS.render('cfgAlertas');
+  window.SIGP_QUALIDADE_CADASTRO.render('cfgQualidade');
 
   if(document.getElementById('nfseLista')){
   const renderNFSELista = async ()=>{

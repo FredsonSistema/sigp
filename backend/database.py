@@ -1812,6 +1812,9 @@ def preservar_fatura_atual(recebidos: List[Any], existentes: List[Any]) -> List[
         venc_novo = str(provedor.get("dataVencimento") or "")
         if antigo and venc_antigo and (not venc_novo or venc_novo < venc_antigo):
             provedor = {**provedor, **{c: antigo[c] for c in _CAMPOS_FATURA_ATUAL if antigo.get(c) not in (None, "")}}
+        elif antigo and str(antigo.get("diaVencimento") or "").strip() and not str(provedor.get("diaVencimento") or "").strip():
+            # Dia de vencimento preenchido (Qualidade do cadastro ou fatura) não some por uma cópia antiga da tela.
+            provedor = {**provedor, "diaVencimento": antigo["diaVencimento"]}
         resultado.append(provedor)
     return resultado
 

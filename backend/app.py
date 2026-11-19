@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import acesso, assistente, avisos_provedor, base_conhecimento, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco, sessoes
+from backend import acesso, assistente, avisos_provedor, base_conhecimento, correcoes_cadastro, config_alertas, fatura_esperada, identificadores, metricas_llm, saude_banco, sessoes
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -3300,6 +3300,42 @@ def base_conhecimento_route():
     return Response(corpo, mimetype="application/json; charset=utf-8")
 
 
+@app.get("/api/cadastro/correcoes")
+def cadastro_correcoes_route():
+    """Prévia das correções: unificar nomes de provedor, dia de vencimento (com sugestão) e unidades inválidas."""
+    return jsonify({"ok": True, **correcoes_cadastro.propostas(list_locais(), list_notas_recebidas(), list_nota_lancadas(), list_faturas_locais())})
+
+
+def _corrigir(tipo: str, executar):
+    """Backup do banco antes, executa, registra o que mudou (evento) e devolve o resumo."""
+    try:
+        backup = saude_banco.fazer_backup(Path(_database.DB_PATH), _backup_dir())
+    except (RuntimeError, sqlite3.Error, OSError) as erro:
+        return jsonify({"ok": False, "error": f"Backup antes da correção falhou; nada foi alterado. {str(erro)[:200]}"}), 500
+    feitos = executar(request.get_json(silent=True) or {})
+    quem = (getattr(g, "acesso", None) or {})
+    log_event("correcao_cadastro", {"tipo": tipo, "quem": quem.get("usuario") or quem.get("nome") or "", "itens": feitos[:200] if isinstance(feitos, list) else feitos})
+    return jsonify({"ok": True, "aplicados": len(feitos) if isinstance(feitos, list) else int(bool(feitos)), "itens": feitos, "backup": backup["arquivo"]})
+
+
+@app.post("/api/cadastro/correcoes/unificar")
+def cadastro_unificar_route():
+    return _corrigir("unificar", lambda d: correcoes_cadastro.unificar(d.get("itens") or []))
+
+
+@app.post("/api/cadastro/correcoes/vencimento")
+def cadastro_vencimento_route():
+    return _corrigir("vencimento", lambda d: correcoes_cadastro.preencher_vencimento(d.get("itens") or []))
+
+
+@app.post("/api/cadastro/correcoes/desativar")
+def cadastro_desativar_route():
+    local = get_local(str((request.get_json(silent=True) or {}).get("localId") or ""))
+    if not local or base_conhecimento.unidade_valida(local):
+        return jsonify({"ok": False, "error": "Só unidades inválidas (nome de cabeçalho de planilha) podem ser desativadas aqui."}), 400
+    return _corrigir("desativar", lambda d: [x for x in [correcoes_cadastro.desativar_unidade(str(d.get("localId")))] if x])
+
+
 @app.get("/api/base-conhecimento/qualidade")
 def base_conhecimento_qualidade_route():
     return jsonify({"ok": True, **base_conhecimento.qualidade(list_locais())})
@@ -3323,6 +3359,11 @@ def put_locais(tipo: str):
     items = payload.get("items") if isinstance(payload, dict) else None
     if not isinstance(items, list):
         return jsonify({"ok": False, "error": "Envie {'items': [...]}."}), 400
+    # Nome antigo de provedor já unificado (Qualidade do cadastro) vira o nome novo: cópia antiga da tela não desfaz.
+    items = correcoes_cadastro.aplicar_mapa_nomes(items)
+    # Unidade inválida já desativada (cabeçalho de planilha) não volta por uma cópia antiga da tela.
+    inativas = {str(l["id"]) for l in list_locais(tipo, True) if not l.get("ativo")}
+    items = [i for i in items if not (isinstance(i, dict) and str(i.get("id")) in inativas and not base_conhecimento.unidade_valida(i))]
     if not _pode("rede.ver"):
         # Quem não vê rede e IPs não pode apagá-los nem alterá-los: mantém o que está gravado.
         atuais = {str(l["id"]): {k: l[k] for k in _CAMPOS_REDE if k in l} for l in list_locais(tipo, True)}

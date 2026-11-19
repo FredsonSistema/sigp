@@ -28,7 +28,9 @@ CATALOGO: List[Dict[str, Any]] = [
                    ("GET", "/api/base-conhecimento/qualidade")]},
         {"id": "rede.ver", "nome": "Ver rede e IPs das unidades (dado sensível de infraestrutura)"},
         {"id": "locais.editar", "nome": "Criar e editar locais e provedores (inclui importar CSV)",
-         "rotas": [("PUT", "/api/locais/<tipo>"), ("POST", "/api/locais/<tipo>/item")]},
+         "rotas": [("PUT", "/api/locais/<tipo>"), ("POST", "/api/locais/<tipo>/item"), ("GET", "/api/cadastro/correcoes"),
+                   ("POST", "/api/cadastro/correcoes/unificar"), ("POST", "/api/cadastro/correcoes/vencimento"),
+                   ("POST", "/api/cadastro/correcoes/desativar")]},
     ]},
     {"area": "Notas recebidas (Gmail)", "funcionalidades": [
         {"id": "notas_recebidas.ver", "nome": "Ver a caixa de notas recebidas, PDFs e XMLs", "abas": ["notas-recebidas"],

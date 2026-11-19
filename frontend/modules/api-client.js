@@ -329,7 +329,7 @@
   // Regra única dos provedores: toda nota/fatura associada a um local atualiza o provedor NA API.
   // Esta função traz esse resultado para o cadastro deste navegador (sem gravar de volta), para que a
   // próxima gravação do local a partir da tela não desfaça a atualização.
-  async function refreshLocationProviders(tipo, localId) {
+  async function refreshLocationProviders(tipo, localId, opcoes = {}) {
     const storageKey = Object.keys(LOCAL_KEYS).find((key) => LOCAL_KEYS[key] === tipo);
     if (!storageKey || !localId) return false;
     const response = await window.fetch(`${backendUrl()}/api/locais/item/${encodeURIComponent(localId)}`);
@@ -351,7 +351,7 @@
       }
       PROVIDER_FIELDS.forEach((field) => {
         if (apiProvider[field] !== undefined && apiProvider[field] !== '' && local[field] !== apiProvider[field]) {
-          if (field === 'nome' && local.nome) return; // um nome digitado não é trocado
+          if (field === 'nome' && local.nome && !opcoes.trocarNome) return; // um nome digitado não é trocado (salvo correção do cadastro)
           local[field] = apiProvider[field];
           changed = true;
         }
