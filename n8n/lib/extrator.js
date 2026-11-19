@@ -304,6 +304,11 @@ const ExtratorSIGp = (() => {
     '\\(=\\)\\s*valor\\s+cobrado',
   ];
 
+  const ROTULOS_VALOR_COLUNA = [
+    String.raw`valor\s+total\s+da\s+nfs-?e`, String.raw`valor\s+l[ií]quido\s+da\s+nfs-?e`, String.raw`valor\s+total\s+da\s+nota`,
+    String.raw`total\s+a\s+pagar`, String.raw`valor\s+a\s+pagar`,
+  ];
+
   function extrairCamposFatura(textoBruto) {
     const text = String(textoBruto ?? '');
     const lines = splitlines(text).filter((ln) => strip(ln)).map((ln) => strip(ln.replace(/\s+/g, ' ')));
@@ -397,6 +402,14 @@ const ExtratorSIGp = (() => {
       if (bruto) {
         amount = pyFloat(bruto.includes(',') ? bruto.replace(/\./g, '').replace(',', '.') : bruto);
         break;
+      }
+    }
+    // Rótulo e valor em colunas, em linhas diferentes (NFS-e Nacional: "VALOR TOTAL DA NFS-E" e, na linha de baixo,
+    // "R$ 15,00"). Só rótulos específicos: "Valor Total Apurado - IBS" (imposto) não pode virar o valor da conta.
+    if (amount === null) {
+      for (const rotulo of ROTULOS_VALOR_COLUNA) {
+        const m = colunaDe(text, rotulo).match(/^(?:R\$\s*)?([\d.]+,\d{2})$/);
+        if (m) { amount = pyFloat(m[1].replace(/\./g, '').replace(',', '.')); break; }
       }
     }
     const finalAmount = boleto.valor !== null ? boleto.valor : amount;

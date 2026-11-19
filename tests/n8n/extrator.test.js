@@ -102,3 +102,11 @@ test('comparação com o esperado e PDF sem texto', () => {
   assert.ok(vazio.aviso);
   assert.deepEqual(vazio.camposParaRevisar, ['emissorNome', 'valorTotal', 'dataVencimento', 'numero']);
 });
+
+// NFS-e Nacional (texto fictício no layout real): rótulo e valor em colunas, em linhas diferentes. Antes saía vazio e a IA
+// preenchia R$ 0,30; "Valor Total Apurado - IBS" (imposto, R$ 0,03) não pode virar o valor da conta.
+test('NFS-e Nacional: valor total em coluna, sem pegar o imposto', () => {
+  assert.equal(X.extrairDoTexto({ texto: 'Alíq. Efetiva Municipal - IBS                Valor Apurado Municipal - IBS                 Alíq. Efetiva Estadual - IBS\n0,00 %                                       R$ 0,00                                       0,10 %\nValor Total Apurado - IBS                    Alíquota - CBS                                Alíquota Efetiva - CBS\nR$ 0,03                                      0,90 %                                        0,90 %\nVALOR TOTAL DA NFS-E                         VALOR DA OPERAÇÃO / SERVIÇO                   Desconto Incondicionado\nR$ 15,00                                      -                                                    -\nTotal das Retenções (ISSQN / Federais)       VALOR LÍQUIDO DA NFS-e                        Total do IBS/CBS\n-                                            R$ 15,00                                      R$ 0,13\n' }).valorTotal, 15);
+  assert.equal(X.extrairDoTexto({ texto: 'Total das Retenções (ISSQN / Federais)       VALOR LÍQUIDO DA NFS-e                        Total do IBS/CBS\n-                                            R$ 1.234,50                                   R$ 0,13\n' }).valorTotal, 1234.5);
+  assert.equal(X.extrairDoTexto({ texto: 'Valor Total Apurado - IBS                    Alíquota - CBS\nR$ 0,03                                      0,90 %\n' }).valorTotal, null);
+});

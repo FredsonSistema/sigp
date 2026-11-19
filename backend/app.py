@@ -2088,6 +2088,12 @@ def _dv_chave_ok(digitos: str) -> bool:
     return (0 if dv >= 10 else dv) == int(digitos[43])
 
 
+_ROTULOS_VALOR_COLUNA = (
+    r"valor\s+total\s+da\s+nfs-?e", r"valor\s+l[ií]quido\s+da\s+nfs-?e", r"valor\s+total\s+da\s+nota",
+    r"total\s+a\s+pagar", r"valor\s+a\s+pagar",
+)
+
+
 def _extract_invoice_fields(text: str) -> Dict[str, Any]:
     """Extrai campos de fatura/boleto a partir do texto OCR.
 
@@ -2267,6 +2273,14 @@ def _extract_invoice_fields(text: str) -> Dict[str, Any]:
             except ValueError:
                 amount = None
             break
+    # Rótulo e valor em colunas, em linhas diferentes (NFS-e Nacional: "VALOR TOTAL DA NFS-E" e, na linha de baixo,
+    # "R$ 15,00"). Só rótulos específicos: "Valor Total Apurado - IBS" (imposto) não pode virar o valor da conta.
+    if amount is None:
+        for label in _ROTULOS_VALOR_COLUNA:
+            m_coluna = re.match(r"^(?:R\$\s*)?([\d.]+,\d{2})$", _coluna_de(text, label))
+            if m_coluna:
+                amount = float(m_coluna.group(1).replace(".", "").replace(",", "."))
+                break
 
     # Linha digitável prevalece para valor e vencimento (mais precisa)
     final_amount = boleto_amount if boleto_amount is not None else amount
