@@ -171,6 +171,8 @@
 .mk-form h4{margin:0} .mk-form label{display:flex; flex-direction:column; gap:3px} .mk-form-linha{display:flex; gap:10px; align-items:flex-end} .mk-form-linha label:first-child{flex:1}
 .mk-cond{display:flex; gap:6px; align-items:center; margin:4px 0} .mk-cond > select{max-width:210px} .mk-cond-valor{flex:1; display:flex; gap:8px; align-items:center; flex-wrap:wrap} .mk-cond-valor input[type=text]{flex:1; min-width:0}
 .mk-check{display:inline-flex !important; flex-direction:row !important; align-items:center; gap:4px} .mk-previa{font-size:13px}
+.sc-selo{display:inline-block; border:1px solid; border-radius:4px; padding:0 6px; font-size:11px; line-height:17px; margin:4px 4px 0 0; white-space:nowrap; font-weight:600}
+.sc-na-lista{display:flex; flex-wrap:wrap; align-items:center; gap:0}
 .mk-card > .hint, .mk-editor > .hint, .mk-pills > .hint, .mk-previa .hint, .mk-form .task-add-row .hint, #cfgMarcadores > .hint{font-size:12px; color:var(--text-dim); letter-spacing:normal; margin-top:3px}
 .cfg-alertas-lista{list-style:none; margin:4px 0 8px; padding:0; display:flex; flex-wrap:wrap; gap:6px}
 .cfg-alertas-lista li{display:flex; align-items:center; gap:4px; border:1px solid var(--border, #c6d3dc); border-radius:14px; padding:2px 4px 2px 10px; font-size:13px}
@@ -949,6 +951,7 @@
     <div class="toolbar" id="toolbarAgencias">
       <input type="text" id="search" placeholder="Buscar por nome, cidade ou provedor…">
       <select id="filtroMarcador" class="mk-filtro" title="Filtrar por marcador ou grupo" aria-label="Filtrar por marcador ou grupo"><option value="">Todos os marcadores e grupos</option></select>
+      <select id="filtroSituacao" class="mk-filtro sc-filtro" hidden title="Situação da conta (automática, pelos alertas)" aria-label="Filtrar pela situação da conta"></select>
       <button class="ghost small" id="btnExport">Exportar backup</button>
       <button class="ghost small" id="btnExportCSV">Exportar CSV</button>
       <button class="ghost small" id="btnImportCSV" title="Importar agências de um CSV (mesmo formato do Exportar CSV), com prévia antes de gravar">Importar CSV</button>
@@ -1662,7 +1665,8 @@
 <script src="frontend/modules/perfis-permissoes.js?v=20261117"></script>
 <script src="frontend/modules/config-alertas.js?v=20261117"></script>
 <script src="frontend/modules/qualidade-cadastro.js?v=20261118b"></script>
-<script src="frontend/modules/marcadores.js?v=20261120a"></script>
+<script src="frontend/modules/marcadores.js?v=20261120b"></script>
+<script src="frontend/modules/situacao-conta.js?v=20261120a"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -4361,6 +4365,7 @@ function locationToolbarHTML(cfg){
   return `
     <input type="text" id="${cfg.prefix}_search" placeholder="Buscar por nome, cidade ou provedor…">
     <select id="${cfg.prefix}_filtroMarcador" class="mk-filtro" title="Filtrar por marcador ou grupo" aria-label="Filtrar por marcador ou grupo"><option value="">Todos os marcadores e grupos</option></select>
+    <select id="${cfg.prefix}_filtroSituacao" class="mk-filtro sc-filtro" hidden title="Situação da conta (automática, pelos alertas)" aria-label="Filtrar pela situação da conta"></select>
     <button class="ghost small" id="${cfg.prefix}_btnExport">Exportar backup</button>
     <button class="ghost small" id="${cfg.prefix}_btnExportCSV">Exportar CSV</button>
     <button class="ghost small" id="${cfg.prefix}_btnImportCSV" title="Importar de um CSV (mesmo formato do Exportar CSV), com prévia antes de gravar">Importar CSV</button>
@@ -4511,8 +4516,10 @@ function createLocationManager(cfg){
   function render(){
     const q = el('search').value.trim().toLowerCase();
     const fm = el('filtroMarcador').value;
+    const fs = el('filtroSituacao').value;
     const filtered = state.data.filter(r=>{
       if(!window.SIGP_MARCADORES.passaNoFiltro(r, fm)) return false;
+      if(!window.SIGP_SITUACAO_CONTA.passaNoFiltro(r, fs)) return false;
       if(!q) return true;
       const provNomes = (r.provedores||[]).map(p=>p.nome).join(' ');
       const respNomes = (r.responsaveis||[]).map(p=>p.nome).join(' ');
@@ -4544,7 +4551,7 @@ function createLocationManager(cfg){
         else if(dias <= 5) cls = ' style="color:var(--warn)"';
         vencimentoHtml = ` · <span${cls}>Fatura: ${esc(formatDateBR(r.vencimentoFatura))}${dias<0 ? ' (atrasada)' : dias<=5 ? ` (em ${dias}d)` : ''}</span>`;
       }
-      tdName.innerHTML = `<div class="n">${esc(r.nome||'—')}</div><div class="c">${esc(r.cidade||'')}${r.cidade ? ' · ' : ''}${esc(visitaTxt)}${vencimentoHtml}</div>${window.SIGP_MARCADORES.pilulas(r)}`;
+      tdName.innerHTML = `<div class="n">${esc(r.nome||'—')}</div><div class="c">${esc(r.cidade||'')}${r.cidade ? ' · ' : ''}${esc(visitaTxt)}${vencimentoHtml}</div>${window.SIGP_SITUACAO_CONTA.selo(r)}${window.SIGP_MARCADORES.pilulas(r)}`;
       tdName.onclick = ()=>openLocalDetails(cfg.prefix, r.id);
 
       const tdResp = document.createElement('td');
@@ -4785,6 +4792,7 @@ function createLocationManager(cfg){
 
   el('search').addEventListener('input', render);
   el('filtroMarcador').addEventListener('change', render);
+  el('filtroSituacao').addEventListener('change', render);
 
   el('btnExport').onclick = ()=>{
     requestPasswordExport(()=> state.data, `${cfg.prefix}-backup`);
@@ -5773,6 +5781,12 @@ window.addEventListener('sigp:locais-atualizados', ()=>{
   locGaragens.load();
 });
 // Marcadores e grupos (frontend/modules/marcadores.js): catálogo carregado ou alterado redesenha as listas.
+// Situação da conta (frontend/modules/situacao-conta.js): selo automático pelos alertas, não gravado no local.
+window.addEventListener('sigp:situacao-atualizada', ()=>{
+  render();
+  locRodoviarias.refresh();
+  locGaragens.refresh();
+});
 window.addEventListener('sigp:marcadores-atualizados', ()=>{
   render();
   locRodoviarias.refresh();
@@ -5857,6 +5871,7 @@ async function showApp(){
   window.SIGP_PERMISSOES?.aplicar();
   document.getElementById('appRoot').style.display = 'block';
   window.SIGP_MARCADORES.carregar();
+  window.SIGP_SITUACAO_CONTA.carregar();
   loadConfig();
   loadLog();
   load();
@@ -5878,6 +5893,9 @@ async function showApp(){
   setTimeout(checkFaturaAlertas, 400);
 }
 
+// ---- alerta de vencimento de fatura (aviso ao abrir a tela) ----
+const ALERTA_SILENCIO_KEY = 'sigp_alerta_fatura_silencio';
+const NOTIF_PEDIDA_KEY = 'sigp_notif_pedida';
 function computeInvoiceAlerts(){
   const todas = [
     ...data.map(r=>({...r, tipo:'ag'})),
@@ -6541,8 +6559,10 @@ function formatAgencyText(r){
 function render(){
   const q = document.getElementById('search').value.trim().toLowerCase();
   const fm = document.getElementById('filtroMarcador').value;
+  const fs = document.getElementById('filtroSituacao').value;
   const filtered = data.filter(r=>{
     if(!window.SIGP_MARCADORES.passaNoFiltro(r, fm)) return false;
+    if(!window.SIGP_SITUACAO_CONTA.passaNoFiltro(r, fs)) return false;
     if(!q) return true;
     const provNomes = (r.provedores||[]).map(p=>p.nome).join(' ');
     const respNomes = (r.responsaveis||[]).map(p=>p.nome).join(' ');
@@ -6575,7 +6595,7 @@ function render(){
       else if(dias <= 5) cls = ' style="color:var(--warn)"';
       vencimentoHtml = ` · <span${cls}>Fatura: ${esc(formatDateBR(r.vencimentoFatura))}${dias<0 ? ' (atrasada)' : dias<=5 ? ` (em ${dias}d)` : ''}</span>`;
     }
-    tdName.innerHTML = `<div class="n">${esc(r.nome||'—')}</div><div class="c">${esc(r.cidade||'')}${r.cidade ? ' · ' : ''}${esc(visitaTxt)}${vencimentoHtml}</div>${window.SIGP_MARCADORES.pilulas(r)}`;
+    tdName.innerHTML = `<div class="n">${esc(r.nome||'—')}</div><div class="c">${esc(r.cidade||'')}${r.cidade ? ' · ' : ''}${esc(visitaTxt)}${vencimentoHtml}</div>${window.SIGP_SITUACAO_CONTA.selo(r)}${window.SIGP_MARCADORES.pilulas(r)}`;
     tdName.onclick = ()=>openLocalDetails('ag', r.id);
 
     const tdResp = document.createElement('td');
@@ -6821,6 +6841,7 @@ document.getElementById('btnDelete').onclick = async ()=>{
 
 document.getElementById('search').addEventListener('input', render);
 document.getElementById('filtroMarcador').addEventListener('change', render);
+document.getElementById('filtroSituacao').addEventListener('change', render);
 
 document.getElementById('btnExport').onclick = ()=>{
   requestPasswordExport(()=> data, 'agencias-backup');

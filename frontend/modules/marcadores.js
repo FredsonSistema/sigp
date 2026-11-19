@@ -75,7 +75,7 @@
     return op('', 'Todos os marcadores e grupos') + (m ? `<optgroup label="Marcadores">${m}</optgroup>` : '') + (g ? `<optgroup label="Grupos">${g}</optgroup>` : '');
   }
   function atualizarFiltros() {
-    document.querySelectorAll('select.mk-filtro').forEach((s) => {
+    document.querySelectorAll('select.mk-filtro:not(.sc-filtro)').forEach((s) => {
       const atual = s.value;
       s.innerHTML = opcoesFiltro(atual);
       if (atual && ![...s.options].some((o) => o.value === atual)) s.value = '';
