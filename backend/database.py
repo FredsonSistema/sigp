@@ -288,6 +288,24 @@ def init_db() -> None:
         conn.execute("ALTER TABLE faturas_locais ADD COLUMN provedor_id TEXT NOT NULL DEFAULT ''")
     if "provedor_nome" not in invoice_columns:
         conn.execute("ALTER TABLE faturas_locais ADD COLUMN provedor_nome TEXT NOT NULL DEFAULT ''")
+    # Nota disponível: documento que chegou do provedor (Gmail) e foi associado ao local. Não é nota lançada:
+    # nota lançada é só a do financeiro (Importar NF, WF-01). Quando o financeiro lança, as duas se ligam.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS notas_disponiveis (
+            id TEXT PRIMARY KEY, entidade_tipo TEXT NOT NULL, entidade_id TEXT NOT NULL,
+            chave TEXT NOT NULL DEFAULT '', numero TEXT NOT NULL DEFAULT '', serie TEXT NOT NULL DEFAULT '',
+            provedor_nome TEXT NOT NULL DEFAULT '', local_nome TEXT NOT NULL DEFAULT '', local_cidade TEXT NOT NULL DEFAULT '',
+            valor_total REAL NOT NULL DEFAULT 0, data_emissao TEXT NOT NULL DEFAULT '', data_vencimento TEXT NOT NULL DEFAULT '',
+            observacao TEXT NOT NULL DEFAULT '', servicos_json TEXT NOT NULL DEFAULT '[]',
+            nota_lancada_id TEXT NOT NULL DEFAULT '', origem TEXT NOT NULL DEFAULT 'gmail', id_externo TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL, updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_notas_disponiveis_local ON notas_disponiveis(entidade_tipo, entidade_id, data_vencimento)")
+    if "nota_disponivel_id" not in invoice_columns:
+        conn.execute("ALTER TABLE faturas_locais ADD COLUMN nota_disponivel_id TEXT NOT NULL DEFAULT ''")
     received_invoice_columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(notas_recebidas)").fetchall()
     }
@@ -345,6 +363,8 @@ def init_db() -> None:
             "CREATE INDEX idx_notas_recebidas_status "
             "ON notas_recebidas(status, recebida_em DESC, created_at DESC)"
         )
+    if "nota_disponivel_id" not in {row["name"] for row in conn.execute("PRAGMA table_info(notas_recebidas)").fetchall()}:
+        conn.execute("ALTER TABLE notas_recebidas ADD COLUMN nota_disponivel_id TEXT NOT NULL DEFAULT ''")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_faturas_locais_provedor "
         "ON faturas_locais(entidade_tipo, entidade_id, provedor_id, created_at DESC)"
@@ -1414,6 +1434,40 @@ def encontrar_nota_da_competencia(
     return next((row for row in rows if mesma_empresa(row["provedor_nome"], provedor)), None)
 
 
+def encontrar_disponivel_da_competencia(
+    conn: sqlite3.Connection, entidade_tipo: str, entidade_id: str, provedor: str, data_vencimento: str,
+) -> Optional[sqlite3.Row]:
+    """Nota disponível do mesmo local, da mesma empresa e do mesmo mês de vencimento (a mesma cobrança)."""
+    mes = competencia(data_vencimento)
+    if not (entidade_id and provedor and mes):
+        return None
+    rows = conn.execute(
+        """
+        SELECT * FROM notas_disponiveis
+        WHERE entidade_tipo = ? AND entidade_id = ? AND substr(data_vencimento, 1, 7) = ?
+        ORDER BY (data_vencimento = ?) DESC, updated_at DESC
+        """,
+        (entidade_tipo, entidade_id, mes, data_vencimento),
+    ).fetchall()
+    return next((row for row in rows if mesma_empresa(row["provedor_nome"], provedor)), None)
+
+
+def lancada_da_disponivel(conn: sqlite3.Connection, disponivel: Dict[str, Any]) -> Optional[sqlite3.Row]:
+    """Nota lançada pelo financeiro que corresponde à nota disponível: mesma chave (real) no local, ou mesmo
+    local + mesma empresa + mesmo mês de vencimento. Notas criadas pela associação do Gmail não contam."""
+    chave = str(disponivel.get("chave") or "").strip()
+    if chave and not eh_padrao(chave):
+        row = conn.execute(
+            "SELECT * FROM notas_lancadas WHERE entidade_tipo = ? AND entidade_id = ? AND chave = ? AND sistema_origem <> 'gmail'",
+            (disponivel["entidade_tipo"], disponivel["entidade_id"], chave),
+        ).fetchone()
+        if row:
+            return row
+    nota = encontrar_nota_da_competencia(conn, disponivel["entidade_tipo"], disponivel["entidade_id"],
+                                         str(disponivel.get("provedor_nome") or ""), str(disponivel.get("data_vencimento") or ""))
+    return nota if nota and nota["sistema_origem"] != "gmail" else None
+
+
 def integrar_nota_recebida(
     item_id: str,
     entidade_tipo: str,
@@ -1426,139 +1480,94 @@ def integrar_nota_recebida(
     selected_note_id: str = "",
     substituir: bool = False,
 ) -> Optional[Dict[str, Any]]:
+    """Associa o documento recebido ao local como NOTA DISPONÍVEL (não cria nota lançada: essa é só do financeiro).
+    Documentos da mesma cobrança (local + provedor + mês) ficam na mesma nota disponível. Se o financeiro já lançou
+    a nota correspondente, as duas se ligam (e a fatura entra na conciliação dela)."""
     conn = get_connection()
     try:
         conn.execute("BEGIN IMMEDIATE")
-        received = conn.execute(
-            "SELECT * FROM notas_recebidas WHERE id = ?", (item_id,)
-        ).fetchone()
+        received = conn.execute("SELECT * FROM notas_recebidas WHERE id = ?", (item_id,)).fetchone()
         if not received:
             conn.rollback()
             return None
 
         provider_name = str(dados.get("emissorNome") or "").strip()
         due_date = str(dados.get("dataVencimento") or "").strip()
-        launched_note_id = str(received["nota_lancada_id"] or "")
-        existing_note = None
+        existing = None
         if selected_note_id:
-            selected = conn.execute(
-                "SELECT * FROM notas_lancadas WHERE id = ?", (selected_note_id,)
-            ).fetchone()
-            if not selected or (
-                selected["entidade_tipo"] != entidade_tipo or selected["entidade_id"] != entidade_id
-            ):
+            existing = conn.execute("SELECT * FROM notas_disponiveis WHERE id = ?", (selected_note_id,)).fetchone()
+            if not existing or existing["entidade_tipo"] != entidade_tipo or existing["entidade_id"] != entidade_id:
                 raise ValueError("A nota escolhida para atualização não pertence ao local selecionado.")
-            existing_note = selected
-        elif launched_note_id:
-            linked_note = conn.execute(
-                "SELECT * FROM notas_lancadas WHERE id = ?", (launched_note_id,)
-            ).fetchone()
-            if linked_note and (
-                linked_note["entidade_tipo"] == entidade_tipo
-                and linked_note["entidade_id"] == entidade_id
-                and competencia(linked_note["data_vencimento"]) == competencia(due_date)
-                and mesma_empresa(linked_note["provedor_nome"], provider_name)
-            ):
-                existing_note = linked_note
-        if not existing_note:
+        elif received["nota_disponivel_id"]:
+            ligada = conn.execute("SELECT * FROM notas_disponiveis WHERE id = ?", (received["nota_disponivel_id"],)).fetchone()
+            if ligada and ligada["entidade_tipo"] == entidade_tipo and ligada["entidade_id"] == entidade_id \
+                    and competencia(ligada["data_vencimento"]) == competencia(due_date) and mesma_empresa(ligada["provedor_nome"], provider_name):
+                existing = ligada
+        if not existing:
             # Recorrência: mesmo local + mesma empresa + mesmo mês de vencimento = a mesma cobrança.
-            # Atualiza e substitui a nota existente (ex.: nota fiscal e boleto do mesmo mês), em vez de duplicar.
-            existing_note = encontrar_nota_da_competencia(conn, entidade_tipo, entidade_id, provider_name, due_date)
-        if existing_note:
-            launched_note_id = str(existing_note["id"])
-        else:
-            launched_note_id = f"gmail-{uuid4().hex}"
+            existing = encontrar_disponivel_da_competencia(conn, entidade_tipo, entidade_id, provider_name, due_date)
+        disponivel_id = str(existing["id"]) if existing else f"disp-{uuid4().hex}"
 
         def _identificador(campo: str) -> str:
-            # Número/chave real vence o valor padrão: o padrão nunca apaga o que a nota existente já tinha.
+            # Número/chave real vence o valor padrão: o padrão nunca apaga o que a nota já tinha.
             novo = str(dados.get(campo) or "").strip()
-            antigo = str((existing_note[campo] or "") if existing_note else "").strip()
+            antigo = str((existing[campo] or "") if existing else "").strip()
             if (not novo or eh_padrao(novo)) and antigo and not eh_padrao(antigo):
                 return antigo
             return novo or antigo
 
-        note_key = _identificador("chave")
-        note_number = _identificador("numero")
-        note_series = str(dados.get("serie") or (existing_note["serie"] if existing_note else "") or "").strip()
-        # Chave/número vazios não bloqueiam a associação: recebem o valor padrão (decisão do usuário).
-        note_key = note_key or VALOR_PADRAO
-        note_number = note_number or VALOR_PADRAO
-
         now = _now()
-        note_payload = {
-            "id": launched_note_id,
-            "entidade_tipo": entidade_tipo,
-            "entidade_id": entidade_id,
-            "chave": note_key,
-            "numero": note_number,
-            "serie": note_series,
-            "provedor_nome": provider_name,
-            "local_nome": str(local.get("nome") or ""),
-            "local_cidade": str(local.get("cidade") or ""),
-            "municipio_codigo": str(local.get("municipio_codigo") or ""),
-            "valor_total": float(dados["valorTotal"]),
-            "data_emissao": str(dados["dataEmissao"]),
-            "data_vencimento": due_date,
-            "status": existing_note["status"] if existing_note else "PENDENTE",
+        servicos = [{"codigo": "", "classificacao": "PENDENTE", **s} for s in (dados.get("servicos") or []) if isinstance(s, dict)]
+        payload = {
+            "id": disponivel_id, "entidade_tipo": entidade_tipo, "entidade_id": entidade_id,
+            "chave": _identificador("chave") or VALOR_PADRAO, "numero": _identificador("numero") or VALOR_PADRAO,
+            "serie": str(dados.get("serie") or (existing["serie"] if existing else "") or "").strip(),
+            "provedor_nome": provider_name, "local_nome": str(local.get("nome") or ""), "local_cidade": str(local.get("cidade") or ""),
+            "valor_total": float(dados["valorTotal"]), "data_emissao": str(dados["dataEmissao"]), "data_vencimento": due_date,
             "observacao": str(dados.get("descricaoServico") or ""),
-            # Itens de serviço do XML da nota (quando veio XML); senão, mantém os que a nota já tinha.
-            "servicos_json": json.dumps([
-                {"codigo": "", "classificacao": "PENDENTE", **servico} for servico in dados["servicos"]
-                if isinstance(servico, dict)
-            ], ensure_ascii=False) if isinstance(dados.get("servicos"), list) and dados["servicos"]
-            else (existing_note["servicos_json"] if existing_note else "[]"),
-            "origem": "gmail",
-            "arquivo_origem": received["nome_arquivo"],
-            "sistema_origem": "gmail",
-            "id_externo": str(received["gmail_message_id"]),
-            "created_at": existing_note["created_at"] if existing_note else now,
-            "updated_at": now,
+            "servicos_json": json.dumps(servicos, ensure_ascii=False) if servicos else (existing["servicos_json"] if existing else "[]"),
+            "nota_lancada_id": str(existing["nota_lancada_id"] or "") if existing else "",
+            "origem": "gmail", "id_externo": str(received["gmail_message_id"]),
+            "created_at": existing["created_at"] if existing else now, "updated_at": now,
         }
+        if not payload["nota_lancada_id"]:
+            lancada = lancada_da_disponivel(conn, payload)
+            payload["nota_lancada_id"] = str(lancada["id"]) if lancada else ""
         conn.execute(
             """
-            INSERT INTO notas_lancadas (
-                id, entidade_tipo, entidade_id, chave, numero, serie, provedor_nome, local_nome, local_cidade,
-                municipio_codigo, valor_total, data_emissao, data_vencimento, status, observacao, servicos_json,
-                origem, arquivo_origem, sistema_origem, id_externo, created_at, updated_at
-            ) VALUES (
-                :id, :entidade_tipo, :entidade_id, :chave, :numero, :serie, :provedor_nome, :local_nome,
-                :local_cidade, :municipio_codigo, :valor_total, :data_emissao, :data_vencimento, :status,
-                :observacao, :servicos_json, :origem, :arquivo_origem, :sistema_origem, :id_externo,
-                :created_at, :updated_at
-            )
+            INSERT INTO notas_disponiveis (id, entidade_tipo, entidade_id, chave, numero, serie, provedor_nome, local_nome, local_cidade,
+                valor_total, data_emissao, data_vencimento, observacao, servicos_json, nota_lancada_id, origem, id_externo, created_at, updated_at)
+            VALUES (:id, :entidade_tipo, :entidade_id, :chave, :numero, :serie, :provedor_nome, :local_nome, :local_cidade,
+                :valor_total, :data_emissao, :data_vencimento, :observacao, :servicos_json, :nota_lancada_id, :origem, :id_externo, :created_at, :updated_at)
             ON CONFLICT(id) DO UPDATE SET
-                entidade_tipo = excluded.entidade_tipo, entidade_id = excluded.entidade_id,
-                chave = excluded.chave, numero = excluded.numero, serie = excluded.serie,
-                provedor_nome = excluded.provedor_nome, local_nome = excluded.local_nome,
-                local_cidade = excluded.local_cidade, municipio_codigo = excluded.municipio_codigo,
-                valor_total = excluded.valor_total, data_emissao = excluded.data_emissao,
-                data_vencimento = excluded.data_vencimento, status = excluded.status,
-                observacao = excluded.observacao, servicos_json = excluded.servicos_json,
-                origem = excluded.origem, arquivo_origem = excluded.arquivo_origem,
-                sistema_origem = excluded.sistema_origem, id_externo = excluded.id_externo,
+                chave = excluded.chave, numero = excluded.numero, serie = excluded.serie, provedor_nome = excluded.provedor_nome,
+                local_nome = excluded.local_nome, local_cidade = excluded.local_cidade, valor_total = excluded.valor_total,
+                data_emissao = excluded.data_emissao, data_vencimento = excluded.data_vencimento, observacao = excluded.observacao,
+                servicos_json = excluded.servicos_json, nota_lancada_id = excluded.nota_lancada_id, id_externo = excluded.id_externo,
                 updated_at = excluded.updated_at
             """,
-            note_payload,
+            payload,
         )
+        lancada_id = payload["nota_lancada_id"]
 
-        # Documentos da mesma cobrança (local + provedor + mês): o primeiro é a fatura principal; os seguintes (XML/
-        # NFS-e em PDF, boleto à parte, outro e-mail) entram como documentos adicionais e não substituem nada.
-        # Associar de novo o MESMO documento atualiza a linha dele. (Regras de substituição por mês: a definir.)
+        # Documentos da mesma cobrança: o primeiro é a fatura principal; os seguintes (XML/NFS-e em PDF, boleto à parte,
+        # outro e-mail) entram como documentos adicionais e não substituem nada. Associar de novo o MESMO documento
+        # atualiza a linha dele. Divergência confirmada (correção) substitui a principal. (Regras por mês: a definir.)
         principal = conn.execute(
             """
             SELECT id, arquivo_storage, created_at FROM faturas_locais
-            WHERE nota_lancada_id = ? AND COALESCE(json_extract(dados_json, '$.documentoAdicional'), 0) = 0
+            WHERE nota_disponivel_id = ? AND COALESCE(json_extract(dados_json, '$.documentoAdicional'), 0) = 0
             ORDER BY created_at, rowid LIMIT 1
             """,
-            (launched_note_id,),
+            (disponivel_id,),
         ).fetchone()
         previous_invoice = conn.execute(
             """
             SELECT id, arquivo_storage, created_at FROM faturas_locais
-            WHERE nota_lancada_id = ? AND json_extract(dados_json, '$.notaRecebidaId') = ?
+            WHERE nota_disponivel_id = ? AND json_extract(dados_json, '$.notaRecebidaId') = ?
             ORDER BY updated_at DESC LIMIT 1
             """,
-            (launched_note_id, item_id),
+            (disponivel_id, item_id),
         ).fetchone()
         if substituir and principal and not previous_invoice:
             previous_invoice = principal  # correção confirmada: o documento novo ocupa o lugar da fatura principal
@@ -1566,17 +1575,13 @@ def integrar_nota_recebida(
         if previous_invoice:
             invoice_id = str(previous_invoice["id"])
         elif principal:
-            invoice_id = f"gmail-{launched_note_id}-{item_id}"
+            invoice_id = f"gmail-{disponivel_id}-{item_id}"
         else:
-            invoice_id = f"gmail-{launched_note_id}"
+            invoice_id = f"gmail-{disponivel_id}"
         invoice_data = {
             **dados,
             "provedorEsperado": provider_name,
-            "comparacao": {
-                "emissorConfere": True,
-                "valorConfere": True,
-                "vencimentoConfere": True,
-            },
+            "comparacao": {"emissorConfere": True, "valorConfere": True, "vencimentoConfere": True},
             "origem": "gmail",
             "notaRecebidaId": item_id,
             **({"documentoAdicional": True} if adicional else {}),
@@ -1584,51 +1589,48 @@ def integrar_nota_recebida(
         conn.execute(
             """
             INSERT INTO faturas_locais (
-                id, entidade_tipo, entidade_id, provedor_id, provedor_nome, nota_lancada_id, nome_arquivo,
+                id, entidade_tipo, entidade_id, provedor_id, provedor_nome, nota_lancada_id, nota_disponivel_id, nome_arquivo,
                 arquivo_storage, dados_json, created_at, updated_at
-            ) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?)
+            ) VALUES (?, ?, ?, '', ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(id) DO UPDATE SET
                 entidade_tipo = excluded.entidade_tipo, entidade_id = excluded.entidade_id,
                 provedor_nome = excluded.provedor_nome, nota_lancada_id = excluded.nota_lancada_id,
+                nota_disponivel_id = excluded.nota_disponivel_id,
                 nome_arquivo = excluded.nome_arquivo, arquivo_storage = excluded.arquivo_storage,
                 dados_json = excluded.dados_json, updated_at = excluded.updated_at
             """,
             (
-                invoice_id, entidade_tipo, entidade_id, provider_name, launched_note_id,
-                str(received["nome_arquivo"]), arquivo_storage,
-                json.dumps(invoice_data, ensure_ascii=False),
-                previous_invoice["created_at"] if previous_invoice else now,
-                now,
+                invoice_id, entidade_tipo, entidade_id, provider_name, lancada_id, disponivel_id,
+                str(received["nome_arquivo"]), arquivo_storage, json.dumps(invoice_data, ensure_ascii=False),
+                previous_invoice["created_at"] if previous_invoice else now, now,
             ),
         )
+        if lancada_id:
+            conn.execute("UPDATE faturas_locais SET nota_lancada_id = ? WHERE nota_disponivel_id = ?", (lancada_id, disponivel_id))
         conn.execute(
             """
             UPDATE notas_recebidas
-            SET nota_lancada_id = ?, status = 'ASSOCIADA', entidade_tipo = ?, entidade_id = ?,
+            SET nota_disponivel_id = ?, nota_lancada_id = ?, status = 'ASSOCIADA', entidade_tipo = ?, entidade_id = ?,
                 dados_json = ?, etiqueta_gmail = ?, etiqueta_status = 'PENDENTE', etiqueta_erro = '',
                 operador = ?, updated_at = ?
             WHERE id = ?
             """,
-            (
-                launched_note_id, entidade_tipo, entidade_id, json.dumps(dados, ensure_ascii=False),
-                etiqueta_gmail, operador, now, item_id,
-            ),
+            (disponivel_id, lancada_id, entidade_tipo, entidade_id, json.dumps(dados, ensure_ascii=False),
+             etiqueta_gmail, operador, now, item_id),
         )
-        note_row = conn.execute(
-            "SELECT * FROM notas_lancadas WHERE id = ?", (launched_note_id,)
-        ).fetchone()
-        received_row = conn.execute(
-            "SELECT * FROM notas_recebidas WHERE id = ?", (item_id,)
-        ).fetchone()
+        disp_row = conn.execute("SELECT * FROM notas_disponiveis WHERE id = ?", (disponivel_id,)).fetchone()
+        lancada_row = conn.execute("SELECT * FROM notas_lancadas WHERE id = ?", (lancada_id,)).fetchone() if lancada_id else None
+        received_row = conn.execute("SELECT * FROM notas_recebidas WHERE id = ?", (item_id,)).fetchone()
         conn.commit()
         return {
             "item": _serialize_nota_recebida(received_row),
-            "notaLancada": serialize_row(note_row),
+            "notaDisponivel": serialize_row(disp_row),
+            "notaLancada": serialize_row(lancada_row) if lancada_row else None,
             # A fatura atual do provedor continua sendo a principal; o adicional só se soma aos documentos.
             "faturaId": str(principal["id"]) if adicional else invoice_id,
             "documentoAdicional": adicional,
             "arquivoAnterior": str(previous_invoice["arquivo_storage"]) if previous_invoice else "",
-            "createdNote": existing_note is None,
+            "createdNote": existing is None,
         }
     except (sqlite3.Error, ValueError):
         conn.rollback()

@@ -512,7 +512,13 @@ const SIGP_NOTAS_LOCAIS = (() => {
 
   async function syncRecord(record, entityType) {
     const api = window.SIGP_NFSE;
-    const rows = cloneRows(record.notasFiscais || []);
+    // Linha "nota lançada" criada pela antiga associação do Gmail (id gmail-...): é nota disponível, não lançada.
+    // Não é reenviada como nota lançada (a API recusaria); o pagamento da linha, se houver, segue.
+    const rows = cloneRows(record.notasFiscais || []).map((row) => {
+      if (!String(row?.notaLancada?.id || '').startsWith('gmail-')) return row;
+      const { notaLancada, conciliacao, ...resto } = row;
+      return resto.notaPaga ? { ...resto, status: 'PENDENTE' } : null;
+    }).filter(Boolean);
     const entityNames = { ag: 'agencia', rv: 'rodoviaria', gr: 'garagem' };
     const contexto = {
       entidadeTipo: entityNames[entityType] || entityType,

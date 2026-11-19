@@ -51,7 +51,7 @@
     ).join('');
     return `<div class="full" data-role="xml-info"><b>XML da nota fiscal</b>
       <div>${escapeHtml(XML_TYPES[xml.tipoXml] || 'Nota fiscal')} nº ${escapeHtml(xml.numero || '—')}${xml.serie ? ` · série ${escapeHtml(xml.serie)}` : ''} · ${escapeHtml(xml.emissorNome || '—')} · ${escapeHtml(formatMoney(xml.valorTotal))} · vencimento ${escapeHtml(xml.dataVencimento || '—')}</div>
-      <div class="hint">Os campos fiscais abaixo vêm do XML (prioridade sobre a leitura do PDF). Ao associar, o XML vai para as notas fiscais do local e a fatura PDF para o provedor.</div>
+      <div class="hint">Os campos fiscais abaixo vêm do XML (prioridade sobre a leitura do PDF). Ao associar, o PDF e o XML ficam no local como nota disponível (a nota lançada vem do financeiro).</div>
       ${divergences ? `<div class="hint" role="alert">PDF e XML não conferem; vale o XML:${divergences}</div>` : ''}
       ${missingPdf}${invalid}
       ${item.xmlUrl ? `<a class="note-file" href="${escapeHtml(backendUrl() + item.xmlUrl)}" download="${escapeHtml(data.xmlArquivo?.nome || 'nota-fiscal.xml')}">Baixar XML</a>` : ''}
@@ -113,9 +113,11 @@
       byId('notasRecebidasStatus').textContent = {
         pagamento_registrado: 'Aviso vinculado: pagamento registrado e conciliado.',
         vinculado: 'Aviso vinculado à cobrança.',
+        vinculado_disponivel: 'Aviso vinculado à nota disponível do local.',
+        pagamento_confirmado_provedor: 'Pagamento confirmado pelo provedor: o provedor do local ficou marcado como pago.',
         ja_pago: 'A cobrança já estava paga.',
         varias_candidatas: 'Ainda há mais de uma cobrança possível.',
-      }[r.acao] || 'Ainda não achei a cobrança lançada deste provedor.';
+      }[r.acao] || 'Ainda não achei a cobrança deste provedor.';
       await renderTab(true);
     } catch (error) {
       byId('notasRecebidasStatus').textContent = error.message;
@@ -289,13 +291,15 @@
       pagamento_registrado: `Pagamento registrado automaticamente: ${escapeHtml(formatMoney(a.valorPago))} em ${escapeHtml(shortDate(a.dataPagamento))}, conciliado com a cobrança lançada. O provedor do local ficou marcado como pago.`,
       ja_pago: 'Esta cobrança já tinha pagamento registrado; nada foi alterado.',
       vinculado: 'Vinculado à cobrança lançada. Os alertas de vencimento continuam valendo até o pagamento.',
-      sem_vinculo: 'Não achei a cobrança lançada deste provedor. Associe a fatura do mês primeiro (ou confira o provedor).',
+      vinculado_disponivel: 'Vinculado à nota disponível do local (ainda sem nota lançada do financeiro). Os alertas de vencimento continuam valendo até o pagamento.',
+      pagamento_confirmado_provedor: `Pagamento confirmado pelo provedor em ${escapeHtml(shortDate(a.dataPagamento))}: o provedor do local ficou marcado como pago (alertas). A nota paga continua vindo do financeiro.`,
+      sem_vinculo: 'Não achei a cobrança deste provedor. Associe a fatura do mês primeiro (ou confira o provedor).',
       varias_candidatas: 'Há mais de uma cobrança possível; associe à certa pela parte "Associar a um local".',
     }[a.acao] || '';
     return `<div class="full" data-role="aviso" style="margin-top:10px">
       <div><b>${escapeHtml(evento)}.</b> ${texto}</div>
       ${['sem_vinculo', 'varias_candidatas'].includes(a.acao) ? '<div class="task-add-row" style="margin-top:6px"><button class="ghost small" type="button" data-action="relink">Tentar vincular de novo</button><span class="hint">Depois de lançar a cobrança do mês.</span></div>' : ''}
-      ${cand.length ? `<div class="hint">${a.acao === 'vinculado' || a.acao === 'pagamento_registrado' || a.acao === 'ja_pago' ? 'Cobrança' : 'Cobranças possíveis'}:<br>${cand.join('<br>')}</div>` : ''}
+      ${cand.length ? `<div class="hint">${['vinculado', 'pagamento_registrado', 'ja_pago', 'vinculado_disponivel', 'pagamento_confirmado_provedor'].includes(a.acao) ? 'Cobrança' : 'Cobranças possíveis'}:<br>${cand.join('<br>')}</div>` : ''}
     </div>`;
   }
 
@@ -440,7 +444,7 @@
     const arquivosBody = `
       ${item.status === 'ASSOCIADA' ? `<div class="hint">Etiqueta Gmail: ${escapeHtml(item.etiqueta_gmail || 'aguardando')}</div>
         <div class="hint">Estado da etiqueta: ${escapeHtml(item.etiqueta_status || 'pendente')}</div>
-        ${item.notaLancadaId ? `<div class="hint">Nota SIG vinculada: ${escapeHtml(item.notaLancadaId)}</div>` : ''}
+        ${item.notaDisponivelId ? `<div class="hint">Nota disponível no local: ${escapeHtml(item.notaDisponivelId)}${item.notaLancadaId ? ` · lançada pelo financeiro: ${escapeHtml(item.notaLancadaId)}` : ' · aguardando o lançamento do financeiro'}</div>` : ''}
         ${item.etiqueta_erro ? `<div class="hint" role="alert">Falha ao organizar no Gmail: ${escapeHtml(item.etiqueta_erro)}</div>` : ''}` : ''}
       ${data.semArquivo ? `<div class="hint">E-mail sem anexo. Trecho: ${escapeHtml(data.descricaoServico || '—')}</div>` : ''}
       <div class="task-add-row" style="margin-top:6px"${data.semArquivo ? ' hidden' : ''}>
@@ -650,18 +654,18 @@
     if (!candidates.length) {
       const otherNotes = comparison.outrasNotasMesmoProvedor || [];
       target.innerHTML = `<div class="full"><b>Nenhuma nota correspondente encontrada neste local.</b>
-        <div>Esta associação criará uma nova nota e manterá os registros anteriores.</div>
+        <div>Esta associação criará uma nova nota disponível no local e manterá os registros anteriores.</div>
         ${otherNotes.length ? `<div class="hint">Há ${otherNotes.length} outra(s) nota(s) do mesmo provedor com vencimento diferente; elas serão preservadas.</div>` : ''}
-        <button class="primary small" type="button" data-action="commit">Associar como nova nota</button>
+        <button class="primary small" type="button" data-action="commit">Associar como nova nota disponível</button>
         <button class="ghost small" type="button" data-action="keep">Não associar agora</button></div>`;
       return;
     }
-    const selectedId = target.querySelector('[data-role="candidate"]')?.value || candidates[0].notaLancadaId;
-    const selected = candidates.find((candidate) => candidate.notaLancadaId === selectedId) || candidates[0];
+    const selectedId = target.querySelector('[data-role="candidate"]')?.value || candidates[0].notaDisponivelId;
+    const selected = candidates.find((candidate) => candidate.notaDisponivelId === selectedId) || candidates[0];
     const candidateOptions = candidates.length > 1
-      ? `<label class="full">Nota existente para comparar
+      ? `<label class="full">Nota disponível para comparar
           <select class="f" data-role="candidate">${candidates.map((candidate) =>
-        `<option value="${escapeHtml(candidate.notaLancadaId)}" ${candidate.notaLancadaId === selected.notaLancadaId ? 'selected' : ''}>${escapeHtml(candidate.numero || candidate.chave || candidate.notaLancadaId)} — ${escapeHtml(candidate.dataVencimento || 'sem vencimento')}</option>`
+        `<option value="${escapeHtml(candidate.notaDisponivelId)}" ${candidate.notaDisponivelId === selected.notaLancadaId ? 'selected' : ''}>${escapeHtml(candidate.numero || candidate.chave || candidate.notaDisponivelId)} — ${escapeHtml(candidate.dataVencimento || 'sem vencimento')}</option>`
       ).join('')}</select>
         </label>` : '';
     const differences = selected.diferencas || [];
@@ -673,9 +677,9 @@
           <label class="full"><input type="checkbox" data-role="confirm-update"> Aceito as divergências e autorizo atualizar esta nota e substituir o PDF vinculado.</label>
           <button class="primary small" type="button" data-action="commit" disabled>Aceitar divergências e atualizar</button>
         </div>`
-      : `<div class="full"><b>Nota correspondente encontrada sem divergências.</b>
+      : `<div class="full"><b>Nota disponível desta cobrança encontrada, sem divergências.</b> O documento entra junto (não substitui).
           <div>Número: ${escapeHtml(selected.numero || '—')} · Vencimento: ${escapeHtml(selected.dataVencimento || '—')} · Valor: ${escapeHtml(formatMoney(selected.valorTotal))}</div>
-          <button class="primary small" type="button" data-action="commit">Associar à nota existente</button>
+          <button class="primary small" type="button" data-action="commit">Juntar à nota disponível (mesma cobrança)</button>
         </div>`;
     target.innerHTML = `<div class="full">${candidateOptions}${differenceMarkup}
       <button class="ghost small" type="button" data-action="keep">Não associar agora</button></div>`;
@@ -735,8 +739,8 @@
     }
     const candidates = validated.comparacao.candidatas || [];
     const candidateId = card.querySelector('[data-role="candidate"]')?.value
-      || (candidates.length === 1 ? candidates[0].notaLancadaId : '');
-    const candidate = candidates.find((entry) => entry.notaLancadaId === candidateId);
+      || (candidates.length === 1 ? candidates[0].notaDisponivelId : '');
+    const candidate = candidates.find((entry) => entry.notaDisponivelId === candidateId);
     if (candidate?.diferencas?.length && !card.querySelector('[data-role="confirm-update"]')?.checked) {
       byId('notasRecebidasStatus').textContent = 'Marque o aceite explícito das divergências para atualizar a nota.';
       return;
@@ -756,13 +760,13 @@
           entidadeId: validated.localId,
           operador: auth.user || '',
           dados: data,
-          notaLancadaId: candidateId,
+          notaDisponivelId: candidateId,
           confirmarAtualizacao: Boolean(candidate?.diferencas?.length),
         }),
       });
       const localWarning = await addAssociatedNoteToLocal(item, result, data, validated.type, validated.localId);
       byId('notasRecebidasStatus').textContent =
-        `Nota vinculada ao SIG. O n8n pode aplicar a etiqueta Gmail “${result.gmailLabel}”.${localWarning}`;
+        `Nota disponível associada ao local${result.notaLancada ? ' e ligada à nota lançada pelo financeiro' : ' (aguardando o lançamento do financeiro)'}. O n8n pode aplicar a etiqueta Gmail “${result.gmailLabel}”.${localWarning}`;
       comparisons.delete(item.id);
       selectedNewLocation = null;
       await renderTab(true);
@@ -870,41 +874,9 @@
       if (!local) throw new Error('O local associado não foi encontrado no cadastro deste navegador.');
       if (!Array.isArray(local.notasFiscais)) local.notasFiscais = [];
 
-      const launchedNote = result.notaLancada || {};
-      const noteId = String(launchedNote.id || result.item?.notaLancadaId || '');
-      if (!noteId) throw new Error('A API não devolveu o identificador da nota lançada.');
-      // A cópia no navegador usa o que a API gravou (padrão 999999999, recorrência, chave validada);
-      // o que foi digitado no cartão só vale se a API não devolveu o campo.
-      const saved = (field, fallback) => (launchedNote[field] !== undefined && launchedNote[field] !== null && launchedNote[field] !== '' ? launchedNote[field] : fallback);
-      const note = {
-        id: noteId,
-        numero: saved('numero', data.numero),
-        notaLancada: {
-          id: noteId,
-          chave: saved('chave', data.chave),
-          numero: saved('numero', data.numero),
-          serie: saved('serie', data.serie || ''),
-          provedorNome: saved('provedor_nome', data.emissorNome),
-          localNome: local.nome || '',
-          localCidade: local.cidade || '',
-          valor: Number(saved('valor_total', data.valorTotal)),
-          valorTotal: Number(saved('valor_total', data.valorTotal)),
-          dataEmissao: saved('data_emissao', data.dataEmissao),
-          dataVencimento: saved('data_vencimento', data.dataVencimento),
-          observacao: data.descricaoServico || '',
-          origem: 'gmail',
-          arquivoOrigem: item.nome_arquivo || '',
-          ...(item.xmlUrl ? { xmlUrl: `/api/notas/lancadas/${encodeURIComponent(noteId)}/xml`, xmlNome: data.xmlArquivo?.nome || item.dados?.xmlArquivo?.nome || '' } : {}),
-          ...(Array.isArray(launchedNote.servicos) && launchedNote.servicos.length ? { servicos: launchedNote.servicos } : {}),
-        },
-        notaPaga: null,
-        status: 'LANCADA',
-      };
-      const existingIndex = local.notasFiscais.findIndex((entry) =>
-        String(entry.notaLancada?.id || '') === noteId
-      );
-      if (existingIndex >= 0) local.notasFiscais[existingIndex] = { ...local.notasFiscais[existingIndex], ...note };
-      else local.notasFiscais.push(note);
+      // Documento do e-mail é NOTA DISPONÍVEL (fica na API, aparece no local); nota lançada é só do financeiro.
+      // Linha antiga "nota lançada" do Gmail (id gmail-...) sai da cópia deste navegador.
+      local.notasFiscais = local.notasFiscais.filter((entry) => !(String(entry.notaLancada?.id || '').startsWith('gmail-') && !entry.notaPaga));
       // P2-04: aplica no cadastro do navegador o mesmo provedor que a API atualizou (nome, valor, vencimento).
       // Sem isso, a próxima gravação do local a partir do navegador desfaria a atualização.
       let providerMessage = '';

@@ -63,77 +63,46 @@ const ARQUIVO = path.join(__dirname, '..', '..', 'docs', 'XML para testes', '01-
     await card.locator('[data-action="compare"]').click();
     await card.locator('[data-action="commit"]').waitFor({ timeout: 15000 });
     await card.locator('[data-action="commit"]').click();
-    await page.waitForFunction((id) => {
-      const l = JSON.parse(localStorage.getItem('ti_agencias_v1') || '[]').find((x) => x.id === id);
-      return l && (l.notasFiscais || []).length > 0;
-    }, local.id, { timeout: 20000 });
-    const nota = await page.evaluate((id) => JSON.parse(localStorage.getItem('ti_agencias_v1')).find((x) => x.id === id).notasFiscais[0].notaLancada, local.id);
-    check(results, 'nota do local com número e valor do XML', nota.numero === '7001001' && Number(nota.valorTotal) === 89.9, JSON.stringify([nota.numero, nota.valorTotal]));
-    check(results, 'nota do local tem os itens de serviço do XML', (nota.servicos || []).some((s) => /FIBRA OPTICA/.test(s.descricao)));
-    const xmlDaNota = await page.evaluate(async ({ api, u }) => (await fetch(`${api}${u}`)).text(), { api: API_TEST_URL, u: nota.xmlUrl || '/x' });
-    check(results, 'XML guardado na nota lançada do local', xmlDaNota === xmlTexto);
-
-    check(results, 'cópia no navegador usa o que a API gravou (chave lida tem prioridade)', nota.chave === lido.chave, nota.chave);
-
-    // Bug 14/11/2026: cópia antiga no navegador (gravada antes da correção) com a chave do XML e emissão com
-    // horário. "Enviar para análise" regravava a nota e a API respondia "Documento duplicado".
-    await page.evaluate(({ id, chave }) => {
-      const list = JSON.parse(localStorage.getItem('ti_agencias_v1'));
-      const l = list.find((x) => x.id === id);
-      l.notasFiscais[0].notaLancada = { ...l.notasFiscais[0].notaLancada, chave, serie: '', dataEmissao: '2026-11-10T09:30:00-03:00' };
-      localStorage.setItem('ti_agencias_v1', JSON.stringify(list));
-    }, { id: local.id, chave: lido.chave });
-    let enviado = null;
-    await page.route(/:5678\/webhook\/sigp-eventos$/, async (route) => {
-      enviado = JSON.parse(route.request().postData() || '{}');
-      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, status: 'recebido' }) });
-    });
-
+    // O documento do e-mail vira NOTA DISPONÍVEL do local; nota lançada (e paga) vem só do financeiro.
+    await page.waitForFunction(() => /Nota disponível associada/.test(document.getElementById('notasRecebidasStatus')?.textContent || ''), null, { timeout: 20000 });
+    const api = (u, opcoes) => page.evaluate(async ({ base, u, opcoes }) => (await (await fetch(`${base}${u}`, opcoes)).json()), { base: API_TEST_URL, u, opcoes });
+    const nota = ((await api(`/api/notas-disponiveis?entidadeTipo=agencia&entidadeId=${local.id}`)).items || [])[0] || {};
+    check(results, 'nota disponível com número e valor do XML', nota.numero === '7001001' && Number(nota.valor_total) === 89.9, JSON.stringify([nota.numero, nota.valor_total]));
+    check(results, 'nota disponível tem os itens de serviço do XML', (nota.servicos || []).some((s) => /FIBRA OPTICA/.test(s.descricao)));
+    check(results, 'chave lida do XML tem prioridade', nota.chave === lido.chave, nota.chave);
+    const xmlDaNota = await page.evaluate(async ({ base, u }) => (await fetch(`${base}${u}`)).text(), { base: API_TEST_URL, u: nota.documentos?.[0]?.xmlUrl || '/x' });
+    check(results, 'XML original guardado com a nota disponível', xmlDaNota === xmlTexto);
+    const lancadas = ((await api('/api/notas/lancadas')).items || []).filter((n) => n.entidade_id === local.id);
+    check(results, 'nenhuma nota lançada foi criada (é do financeiro)', lancadas.length === 0, JSON.stringify(lancadas.map((n) => n.id)));
+    const linhas = await page.evaluate((id) => (JSON.parse(localStorage.getItem('ti_agencias_v1')).find((x) => x.id === id).notasFiscais || []).length, local.id);
+    check(results, 'o local não ganhou linha de "nota lançada"', linhas === 0, String(linhas));
     await page.evaluate(() => document.querySelector('.tab[data-view="agencias"]').click());
     await page.evaluate((id) => openModal(id), local.id);
     await page.waitForSelector('#overlay.open');
-    const link = page.locator('#overlay a', { hasText: 'XML da nota fiscal' });
-    await link.first().waitFor({ timeout: 10000 });
-    check(results, '"Notas fiscais do local" mostra o link do XML', await link.count() >= 1);
-    await link.first().scrollIntoViewIfNeeded();
-    await shot(page, 'xml-02-notas-do-local');
-
-    await page.locator('#overlay button', { hasText: 'Enviar para análise' }).first().click();
-    await page.waitForFunction(() => /Análise enviada|Não foi possível enviar|Envio cancelado/.test(document.body.innerText), null, { timeout: 30000 });
-    const aviso = await page.evaluate(() => (document.body.innerText.match(/(Análise enviada[^\n]*|Não foi possível enviar[^\n]*|Envio cancelado[^\n]*)/) || [''])[0]);
-    check(results, '"Enviar para análise" funciona (sem "Documento duplicado")', /Análise enviada/.test(aviso) && !/duplicado/i.test(aviso), aviso);
-    check(results, 'n8n recebe a nota com número e valor do XML', enviado?.evento === 'analise_manual'
-      && enviado.dados?.notaLancada?.numero === '7001001' && Number(enviado.dados.notaLancada.valor_total) === 89.9,
-    JSON.stringify(enviado?.dados?.notaLancada || {}).slice(0, 160));
-    const gravada = await page.evaluate(async ({ api, u }) => (await (await fetch(`${api}${u}`)).json()), { api: API_TEST_URL, u: '/api/notas/lancadas' });
-    const g = (gravada.items || []).find((x) => x.id === nota.id) || {};
-    check(results, 'API manteve a chave lida e a emissão sem horário', g.chave === lido.chave && g.data_emissao === '2026-11-10', JSON.stringify([g.chave, g.data_emissao]));
-    await shot(page, 'xml-03-enviado-para-analise');
-
-    // Bug 14/11/2026 (2): "Marcar como pago" + salvar o local dava 409 (série vazia na cópia antiga).
-    await page.locator('#overlay button', { hasText: 'Marcar como pago' }).first().click();
-    await page.waitForSelector('#nfLocalEditorOverlay.open');
-    const pre = await page.evaluate(() => ({
-      numero: document.querySelector('#nfLocalEditorFields [data-nf-field="numero"]').value,
-      valorPago: document.querySelector('#nfLocalEditorFields [data-nf-field="valorPago"]').value,
-      servicos: document.querySelectorAll('#nfLocalServiceItems .nf-local-service-item').length,
-    }));
-    check(results, 'pagamento já vem com número, valor e serviço da nota lançada', pre.numero === '7001001' && Number(pre.valorPago) === 89.9 && pre.servicos === 1, JSON.stringify(pre));
-    await page.selectOption('#nfLocalServiceItems [data-service-field="classificacao"]', 'CONTRATADO');
-    await shot(page, 'xml-04-pagamento');
-    await page.locator('#nfLocalEditorForm button[type=submit]').click();
-    await page.waitForFunction(() => !document.getElementById('nfLocalEditorOverlay').classList.contains('open'), null, { timeout: 10000 });
-    await page.click('#form button[type=submit]');
-    await page.waitForFunction(() => !document.getElementById('overlay').classList.contains('open'), null, { timeout: 20000 });
-    await page.waitForTimeout(2500);
-    const toast = await page.evaluate(() => document.body.innerText);
-    const erroLinha = await page.evaluate((id) => (JSON.parse(localStorage.getItem('ti_agencias_v1')).find((x) => x.id === id).notasFiscais || []).map((n) => n.erroSincronizacao || '').join(' | '), local.id);
-    check(results, 'salvar o local não avisa falha de sincronização', !/não foram sincronizadas/.test(toast) && !erroLinha.trim(), erroLinha);
-    const conc = await page.evaluate(async ({ api, id }) => {
-      const r = await (await fetch(`${api}/api/notas/conciliacoes`)).json();
-      return (r.items || []).filter((c) => c.nota_lancada_id === id).map((c) => c.status);
-    }, { api: API_TEST_URL, id: nota.id });
-    check(results, 'conciliação fecha em MATCH (nota + pagamento + fatura PDF)', conc.includes('MATCH'), JSON.stringify(conc));
+    const cartao = page.locator('#ndList .nd-card').first();
+    await cartao.waitFor({ timeout: 10000 });
+    const textoCartao = await cartao.innerText();
+    check(results, 'local mostra a nota disponível com PDF e XML, aguardando o financeiro',
+      /AGUARDANDO O FINANCEIRO/.test(textoCartao) && /XML/.test(textoCartao) && /fatura-7001001\.pdf/.test(textoCartao), textoCartao.replace(/\s+/g, ' ').slice(0, 160));
+    await cartao.scrollIntoViewIfNeeded();
+    await shot(page, 'xml-02-nota-disponivel');
+    await page.click('#btnCancel');
+    // O financeiro lança a nota (mesma chave): liga à nota disponível; com a nota paga, o ciclo fecha com todas as evidências.
+    const finId = `fin-xml-${sufixo}`;
+    const base = { chave: lido.chave, numero: '7001001', serie: '1', provedorNome: 'CONNECT FIBRA TELECOM LTDA', dataEmissao: '2026-11-10', dataVencimento: lido.dataVencimento };
+    const lanc = await api('/api/notas/lancadas', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: finId, source: 'json', entidadeTipo: 'agencia', entidadeId: local.id, dados: { ...base, valor: 89.9 } }) });
+    check(results, 'nota lançada do financeiro se liga à nota disponível', lanc.ok && lanc.notaDisponivelId === nota.id, JSON.stringify([lanc.ok, lanc.notaDisponivelId, lanc.error]));
+    const paga = await api('/api/notas/pagas', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: `fin-paga-${sufixo}`, source: 'json', entidadeTipo: 'agencia', entidadeId: local.id, valorPago: 89.9,
+        dataPagamento: '2026-11-15', notaLancadaId: finId, dados: { ...base, valor: 89.9 } }) });
+    check(results, 'nota paga do financeiro gravada', paga.ok, paga.error || '');
+    const conc = ((await api('/api/notas/conciliacoes')).items || []).filter((c) => c.nota_lancada_id === finId).map((c) => c.status);
+    check(results, 'conciliação fecha em MATCH (lançada + paga do financeiro + fatura do e-mail)', conc.includes('MATCH'), JSON.stringify(conc));
+    await page.evaluate((id) => openModal(id), local.id);
+    await page.waitForFunction(() => /LANÇADA PELO FINANCEIRO/.test(document.getElementById('ndList')?.textContent || ''), null, { timeout: 10000 });
+    check(results, 'local mostra a nota disponível ligada à lançada', true);
+    await shot(page, 'xml-03-ligada-ao-financeiro');
   } catch (error) {
     check(results, 'execução do teste', false, error.message.split('\n')[0]);
     await shot(page, 'xml-erro').catch(() => {});

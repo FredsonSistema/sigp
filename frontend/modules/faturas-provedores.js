@@ -580,7 +580,7 @@
             <span>Vencimento: ${escapeHtml(data.dataVencimento || '-')}</span>
             <span>Valor: ${Number(data.valorTotal || 0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</span>
             <span>Serviço: ${escapeHtml(data.descricao || 'não informado')}</span>
-            <span>Nota vinculada: ${escapeHtml(linkedNote ? `${linkedNote.numero || linkedNote.id} · ${linkedNote.provedor_nome || ''}` : item.nota_lancada_id || 'nenhuma')}</span>
+            <span>Nota lançada (financeiro): ${escapeHtml(linkedNote ? `${linkedNote.numero || linkedNote.id} · ${linkedNote.provedor_nome || ''}` : item.nota_lancada_id || 'ainda não lançada')}</span>${item.nota_disponivel_id ? `<span>Nota disponível (e-mail): ${escapeHtml(item.nota_disponivel_id)}</span>` : ''}
             <span>Comparações: ${escapeHtml(comparisonLabel || 'sem referência')}</span>
           </div>
           <div class="task-add-row" style="gap:8px;margin-top:8px">

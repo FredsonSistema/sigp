@@ -82,14 +82,31 @@ class NotaXmlTests(unittest.TestCase):
             "entidadeTipo": "agencia", "entidadeId": self.local["id"], "dados": item["dados"],
         })
         self.assertEqual(assoc.status_code, 200, assoc.json)
-        nota = assoc.json["notaLancada"]
+        # Documento do e-mail é NOTA DISPONÍVEL no local; nota lançada é só do financeiro.
+        self.assertIsNone(assoc.json["notaLancada"])
+        self.assertEqual(database.list_nota_lancadas(), [])
+        nota = assoc.json["notaDisponivel"]
         self.assertEqual((nota["numero"], nota["serie"], nota["valor_total"]), ("7001001", "1", 89.9))
         self.assertEqual(nota["servicos"][0]["descricao"][:27], "SERVICO DE ACESSO A INTERNE")
-        xml_da_nota = self.client.get(f"/api/notas/lancadas/{nota['id']}/xml")
+        disp = self.client.get(f"/api/notas-disponiveis?entidadeTipo=agencia&entidadeId={self.local['id']}").json["items"]
+        self.assertEqual([d["id"] for d in disp], [nota["id"]])
+        xml_da_nota = self.client.get(disp[0]["documentos"][0]["xmlUrl"])
         self.assertEqual(xml_da_nota.status_code, 200, xml_da_nota.json if xml_da_nota.is_json else "")
         self.assertEqual(xml_da_nota.data.decode("utf-8"), self.xml)
-        # A fatura PDF continua indo para o local (evidência própria na conciliação).
+        self.assertTrue(self.client.get(disp[0]["documentos"][0]["url"]).data.startswith(b"%PDF"))
         self.assertEqual(len(database.list_faturas_locais()), 1)
+        # Cópia antiga da tela tentando regravar como nota lançada: recusada.
+        r = self.client.post("/api/notas/lancadas", json={"id": "gmail-copia-antiga", "source": "json", "entidadeTipo": "agencia",
+                                                         "entidadeId": self.local["id"], "dados": {"numero": "7001001", "valor": 89.9, "provedorNome": "X"}})
+        self.assertEqual((r.status_code, r.json.get("codigo")), (409, "nota_disponivel"))
+        # O financeiro lança a nota: ela se liga à nota disponível (mesma chave) e os documentos vão junto.
+        r = self.client.post("/api/notas/lancadas", json={"id": "fin-7001001", "source": "json", "entidadeTipo": "agencia",
+                                                         "entidadeId": self.local["id"], "dados": {
+            "chave": XML_LIDO["chave"], "numero": "7001001", "serie": "1", "provedorNome": "CONNECT FIBRA TELECOM LTDA",
+            "valor": 89.9, "dataVencimento": "2026-11-20", "dataEmissao": "2026-11-10"}})
+        self.assertEqual((r.status_code, r.json["notaDisponivelId"]), (200, nota["id"]), r.json)
+        self.assertEqual(database.list_faturas_locais()[0]["nota_lancada_id"], "fin-7001001")
+        self.assertEqual(self.client.get(f"/api/notas-disponiveis?entidadeId={self.local['id']}").json["items"][0]["nota_lancada_id"], "fin-7001001")
 
     def test_so_xml_entra_em_revisao_e_nao_associa_sem_a_fatura_pdf(self):
         r = self.client.post("/api/notas-recebidas", data={
@@ -130,10 +147,17 @@ class NotaXmlTests(unittest.TestCase):
     def test_regravar_a_mesma_nota_com_a_copia_do_navegador_nao_e_duplicidade(self):
         """Bug 14/11/2026: "Enviar para análise" regravava a nota com a chave de 41 dígitos do XML (no banco: 999999999)."""
         item = self.receber().json["item"]
-        nota = self.client.patch(f"/api/notas-recebidas/{item['id']}/associar", json={
+        disp = self.client.patch(f"/api/notas-recebidas/{item['id']}/associar", json={
             "entidadeTipo": "agencia", "entidadeId": self.local["id"], "dados": item["dados"],
-        }).json["notaLancada"]
-        self.assertEqual(nota["chave"], XML_LIDO["chave"])  # chave lida tem prioridade, mesmo fora de 44/50
+        }).json["notaDisponivel"]
+        self.assertEqual(disp["chave"], XML_LIDO["chave"])  # chave lida tem prioridade, mesmo fora de 44/50
+        # A nota lançada vem do financeiro (com a chave do XML) e se liga à disponível.
+        r = self.client.post("/api/notas/lancadas", json={"id": "fin-xml-1", "source": "json", "entidadeTipo": "agencia",
+                                                         "entidadeId": self.local["id"], "dados": {
+            "chave": XML_LIDO["chave"], "numero": "7001001", "serie": "1", "provedorNome": "CONNECT FIBRA TELECOM LTDA",
+            "valor": 89.9, "dataVencimento": "2026-11-20", "dataEmissao": "2026-11-10"}})
+        self.assertEqual(r.status_code, 200, r.json)
+        nota = r.json["item"]
         copia = {"id": nota["id"], "numero": "7001001", "serie": "1", "provedorNome": nota["provedor_nome"], "valor": 89.9,
                  "dataVencimento": "2026-11-20", "localTipo": "agencia"}
         corpo = lambda **extra: {"id": nota["id"], "source": "json", "entidadeTipo": "agencia", "entidadeId": self.local["id"],

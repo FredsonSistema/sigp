@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import acesso, assistente, avisos_provedor, base_conhecimento, correcoes_cadastro, config_alertas, fatura_esperada, identificadores, marcadores, metricas_llm, saude_banco, sessoes
+from backend import acesso, assistente, avisos_provedor, base_conhecimento, correcoes_cadastro, config_alertas, fatura_esperada, identificadores, marcadores, metricas_llm, notas_disponiveis, saude_banco, sessoes
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -963,6 +963,10 @@ def create_nota_lancada():
             return jsonify({"ok": False, "error": "Informe o provedor da nota (sem chave e número, ele identifica a cobrança)."}), 400
         nota["numero"] = VALOR_PADRAO
     nota["id"] = str(payload.get("id") or nota.get("chave") or f"lancada-{uuid4().hex}")
+    if nota["id"].startswith("gmail-") or str(payload.get("origem") or "").lower() == "gmail":
+        # Documento que chegou por e-mail é NOTA DISPONÍVEL (já está no local); nota lançada é só do financeiro.
+        return jsonify({"ok": False, "codigo": "nota_disponivel",
+                        "error": "Esta nota chegou por e-mail: é nota disponível, não nota lançada. Nota lançada vem do financeiro."}), 409
     nota["status"] = str(payload.get("status") or nota.get("status") or "PENDENTE").upper()
     nota["entidadeTipo"] = payload.get("entidadeTipo") or "agencia"
     nota["entidadeId"] = payload.get("entidadeId") or ""
@@ -982,12 +986,15 @@ def create_nota_lancada():
     except DuplicateDocumentError as exc:
         return jsonify({"ok": False, "error": str(exc), "existingId": exc.existing_id}), 409
     log_event("nota_lancada", saved)
+    # Liga à nota disponível (documentos do e-mail) do mesmo local/provedor/mês: a fatura entra na conciliação.
+    disponivel_id = notas_disponiveis.vincular_lancada(saved)
     reconciled = reconcile_note(saved["id"])
     provider_update = _atualizar_provedor_do_local(
         str(saved.get("entidade_id") or ""), saved.get("provedor_nome"), saved.get("valor_total"),
         str(saved.get("data_vencimento") or ""),
     )
-    return jsonify({"ok": True, "item": saved, "conciliacoes": reconciled, **_resposta_provedor(provider_update)})
+    return jsonify({"ok": True, "item": saved, "conciliacoes": reconciled, "notaDisponivelId": disponivel_id or "",
+                    **_resposta_provedor(provider_update)})
 
 
 @app.post("/api/notas/pagas")
@@ -1252,6 +1259,7 @@ def get_correcoes_paga(nota_id: str):
 def _serialize_nota_recebida_api(item: Dict[str, Any]) -> Dict[str, Any]:
     result = dict(item)
     result["notaLancadaId"] = result.pop("nota_lancada_id", "")
+    result["notaDisponivelId"] = result.pop("nota_disponivel_id", "")
     result["downloadUrl"] = f"/api/notas-recebidas/{item['id']}/arquivo"
     dados_item = item.get("dados") or {}
     # Leitura feita por regras antigas (ou sem versão): o cartão avisa e "Extrair dados do PDF" relê e grava.
@@ -1392,7 +1400,8 @@ def _compare_received_invoice(dados: Dict[str, Any], entidade_tipo: str, entidad
     )
     candidates = []
     other_provider_notes = []
-    for existing in list_nota_lancadas():
+    # Compara com as NOTAS DISPONÍVEIS do local (documentos já associados); nota lançada é só do financeiro.
+    for existing in notas_disponiveis.listar(entidade_tipo, entidade_id):
         if existing.get("entidade_tipo") != entidade_tipo or str(existing.get("entidade_id")) != entidade_id:
             continue
         # Mesma empresa com nomes diferentes (ex.: "OPIX INTERNET" x "OPIX SERVICOS...") conta como o mesmo provedor.
@@ -1434,7 +1443,7 @@ def _compare_received_invoice(dados: Dict[str, Any], entidade_tipo: str, entidad
                 differences.append({"campo": label, "atual": old_value, "recebida": new_value})
 
         candidates.append({
-            "notaLancadaId": existing["id"],
+            "notaDisponivelId": existing["id"],
             "numero": existing.get("numero", ""),
             "chave": existing.get("chave", ""),
             "provedor": existing.get("provedor_nome", ""),
@@ -1446,16 +1455,16 @@ def _compare_received_invoice(dados: Dict[str, Any], entidade_tipo: str, entidad
             "diferencas": differences,
         })
 
-    candidates.sort(key=lambda candidate: (candidate["dataVencimento"], candidate["notaLancadaId"]), reverse=True)
+    candidates.sort(key=lambda candidate: (candidate["dataVencimento"], candidate["notaDisponivelId"]), reverse=True)
     other_periods = [
         {
-            "notaLancadaId": note["id"],
+            "notaDisponivelId": note["id"],
             "numero": note.get("numero", ""),
             "valorTotal": note.get("valor_total"),
             "dataVencimento": note.get("data_vencimento", ""),
         }
         for note in other_provider_notes
-        if all(candidate["notaLancadaId"] != note["id"] for candidate in candidates)
+        if all(candidate["notaDisponivelId"] != note["id"] for candidate in candidates)
     ]
     return {
         "candidatas": candidates,
@@ -1643,7 +1652,8 @@ def _processar_aviso(item: Dict[str, Any], corpo: str = "") -> Dict[str, Any]:
     Nenhuma ou várias: fica na caixa como Inconclusivo, com as candidatas. Nunca derruba a gravação principal."""
     dados = dict(item.get("dados") or {})
     evento = (dados.get("evento") or {}).get("tipo")
-    if evento not in avisos_provedor.EVENTOS_AVISO or dados.get("aviso", {}).get("acao") in ("vinculado", "pagamento_registrado"):
+    if evento not in avisos_provedor.EVENTOS_AVISO or dados.get("aviso", {}).get("acao") in (
+            "vinculado", "pagamento_registrado", "vinculado_disponivel", "pagamento_confirmado_provedor"):
         return item
     if item.get("status") not in ("AGUARDANDO_ASSOCIACAO", "REVISAO", "IGNORADA_IA"):
         return item
@@ -1660,6 +1670,33 @@ def _processar_aviso(item: Dict[str, Any], corpo: str = "") -> Dict[str, Any]:
             aviso["emissorNome"] = nomes[0]
         cands = avisos_provedor.candidatas(aviso, list_nota_lancadas(), _saldo_nota, mesma_empresa, locais,
                                            nome_util=lambda nome: bool(marca_provedor(nome)))
+        if not cands:
+            # Sem nota lançada do financeiro: procura a NOTA DISPONÍVEL (documento do e-mail já associado ao local).
+            # Pagamento confirmado aí só marca o provedor como pago (alertas); a nota paga continua sendo do financeiro.
+            disp = [d for d in notas_disponiveis.listar() if not d.get("nota_lancada_id")]
+            cands_d = avisos_provedor.candidatas(aviso, disp, lambda n: float(n.get("valor_total") or 0), mesma_empresa, locais,
+                                                 nome_util=lambda nome: bool(marca_provedor(nome)))
+            if len(cands_d) == 1:
+                disponivel = cands_d[0]
+                vencimento = str(disponivel.get("data_vencimento") or "")[:10]
+                registro = {"evento": evento, "em": avisos_provedor.agora_iso(), "candidatas": [avisos_provedor.resumo_candidata(disponivel)],
+                            "acao": "vinculado_disponivel", "notaDisponivelId": disponivel["id"]}
+                if evento == "pagamento_confirmado":
+                    pago_em = avisos_provedor.data_pagamento_no_texto(f"{corpo} {item.get('assunto') or ''}") \
+                        or str(item.get("recebida_em") or "")[:10] or datetime.now(timezone.utc).date().isoformat()
+                    marcar_provedor_pago(str(disponivel.get("entidade_id") or ""), str(disponivel.get("provedor_nome") or ""), vencimento or pago_em[:10])
+                    registro.update({"acao": "pagamento_confirmado_provedor", "dataPagamento": pago_em[:10]})
+                    log_event("pagamento_confirmado_provedor", {"notaRecebidaId": item["id"], "notaDisponivelId": disponivel["id"]})
+                dados["aviso"] = registro
+                triagem = dict(dados.get("triagem") or {})
+                triagem["probabilidade"] = "alta"
+                triagem["motivoProbabilidade"] = f"{avisos_provedor.ROTULOS[evento]} da nota disponível {disponivel.get('numero') or disponivel['id']}"
+                dados["triagem"] = triagem
+                return vincular_aviso_nota_recebida(
+                    item["id"], dados, status="AVISO", entidade_tipo=str(disponivel.get("entidade_tipo") or ""),
+                    entidade_id=str(disponivel.get("entidade_id") or ""), nota_lancada_id="",
+                ) or item
+            cands = cands_d
         registro = {"evento": evento, "em": avisos_provedor.agora_iso(), "candidatas": [avisos_provedor.resumo_candidata(c) for c in cands[:5]]}
         if len(cands) != 1:
             registro["acao"] = "sem_vinculo" if not cands else "varias_candidatas"
@@ -1667,7 +1704,7 @@ def _processar_aviso(item: Dict[str, Any], corpo: str = "") -> Dict[str, Any]:
             triagem = dict(dados.get("triagem") or {})
             triagem["probabilidade"] = "inconclusivo"
             triagem["motivoProbabilidade"] = (
-                f"{avisos_provedor.ROTULOS[evento]}: não achei a cobrança lançada deste provedor"
+                f"{avisos_provedor.ROTULOS[evento]}: não achei a cobrança deste provedor (nota lançada ou disponível)"
                 if not cands else f"{avisos_provedor.ROTULOS[evento]}: {len(cands)} cobranças possíveis; escolha a certa"
             )
             dados["triagem"] = triagem
@@ -2525,6 +2562,23 @@ def _enviar_xml(pasta: Path, info: Any, rotulo: str):
     return send_file(path, mimetype="application/xml", as_attachment=True, download_name=str(info.get("nome") or nome))
 
 
+@app.get("/api/notas-disponiveis")
+def notas_disponiveis_route():
+    """Notas disponíveis (documentos do e-mail associados ao local), com os documentos de cada uma."""
+    tipo = str(request.args.get("entidadeTipo") or "").strip().lower()
+    if tipo and tipo not in LOCAL_TIPOS:
+        return jsonify({"ok": False, "error": "Tipo de local inválido."}), 400
+    return jsonify({"ok": True, "items": notas_disponiveis.listar(tipo, str(request.args.get("entidadeId") or "").strip())})
+
+
+@app.get("/api/faturas/<fatura_id>/xml")
+def download_xml_fatura(fatura_id: str):
+    fatura = get_fatura_local(fatura_id)
+    if not fatura:
+        return jsonify({"ok": False, "error": "Documento não encontrado."}), 404
+    return _enviar_xml(FATURAS_DIR, (fatura.get("dados") or {}).get("xmlNotaFiscal"), "Este documento")
+
+
 @app.get("/api/notas-recebidas/<item_id>/xml")
 def download_xml_nota_recebida(item_id: str):
     item = get_nota_recebida(item_id)
@@ -2640,7 +2694,7 @@ def associar_nota_recebida_route(item_id: str):
     })
     comparison = _compare_received_invoice(data, entidade_tipo, entidade_id)
     candidates = comparison["candidatas"]
-    selected_note_id = str(payload.get("notaLancadaId") or "").strip()
+    selected_note_id = str(payload.get("notaDisponivelId") or payload.get("notaLancadaId") or "").strip()
     if len(candidates) > 1 and not selected_note_id:
         return jsonify({
             "ok": False,
@@ -2649,7 +2703,7 @@ def associar_nota_recebida_route(item_id: str):
             "comparacao": comparison,
         }), 409
     selected_candidate = next(
-        (candidate for candidate in candidates if candidate["notaLancadaId"] == selected_note_id),
+        (candidate for candidate in candidates if candidate["notaDisponivelId"] == selected_note_id),
         candidates[0] if len(candidates) == 1 else None,
     )
     if selected_note_id and not selected_candidate:
@@ -2660,7 +2714,7 @@ def associar_nota_recebida_route(item_id: str):
             "comparacao": comparison,
         }), 409
     if selected_candidate and selected_candidate["diferencas"] and (
-        not payload.get("confirmarAtualizacao") or selected_note_id != selected_candidate["notaLancadaId"]
+        not payload.get("confirmarAtualizacao") or selected_note_id != selected_candidate["notaDisponivelId"]
     ):
         return jsonify({
             "ok": False,
@@ -2691,7 +2745,7 @@ def associar_nota_recebida_route(item_id: str):
     try:
         integration = integrar_nota_recebida(
             item_id, entidade_tipo, entidade_id, label, operador, local, data, storage_name,
-            selected_note_id=selected_candidate["notaLancadaId"] if selected_candidate else "",
+            selected_note_id=selected_candidate["notaDisponivelId"] if selected_candidate else "",
             # Divergência confirmada (número/valor diferentes) = correção: o documento novo substitui a fatura.
             # Sem divergência = outro documento da mesma cobrança: entra como adicional, sem substituir.
             substituir=bool(selected_candidate and selected_candidate["diferencas"]),
@@ -2710,15 +2764,18 @@ def associar_nota_recebida_route(item_id: str):
         invoice.get("arquivo_storage") == previous_storage for invoice in list_faturas_locais()
     ):
         (FATURAS_DIR / previous_storage).unlink(missing_ok=True)
-    launched_note = integration["notaLancada"]
-    log_event("nota_lancada", launched_note)
-    reconciliations = reconcile_note(launched_note["id"])
+    disponivel = integration["notaDisponivel"]
+    launched_note = integration["notaLancada"]  # só quando o financeiro já lançou a nota correspondente
+    log_event("nota_disponivel_associada", {"notaDisponivelId": disponivel["id"], "notaLancadaId": (launched_note or {}).get("id", ""),
+                                            "entidadeTipo": entidade_tipo, "entidadeId": entidade_id})
+    reconciliations = reconcile_note(launched_note["id"]) if launched_note else []
     log_event("nota_recebida_associada", {
         "notaRecebidaId": item_id,
         "entidadeTipo": entidade_tipo,
         "entidadeId": entidade_id,
         "operador": operador,
-        "notaLancadaId": launched_note["id"],
+        "notaDisponivelId": disponivel["id"],
+        "notaLancadaId": (launched_note or {}).get("id", ""),
         "reconciliacoes": reconciliations,
     })
     # P2-04: o provedor de internet do local recebe nome, valor e vencimento da fatura (base dos alertas).
@@ -2747,8 +2804,9 @@ def associar_nota_recebida_route(item_id: str):
         "ok": True,
         "item": _serialize_nota_recebida_api(integration["item"]),
         "gmailLabel": label,
+        "notaDisponivel": disponivel,
+        "notaDisponivelCriada": integration["createdNote"],
         "notaLancada": launched_note,
-        "notaLancadaCriada": integration["createdNote"],
         "documentoAdicional": bool(integration.get("documentoAdicional")),
         "provedor": provider_update.get("provedor"),
         "provedorAcao": provider_update.get("acao"),
@@ -3413,6 +3471,8 @@ def put_locais(tipo: str):
     items = correcoes_cadastro.aplicar_mapa_nomes(items)
     # Marcadores com a grafia do catálogo (aceita apelido); renomeado/excluído não volta; novo entra no catálogo.
     items = marcadores.normalizar_itens(items)
+    # Linha "Nota lançada" que a associação do Gmail punha no local (id "gmail-...") é nota disponível: não volta.
+    items = [notas_disponiveis.limpar_notas_fiscais_do_local(i) if isinstance(i, dict) else i for i in items]
     # Unidade inválida já desativada (cabeçalho de planilha) não volta por uma cópia antiga da tela.
     inativas = {str(l["id"]) for l in list_locais(tipo, True) if not l.get("ativo")}
     items = [i for i in items if not (isinstance(i, dict) and str(i.get("id")) in inativas and not base_conhecimento.unidade_valida(i))]

@@ -64,8 +64,9 @@ CATALOGO: List[Dict[str, Any]] = [
          "rotas": [("POST", "/api/notas/lancadas/<nota_id>/fatura"), ("DELETE", "/api/notas/lancadas/<nota_id>/fatura")]},
     ]},
     {"area": "Faturas de provedores", "funcionalidades": [
-        {"id": "faturas.ver", "nome": "Ver faturas e baixar PDFs", "abas": ["faturas"],
-         "rotas": [("GET", "/api/faturas"), ("GET", "/api/faturas/<fatura_id>/arquivo")]},
+        {"id": "faturas.ver", "nome": "Ver faturas, notas disponíveis (documentos do e-mail) e baixar PDFs e XMLs", "abas": ["faturas"],
+         "rotas": [("GET", "/api/faturas"), ("GET", "/api/faturas/<fatura_id>/arquivo"), ("GET", "/api/faturas/<fatura_id>/xml"),
+                   ("GET", "/api/notas-disponiveis")]},
         {"id": "faturas.editar", "nome": "Enviar, vincular e remover faturas; extrair texto do PDF",
          "rotas": [("POST", "/api/faturas"), ("DELETE", "/api/faturas/<fatura_id>"), ("POST", "/api/faturas/<fatura_id>/vincular"),
                    ("POST", "/api/extracao/texto")]},

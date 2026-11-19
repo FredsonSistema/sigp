@@ -214,9 +214,13 @@ class FluxoAlvoTests(unittest.TestCase):
         self.assertEqual(associated.status_code, 200, associated.json)
         self.assertEqual(associated.json["gmailLabel"], "SIGp/Agências/Agência Centro")
         self.assertEqual(associated.json["item"]["status"], "ASSOCIADA")
-        self.assertTrue(associated.json["item"]["notaLancadaId"])
+        # Documento do e-mail vira NOTA DISPONÍVEL do local; nota lançada é só do financeiro.
+        self.assertTrue(associated.json["item"]["notaDisponivelId"])
+        self.assertEqual(associated.json["item"]["notaLancadaId"], "")
         self.assertEqual(associated.json["item"]["dados"]["numero"], "NF-001")
-        self.assertEqual(associated.json["notaLancada"]["numero"], "NF-001")
+        self.assertEqual(associated.json["notaDisponivel"]["numero"], "NF-001")
+        self.assertIsNone(associated.json["notaLancada"])
+        self.assertEqual(database.list_nota_lancadas(), [])
         self.assertEqual(len(database.list_faturas_locais()), 1)
         pending_labels = self.client.get("/api/notas-recebidas?etiquetaPendente=1")
         self.assertEqual([item["id"] for item in pending_labels.json["items"]], [item_id])
@@ -228,8 +232,8 @@ class FluxoAlvoTests(unittest.TestCase):
         self.assertEqual(self.client.get(uploaded.json["item"]["downloadUrl"]).data, b"%PDF-1.4 inbox")
         sie = self.client.get("/api/sie/resumo?inicio=2026-11-01&fim=2026-11-30")
         self.assertEqual(sie.status_code, 200, sie.json)
-        self.assertEqual(len(sie.json["notasRecebidas"]), 1)
-        self.assertEqual(sie.json["notasRecebidas"][0]["notaLancadaId"], associated.json["notaLancada"]["id"])
+        # SIE só conta com todas as evidências: sem a nota lançada do financeiro, o documento ainda não entra.
+        self.assertEqual(sie.json["notasRecebidas"], [])
 
     def test_received_gmail_pdf_extracts_fields_without_saving_until_association(self):
         created_local = self.client.post("/api/locais/agencia/item", json={
@@ -273,8 +277,8 @@ class FluxoAlvoTests(unittest.TestCase):
             "dados": extracted.json["dados"],
         })
         self.assertEqual(associated.status_code, 200, associated.json)
-        self.assertEqual(associated.json["notaLancada"]["numero"], "NF-2026-07")
-        self.assertEqual(len(database.list_nota_lancadas()), 1)
+        self.assertEqual(associated.json["notaDisponivel"]["numero"], "NF-2026-07")
+        self.assertEqual(len(database.list_nota_lancadas()), 0)
         invoices = database.list_faturas_locais()
         self.assertEqual(len(invoices), 1)
         self.assertEqual(
@@ -342,7 +346,7 @@ class FluxoAlvoTests(unittest.TestCase):
             "dados": first.json["item"]["dados"],
         })
         self.assertEqual(first_associated.status_code, 200, first_associated.json)
-        first_note_id = first_associated.json["notaLancada"]["id"]
+        first_note_id = first_associated.json["notaDisponivel"]["id"]
 
         second = upload("gmail-divergence-2", "NF-002", 120, "second.pdf")
         second_data = second.json["item"]["dados"]
@@ -352,7 +356,7 @@ class FluxoAlvoTests(unittest.TestCase):
         )
         self.assertEqual(comparison.status_code, 200, comparison.json)
         candidate = comparison.json["comparacao"]["candidatas"][0]
-        self.assertEqual(candidate["notaLancadaId"], first_note_id)
+        self.assertEqual(candidate["notaDisponivelId"], first_note_id)
         self.assertIn("Número", [field["campo"] for field in candidate["diferencas"]])
         self.assertIn("Valor", [field["campo"] for field in candidate["diferencas"]])
 
@@ -367,7 +371,7 @@ class FluxoAlvoTests(unittest.TestCase):
         )
         self.assertEqual(no_confirmation.status_code, 409)
         self.assertTrue(no_confirmation.json["requiresConfirmation"])
-        self.assertEqual(len(database.list_nota_lancadas()), 1)
+        self.assertEqual(len(database.list_nota_lancadas()), 0)
         self.assertEqual(len(database.list_faturas_locais()), 1)
 
         confirmed = self.client.patch(
@@ -381,10 +385,10 @@ class FluxoAlvoTests(unittest.TestCase):
             },
         )
         self.assertEqual(confirmed.status_code, 200, confirmed.json)
-        self.assertEqual(confirmed.json["notaLancada"]["id"], first_note_id)
-        self.assertEqual(confirmed.json["notaLancada"]["numero"], "NF-002")
-        self.assertEqual(confirmed.json["notaLancada"]["valor_total"], 120)
-        self.assertEqual(len(database.list_nota_lancadas()), 1)
+        self.assertEqual(confirmed.json["notaDisponivel"]["id"], first_note_id)
+        self.assertEqual(confirmed.json["notaDisponivel"]["numero"], "NF-002")
+        self.assertEqual(confirmed.json["notaDisponivel"]["valor_total"], 120)
+        self.assertEqual(len(database.list_nota_lancadas()), 0)
         self.assertEqual(len(database.list_faturas_locais()), 1)
 
     def test_received_pdf_ocr_failure_is_reported_without_persisting_invoice(self):
@@ -538,7 +542,7 @@ class FluxoAlvoTests(unittest.TestCase):
                 },
             })
             if associated.status_code == 409 and associated.json.get("requiresConfirmation"):
-                candidate_id = associated.json["comparacao"]["candidatas"][0]["notaLancadaId"]
+                candidate_id = associated.json["comparacao"]["candidatas"][0]["notaDisponivelId"]
                 associated = self.client.patch(
                     f"/api/notas-recebidas/{uploaded.json['item']['id']}/associar",
                     json={
@@ -568,14 +572,14 @@ class FluxoAlvoTests(unittest.TestCase):
             "gmail-different-due", "NF-102", "2026-11-01", "2026-11-20", 80, "second-period.pdf",
         )
 
-        self.assertEqual(original["notaLancada"]["id"], updated["notaLancada"]["id"])
-        self.assertEqual(updated["notaLancada"]["valor_total"], 125)
-        self.assertNotEqual(updated["notaLancada"]["id"], different_due["notaLancada"]["id"])
+        self.assertEqual(original["notaDisponivel"]["id"], updated["notaDisponivel"]["id"])
+        self.assertEqual(updated["notaDisponivel"]["valor_total"], 125)
+        self.assertNotEqual(updated["notaDisponivel"]["id"], different_due["notaDisponivel"]["id"])
         self.assertEqual(len(database.list_faturas_locais()), 2)
-        self.assertEqual(len(database.list_nota_lancadas()), 2)
+        self.assertEqual(len(database.list_nota_lancadas()), 0)
         current_invoice = next(
             invoice for invoice in database.list_faturas_locais()
-            if invoice["nota_lancada_id"] == updated["notaLancada"]["id"]
+            if invoice["nota_disponivel_id"] == updated["notaDisponivel"]["id"]
         )
         self.assertEqual(
             (Path(app_module.FATURAS_DIR) / current_invoice["arquivo_storage"]).read_bytes(),
@@ -584,11 +588,7 @@ class FluxoAlvoTests(unittest.TestCase):
         sie = self.client.get("/api/sie/resumo?inicio=2026-10-01&fim=2026-11-30")
         self.assertEqual(sie.status_code, 200, sie.json)
         self.assertEqual(sie.json["indicadores"]["valorFechado"], 0)
-        self.assertEqual(
-            {item["notaLancadaId"] for item in sie.json["notasRecebidas"]},
-            {updated["notaLancada"]["id"], different_due["notaLancada"]["id"]},
-        )
-        self.assertEqual(len(sie.json["notasRecebidas"]), 2)
+        self.assertEqual(sie.json["notasRecebidas"], [])  # sem nota lançada do financeiro, a SIE não conta
 
     def test_legacy_received_gmail_table_migrates_to_per_attachment_deduplication(self):
         legacy_path = Path(self.temp_dir.name) / "legacy.db"

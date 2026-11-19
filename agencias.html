@@ -173,6 +173,8 @@
 .mk-check{display:inline-flex !important; flex-direction:row !important; align-items:center; gap:4px} .mk-previa{font-size:13px}
 .sc-selo{display:inline-block; border:1px solid; border-radius:4px; padding:0 6px; font-size:11px; line-height:17px; margin:4px 4px 0 0; white-space:nowrap; font-weight:600}
 .sc-na-lista{display:flex; flex-wrap:wrap; align-items:center; gap:0}
+.nd-card{border:1px solid var(--line); border-radius:8px; padding:7px 10px; margin:4px 0; font-size:13px} .nd-topo{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+.nd-docs{margin:4px 0 0 18px; padding:0} .nd-docs li{margin:2px 0}
 .mk-card > .hint, .mk-editor > .hint, .mk-pills > .hint, .mk-previa .hint, .mk-form .task-add-row .hint, #cfgMarcadores > .hint{font-size:12px; color:var(--text-dim); letter-spacing:normal; margin-top:3px}
 .cfg-alertas-lista{list-style:none; margin:4px 0 8px; padding:0; display:flex; flex-wrap:wrap; gap:6px}
 .cfg-alertas-lista li{display:flex; align-items:center; gap:4px; border:1px solid var(--border, #c6d3dc); border-radius:14px; padding:2px 4px 2px 10px; font-size:13px}
@@ -1285,6 +1287,9 @@
         <div class="full nf-local-list" id="notasFiscaisList"></div>
         <div class="full"><button type="button" class="ghost small" data-nf-add-for="notasFiscaisList">+ adicionar linha de nota</button></div>
 
+        <div class="section-label">Notas disponíveis <span class="hint">documentos que chegaram por e-mail (fatura, XML, NFS-e) · nota lançada e nota paga vêm do financeiro</span></div>
+        <div class="full" id="ndList"></div>
+
         <div class="full">
           <label>Observações</label>
           <textarea class="f" id="f_obs"></textarea>
@@ -1666,15 +1671,16 @@
 <script src="frontend/modules/config-alertas.js?v=20261117"></script>
 <script src="frontend/modules/qualidade-cadastro.js?v=20261118b"></script>
 <script src="frontend/modules/marcadores.js?v=20261120b"></script>
-<script src="frontend/modules/situacao-conta.js?v=20261120a"></script>
+<script src="frontend/modules/situacao-conta.js?v=20261120a"></script>
+<script src="frontend/modules/notas-disponiveis.js?v=20261120a"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
 <script src="frontend/modules/notas-fiscais.js?v=20261115-config"></script>
 <script src="frontend/modules/analysis-dispatcher.js?v=20261010-manual-analysis"></script>
-<script src="frontend/modules/notas-locais.js?v=20261114-pagamento2"></script>
-<script src="frontend/modules/faturas-provedores.js?v=20261120-docs"></script>
-<script src="frontend/modules/notas-recebidas.js?v=20261120-docs"></script>
+<script src="frontend/modules/notas-locais.js?v=20261120-disp"></script>
+<script src="frontend/modules/faturas-provedores.js?v=20261120-disp"></script>
+<script src="frontend/modules/notas-recebidas.js?v=20261120-disp"></script>
 <script src="frontend/modules/painel-ia.js?v=20261114"></script>
 <script src="frontend/modules/assistente.js?v=20261117e"></script>
 <script src="frontend/modules/webhook-client.js"></script>
@@ -4462,6 +4468,9 @@ function locationModalHTML(cfg){
           <div class="full nf-local-list" id="${cfg.prefix}_notasFiscaisList"></div>
           <div class="full"><button type="button" class="ghost small" data-nf-add-for="${cfg.prefix}_notasFiscaisList">+ adicionar linha de nota</button></div>
 
+          <div class="section-label">Notas disponíveis <span class="hint">documentos que chegaram por e-mail (fatura, XML, NFS-e) · nota lançada e nota paga vêm do financeiro</span></div>
+          <div class="full" id="${cfg.prefix}_ndList"></div>
+
           <div class="full">
             <label>Observações</label>
             <textarea class="f" id="${cfg.prefix}_f_obs"></textarea>
@@ -4624,6 +4633,7 @@ function createLocationManager(cfg){
     el('f_tipo').value = cfg.prefix;
     cepMap.reset();
     window.SIGP_MARCADORES.montarEditor(cfg.prefix+'_marcList', r ? r.marcadores : [], r ? r.id : '');
+    window.SIGP_NOTAS_DISPONIVEIS.render(cfg.prefix+'_ndList', cfg.prefix, r ? r.id : '');
 
     ['nome','cidade','endereco','numero','cep','vencimentoFatura','obs'].forEach(f=>{
       el('f_'+f).value = r ? (r[f]||'') : '';
@@ -6674,6 +6684,7 @@ function openModal(id){
   document.getElementById('f_tipo').value = 'ag';
   agenciaCepMap.reset();
   window.SIGP_MARCADORES.montarEditor('marcList', r ? r.marcadores : [], r ? r.id : '');
+  window.SIGP_NOTAS_DISPONIVEIS.render('ndList', 'ag', r ? r.id : '');
 
   const simpleFields = ['nome','cidade','endereco','numero','cep','vencimentoFatura','obs'];
   simpleFields.forEach(f=>{
