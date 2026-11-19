@@ -27,3 +27,13 @@ image-*.png
 n8n/**/backup_*.json
 # Base de conhecimento com dados reais (telefones, e-mails, IPs, CNPJ): nunca vai para o repositório público.
 base_conhecimento*.json
+# Documentos reais de provedores e materiais auxiliares que não fazem parte do sistema (faturas, NFS-e/NFCom em
+# XML ou PDF, planilhas, rascunhos). Guarde-os em uma destas pastas; os de teste fictícios ficam em tests/ e docs/.
+infortel/
+documentos/
+auxiliar/
+*.xlsx
+*.xls
+*.csv
+!tests/**/*.csv
+!docs/**/*.csv
