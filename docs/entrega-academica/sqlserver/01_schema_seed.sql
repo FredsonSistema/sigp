@@ -206,6 +206,96 @@ BEGIN
 END;
 GO
 
+-- Otimização da consulta 1 (total faturado por local, provedor e mês): DESNORMALIZAÇÃO. A consulta soma ~47 mil notas
+-- a cada execução e nenhum índice evita essa soma. O resumo guarda o total já somado por local, provedor e DIA (2.190
+-- linhas para 100.020 notas); o dia mantém o resultado idêntico ao da consulta original, inclusive o primeiro mês parcial
+-- da janela. Uma view indexada não serve: o SQL Server não a permite sobre tabela com RLS e, sem filtro, ela exporia os
+-- totais de todos os locais. O resumo entra na mesma política de RLS (ver a política abaixo).
+IF OBJECT_ID(N'app.ResumoDiario', N'U') IS NULL
+BEGIN
+    CREATE TABLE app.ResumoDiario (
+        data_emissao DATE NOT NULL,
+        local_id NVARCHAR(40) NOT NULL REFERENCES app.Locais(id),
+        provedor_id NVARCHAR(40) NOT NULL REFERENCES app.Provedores(id),
+        quantidade BIGINT NOT NULL,
+        total DECIMAL(18,2) NOT NULL,
+        CONSTRAINT PK_ResumoDiario PRIMARY KEY CLUSTERED (data_emissao, local_id, provedor_id),
+        CONSTRAINT CK_ResumoDiario_Quantidade CHECK (quantidade > 0)
+    );
+END;
+GO
+
+-- Mantém o resumo a cada INSERT, UPDATE e DELETE em app.Notas (por instrução, não por linha). Roda como o dono da
+-- tabela (EXECUTE AS OWNER) para enxergar e atualizar o resumo de todos os locais; quem grava continua sujeito aos
+-- predicados BLOCK de app.Notas, então só altera o resumo dos locais do próprio escopo.
+CREATE OR ALTER TRIGGER app.trg_Notas_ResumoDiario
+ON app.Notas
+WITH EXECUTE AS OWNER
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    IF NOT EXISTS (SELECT 1 FROM inserted) AND NOT EXISTS (SELECT 1 FROM deleted)
+        RETURN;
+
+    DECLARE @delta TABLE (
+        data_emissao DATE NOT NULL, local_id NVARCHAR(40) NOT NULL, provedor_id NVARCHAR(40) NOT NULL,
+        quantidade BIGINT NOT NULL, total DECIMAL(18,2) NOT NULL,
+        PRIMARY KEY (data_emissao, local_id, provedor_id)
+    );
+    INSERT INTO @delta (data_emissao, local_id, provedor_id, quantidade, total)
+    SELECT data_emissao, local_id, provedor_id, SUM(q), SUM(t)
+    FROM (
+        SELECT data_emissao, local_id, provedor_id, COUNT_BIG(*) AS q, SUM(valor_total) AS t
+        FROM inserted GROUP BY data_emissao, local_id, provedor_id
+        UNION ALL
+        SELECT data_emissao, local_id, provedor_id, -COUNT_BIG(*), -SUM(valor_total)
+        FROM deleted GROUP BY data_emissao, local_id, provedor_id
+    ) AS m
+    GROUP BY data_emissao, local_id, provedor_id
+    HAVING SUM(q) <> 0 OR SUM(t) <> 0;
+
+    UPDATE r
+    SET r.quantidade = r.quantidade + d.quantidade, r.total = r.total + d.total
+    FROM app.ResumoDiario AS r WITH (UPDLOCK, HOLDLOCK)
+    JOIN @delta AS d
+      ON d.data_emissao = r.data_emissao AND d.local_id = r.local_id AND d.provedor_id = r.provedor_id
+    WHERE r.quantidade + d.quantidade > 0;
+
+    DELETE r
+    FROM app.ResumoDiario AS r
+    JOIN @delta AS d
+      ON d.data_emissao = r.data_emissao AND d.local_id = r.local_id AND d.provedor_id = r.provedor_id
+    WHERE r.quantidade + d.quantidade <= 0;
+
+    INSERT INTO app.ResumoDiario (data_emissao, local_id, provedor_id, quantidade, total)
+    SELECT d.data_emissao, d.local_id, d.provedor_id, d.quantidade, d.total
+    FROM @delta AS d
+    WHERE d.quantidade > 0
+      AND NOT EXISTS (
+        SELECT 1 FROM app.ResumoDiario AS r
+        WHERE r.data_emissao = d.data_emissao AND r.local_id = d.local_id AND r.provedor_id = d.provedor_id
+      );
+END;
+GO
+
+-- Preenche (ou refaz) o resumo a partir das notas quando os totais não batem: carga inicial e banco antigo.
+-- Roda antes da política ser recriada; o dono do banco vê todas as notas.
+IF EXISTS (
+    SELECT 1
+    FROM (SELECT COUNT_BIG(*) AS q, COALESCE(SUM(valor_total), 0) AS t FROM app.Notas) AS n
+    CROSS JOIN (SELECT COALESCE(SUM(quantidade), 0) AS q, COALESCE(SUM(total), 0) AS t FROM app.ResumoDiario) AS r
+    WHERE n.q <> r.q OR n.t <> r.t
+)
+BEGIN
+    DELETE FROM app.ResumoDiario;
+    INSERT INTO app.ResumoDiario (data_emissao, local_id, provedor_id, quantidade, total)
+    SELECT data_emissao, local_id, provedor_id, COUNT_BIG(*), SUM(valor_total)
+    FROM app.Notas
+    GROUP BY data_emissao, local_id, provedor_id;
+END;
+GO
+
 IF EXISTS (
     SELECT 1 FROM sys.security_policies
     WHERE object_id = OBJECT_ID(N'security.LocalScopePolicy')
@@ -248,7 +338,10 @@ CREATE SECURITY POLICY security.LocalScopePolicy
     ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas AFTER INSERT,
     ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas BEFORE UPDATE,
     ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas AFTER UPDATE,
-    ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas BEFORE DELETE
+    ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas BEFORE DELETE,
+    -- Resumo da consulta 1: cada principal só lê o resumo dos locais do seu escopo. Usa a função de escrita, que libera
+    -- o dono do banco, porque o gatilho que mantém o resumo roda como dono e precisa ver todas as linhas.
+    ADD FILTER PREDICATE security.fn_local_scope_escrita(local_id) ON app.ResumoDiario
     WITH (STATE = ON);
 GO
 
@@ -464,6 +557,8 @@ GRANT SELECT, INSERT, UPDATE ON OBJECT::app.Pagamentos TO sigp_api;
 GRANT SELECT, INSERT, UPDATE ON OBJECT::app.Conciliacoes TO sigp_api;
 GRANT SELECT, INSERT, UPDATE ON OBJECT::app.Locais TO sigp_api;
 GRANT SELECT, INSERT, UPDATE ON OBJECT::app.Provedores TO sigp_api;
+GRANT SELECT ON OBJECT::app.ResumoDiario TO sigp_api;
+DENY INSERT, UPDATE, DELETE ON OBJECT::app.ResumoDiario TO sigp_api;
 DENY DELETE ON SCHEMA::app TO sigp_api;
 GRANT INSERT ON OBJECT::audit.Eventos TO sigp_api;
 DENY SELECT, UPDATE, DELETE ON OBJECT::audit.Eventos TO sigp_api;
