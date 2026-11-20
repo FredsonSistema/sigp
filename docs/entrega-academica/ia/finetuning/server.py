@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 
 import torch
 from flask import Flask, jsonify, request
@@ -47,8 +48,13 @@ def health():
 @app.post("/classify")
 def classify():
     payload = request.get_json(silent=True)
-    if not isinstance(payload, dict) or set(payload) != {"system", "prompt"}:
-        return jsonify({"ok": False, "error": "Envie somente system e prompt."}), 400
+    # "adapter" é opcional (padrão: ligado). Desligado, responde o modelo base com os mesmos pesos e a mesma geração,
+    # para a comparação base x ajustado (comparar_finetuning.py). A API acadêmica não envia o campo.
+    if not isinstance(payload, dict) or not {"system", "prompt"} <= set(payload) <= {"system", "prompt", "adapter"}:
+        return jsonify({"ok": False, "error": "Envie somente system, prompt e, opcionalmente, adapter."}), 400
+    use_adapter = payload.get("adapter", True)
+    if not isinstance(use_adapter, bool):
+        return jsonify({"ok": False, "error": "adapter deve ser true ou false."}), 400
     system = payload["system"]
     prompt = payload["prompt"]
     if not isinstance(system, str) or not isinstance(prompt, str):
@@ -67,14 +73,23 @@ def classify():
     )
     input_ids = encoded["input_ids"]
     with generation_lock, torch.inference_mode():
-        generated = model.generate(
-            input_ids,
-            max_new_tokens=160,
-            do_sample=False,
-            pad_token_id=tokenizer.eos_token_id,
-        )
-    response = tokenizer.decode(generated[0, input_ids.shape[-1]:], skip_special_tokens=True)
-    return jsonify({"response": response, "model": MODEL_NAME})
+        started = time.perf_counter()
+        if use_adapter:
+            generated = model.generate(input_ids, max_new_tokens=160, do_sample=False, pad_token_id=tokenizer.eos_token_id)
+        else:
+            with model.disable_adapter():
+                generated = model.generate(input_ids, max_new_tokens=160, do_sample=False, pad_token_id=tokenizer.eos_token_id)
+        elapsed_ms = (time.perf_counter() - started) * 1000
+    output_ids = generated[0, input_ids.shape[-1]:]
+    response = tokenizer.decode(output_ids, skip_special_tokens=True)
+    return jsonify({
+        "response": response,
+        "model": MODEL_NAME if use_adapter else f"{MODEL_ID} (sem adaptador)",
+        "adapter": use_adapter,
+        "input_tokens": int(input_ids.shape[-1]),
+        "output_tokens": int(output_ids.shape[-1]),
+        "generation_ms": round(elapsed_ms, 1),
+    })
 
 
 if __name__ == "__main__":

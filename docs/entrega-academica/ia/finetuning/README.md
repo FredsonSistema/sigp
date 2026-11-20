@@ -1,5 +1,7 @@
 # Experimento LoRA — classificação acadêmica
 
+> **Entrega final:** a comparação nas quatro configurações (modelo base, base com RAG, ajustado e ajustado com RAG), com acerto, custo por 1.000 usos e latência medidos, está em [`comparacao-final.md`](comparacao-final.md) (gerado de `../../sqlserver/evidence/parte3/finetuning-comparacao.json` por `gerar_comparacao.py`; execução em `comparar_finetuning.py`). Resultado: o ajuste não compensou como tomador de decisão nos casos reais (7/16, igual ao base com RAG; a regra acerta 16/16), mas eliminou quase todas as falsas aprovações (9 → 1).
+
 Experimento preliminar, com dados inteiramente sintéticos. O classificador determinístico da API continua sendo a autoridade. O adaptador pode ser carregado no Ollama local para avaliação, mas permanece não autoritativo e não pode autorizar pagamentos.
 
 ## Reproduzir

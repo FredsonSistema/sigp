@@ -23,7 +23,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 
 RAIZ = Path(__file__).resolve().parents[3]
-SAIDA = RAIZ / "docs" / "entrega-academica" / "sqlserver" / "evidence" / "parte2" / "latencia-custo.json"
+SAIDA = Path(os.environ.get("SIGP_LATENCIA_SAIDA") or (RAIZ / "docs" / "entrega-academica" / "sqlserver" / "evidence" / "parte2" / "latencia-custo.json"))
 N = int(os.environ.get("SIGP_N", "10"))
 PROMPT = (
     "Classifique a cobrança como CONTRATADO, DIVERGENTE ou REVISAR. Responda só JSON {\"classification\": \"...\"}.\n"
