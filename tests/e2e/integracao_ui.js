@@ -11,9 +11,9 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
     const env = await page.evaluate(() => window.SIGP_ENV || null);
     check(results, 'padrões da instalação chegam por /sigp-env.js (vindos do .env)', Boolean(env && env.apiUrl && env.n8nUrl), JSON.stringify(env));
     await page.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgIntegracao'); });
-    await page.waitForSelector('#cfgIntegracao details.cfg-grupo', { timeout: 20000 });
-    const grupos = await page.locator('#cfgIntegracao details.cfg-grupo > summary .nr-list-title').allInnerTexts();
-    check(results, 'cinco grupos de integração', grupos.length === 5 && /Sistema/.test(grupos[0]) && /n8n/.test(grupos[1]), grupos.join(' | '));
+    await page.waitForSelector('#cfgIntegracao .cfg-status-row', { timeout: 20000 });
+    const grupos = await page.locator('#cfgIntegracao .cfg-cartao-h h2').allInnerTexts();
+    check(results, 'cartões: endereços, webhooks do n8n e webhook de contas', grupos.join('|') === 'Endereços|Webhooks do n8n|Webhook de contas de provedores', grupos.join(' | '));
     const campoApi = page.locator('#cfgIntegracao [data-cfg="apiUrl"]');
     check(results, 'endereço da API vem da configuração (a de teste)', await campoApi.inputValue() === API_TEST_URL, await campoApi.inputValue());
     // Balão de ajuda do endereço da API
@@ -26,7 +26,6 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
     await page.keyboard.press('Escape');
     check(results, 'Esc fecha o balão', await ajuda.getAttribute('aria-expanded') === 'false');
     // Webhook: caminho vira URL completa com o endereço do n8n
-    await page.locator('#cfgIntegracao details.cfg-grupo').nth(1).locator(':scope > summary').click();
     await page.locator('#cfgIntegracao [data-cfg="n8nUrl"]').fill('http://n8n.exemplo.local:5678/');
     await page.locator('#cfgIntegracao [data-cfg="webhookNotaLancada"]').fill('nota-lancada-teste');
     await page.locator('#cfgIntegracao [data-cfg-salvar]').click();
@@ -40,13 +39,14 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
       return /inválido/.test(document.querySelector('#cfgIntegracao [data-cfg-status]').textContent) && window.SIGP_CONFIG.apiUrl() !== 'api-sem-http';
     }));
     // Estado do servidor: segredo aparece só como definida/não definida
-    await page.locator('#cfgIntegracao details.cfg-grupo').nth(3).locator(':scope > summary').click();
-    const servidor = await page.locator('#cfgIntegracao details.cfg-grupo').nth(3).innerText();
-    check(results, 'servidor: SIGP_API_KEY "definida" sem mostrar o valor', /SIGP_API_KEY\s*\?\s*definida/.test(servidor) && !servidor.includes('chave-de-teste-e2e'), servidor.split('\n').slice(0, 3).join(' | '));
+    await page.evaluate(() => window.SIGP_CONFIG_LAYOUT.irPara('#cfgServidor'));
+    const servidor = await page.locator('#cfgServidor').innerText();
+    const linhaChave = await page.locator('#cfgServidor .cfg-kv-linha', { hasText: 'SIGP_API_KEY' }).first().innerText();
+    check(results, 'servidor: SIGP_API_KEY "definida" sem mostrar o valor', /definida/.test(linhaChave) && !servidor.includes('chave-de-teste-e2e'), linhaChave.replace(/\s+/g, ' '));
     await shot(page, 'int-02-servidor');
     // Webhook de contas: bloco antigo preservado dentro do grupo 3, com fila e log
-    await page.locator('#cfgIntegracao details.cfg-grupo').nth(2).locator(':scope > summary').click();
-    check(results, 'grupo 3 tem o webhook de contas com fila', await page.locator('#cfgGrupoContas #wh_url').isVisible() && await page.locator('#cfgGrupoContas #wh_filaResumo').isVisible());
+    await page.evaluate(() => window.SIGP_CONFIG_LAYOUT.irPara('#cfgIntegracao'));
+    check(results, 'cartão do webhook de contas tem o webhook de contas com fila', await page.locator('#cfgGrupoContas #wh_url').isVisible() && await page.locator('#cfgGrupoContas #wh_filaResumo').isVisible());
     // Restaurar padrões da instalação
     await page.locator('#cfgIntegracao [data-cfg-restaurar]').click();
     await page.waitForFunction(() => /padrões da instalação/.test(document.querySelector('#cfgIntegracao [data-cfg-status]')?.textContent || ''), null, { timeout: 15000 });

@@ -34,7 +34,8 @@ const { launch, shot, check, loginFresh, apiAdmin } = require('./lib');
     const noNavegador = await page.evaluate((id1) => JSON.parse(localStorage.getItem('ti_agencias_v1') || '[]').find((l) => l.id === id1)?.provedores?.[0]?.nome, `qc-${QC}-1`);
     check(results, 'a cópia do navegador recebeu o nome novo (próxima edição não desfaz)', noNavegador === QC, noNavegador);
     // Dia de vencimento
-    await box.locator('details', { hasText: 'Dia de vencimento' }).locator(':scope > summary').click();
+    const dias = box.locator('details[data-qc-sec="dias"]');
+    if (!(await dias.evaluate((d) => d.open))) await dias.locator(':scope > summary').click();
     await box.locator(`[data-local="qc-${QC}-2"][data-provedor="qcp3"]`).fill('12');
     await box.locator('[data-qc-acao="dias"]').click();
     await page.waitForFunction(() => /Pronto: 1 alteração/.test(document.querySelector('#cfgQualidade [data-qc-status="dias"]')?.textContent || ''), null, { timeout: 20000 });

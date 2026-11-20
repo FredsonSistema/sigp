@@ -40,63 +40,72 @@
     }
   }
 
+  // Seções recolhíveis: lembram se estavam abertas entre um desenho e outro.
+  const abertas = {};
+  const aberta = (k, padrao) => ((abertas[k] ?? padrao) ? ' open' : '');
+
   function resumo() {
     const q = dados.qualidade;
     if (!q) return '';
-    if (!q.total) return '<div class="hint">✅ Nada a corrigir no cadastro.</div>';
+    if (!q.total) return '<section class="cfg-cartao"><div class="cfg-cartao-b hint">✅ Nada a corrigir no cadastro.</div></section>';
     const itens = Object.entries(q.resumo).sort((a, b) => b[1] - a[1])
-      .map(([nome, n]) => `<span class="qc-chip"><b>${n}</b> ${esc(nome.toLowerCase())}</span>`).join('');
-    return `<div class="qc-chips" aria-label="Resumo da qualidade">${itens}</div>
-      <div class="hint">Total: ${q.total} ponto(s). Os que dá para corrigir aqui estão abaixo; os demais (endereço, responsável) se corrigem no cadastro de cada local.</div>`;
+      .map(([nome, n]) => `<span class="qc-chip${/vencimento|inv[aá]lid/i.test(nome) ? ' qc-chip-warn' : ''}"><b>${n}</b>${esc(nome.toLowerCase())}</span>`).join('');
+    return `<section class="cfg-cartao"><div class="cfg-cartao-b">
+      <div class="qc-chips" aria-label="Resumo da qualidade">${itens}</div>
+      <p class="cfg-intro" style="margin:12px 0 0">Total: ${q.total} ponto(s). Os destacados se corrigem aqui embaixo; os demais (endereço, responsável) no cadastro de cada local.</p></div></section>`;
   }
 
   function blocoUnificar() {
     const grupos = dados.previa.unificar;
-    if (!grupos.length) return '<div class="hint">✅ Nenhum provedor com nomes diferentes.</div>';
-    return `<div class="hint">O mesmo provedor escrito de jeitos diferentes conta como provedores distintos nas respostas e nos relatórios. O plano (ex.: 200MB+IP) é mantido no nome.</div>
+    if (!grupos.length) return '<p class="hint">✅ Nenhum provedor com nomes diferentes.</p>';
+    return `<p class="cfg-intro">O mesmo provedor escrito de jeitos diferentes conta como provedores distintos nas respostas e nos relatórios. O plano (ex.: 200MB+IP) é mantido no nome.</p>
       ${grupos.map((g, gi) => `<fieldset class="qc-grupo"><legend><label><input type="checkbox" data-qc-grupo="${gi}" checked> <b>${esc(g.provedor)}</b></label>
         <span class="hint">variantes: ${g.variantes.map((v) => esc(v.nome)).join(' · ')}</span></legend>
         <ul>${g.itens.map((i) => `<li>${esc(i.unidade)}: <code>${esc(i.de)}</code> → <code>${esc(i.para)}</code></li>`).join('')}</ul></fieldset>`).join('')}
-      <div class="task-add-row"><button type="button" class="primary small" data-qc-acao="unificar">Unificar selecionados</button>
-        <span class="hint" data-qc-status="unificar" role="status"></span></div>`;
+      <div class="perm-editor-acoes"><span class="hint cfg-f-esq" data-qc-status="unificar" role="status"></span>
+        <button type="button" class="primary small" data-qc-acao="unificar">Unificar selecionados</button></div>`;
   }
 
   function blocoDias() {
     const lista = dados.previa.vencimento;
-    if (!lista.length) return '<div class="hint">✅ Todos os provedores têm dia de vencimento.</div>';
+    if (!lista.length) return '<p class="hint">✅ Todos os provedores têm dia de vencimento.</p>';
     const visiveis = filtroDias === 'sugestao' ? lista.filter((v) => v.sugestao) : lista;
-    return `<div class="hint">O dia de vencimento alimenta os alertas e o assistente. Sugestão vem das faturas já recebidas para o local; confira antes de salvar. Deixe em branco o que não souber.</div>
-      <div class="task-add-row"><label>Mostrar <select class="f" data-qc-filtro>
-        <option value="todos"${filtroDias === 'todos' ? ' selected' : ''}>todos (${lista.length})</option>
-        <option value="sugestao"${filtroDias === 'sugestao' ? ' selected' : ''}>só com sugestão (${lista.filter((v) => v.sugestao).length})</option></select></label>
+    return `<p class="cfg-intro">O dia alimenta os alertas e o assistente. A sugestão vem das faturas já recebidas; confira antes de salvar. Deixe em branco o que não souber.</p>
+      <div class="qc-barra"><select class="f" data-qc-filtro aria-label="Mostrar">
+        <option value="todos"${filtroDias === 'todos' ? ' selected' : ''}>Todos (${lista.length})</option>
+        <option value="sugestao"${filtroDias === 'sugestao' ? ' selected' : ''}>Só com sugestão (${lista.filter((v) => v.sugestao).length})</option></select>
         ${lista.some((v) => v.sugestao) ? '<button type="button" class="ghost small" data-qc-acao="usar-sugestoes">Usar todas as sugestões</button>' : ''}</div>
-      <div class="pia-table-wrap qc-dias"><table class="pia-table"><thead><tr><th>Unidade</th><th>Provedor</th><th>Dia</th><th>Sugestão</th></tr></thead><tbody>
+      <div class="cfg-tw cfg-tw-caixa qc-dias"><table class="cfg-tabela"><thead><tr><th>Unidade</th><th>Provedor</th><th style="width:90px">Dia</th><th>Sugestão</th></tr></thead><tbody>
       ${visiveis.map((v) => `<tr><td>${esc(v.unidade)}</td><td>${esc(v.provedor)}</td>
         <td><label class="sr-only" for="qcDia${esc(v.localId)}${esc(v.provedorId)}">Dia de vencimento de ${esc(v.provedor)} em ${esc(v.unidade)}</label>
           <input class="f qc-dia" type="number" min="1" max="31" inputmode="numeric" id="qcDia${esc(v.localId)}${esc(v.provedorId)}"
             data-local="${esc(v.localId)}" data-provedor="${esc(v.provedorId)}" data-indice="${v.indice}" data-sugestao="${v.sugestao || ''}"></td>
-        <td>${v.sugestao ? `<b>dia ${v.sugestao}</b><div class="hint">${esc(v.fonte)}</div>` : '<span class="hint">sem faturas para sugerir</span>'}</td></tr>`).join('')}
+        <td>${v.sugestao ? `<span class="cfg-pill cfg-pill-ok">dia ${v.sugestao}</span> <span class="hint">${esc(v.fonte)}</span>` : '<span class="hint">sem faturas para sugerir</span>'}</td></tr>`).join('')}
       </tbody></table></div>
-      <div class="task-add-row"><button type="button" class="primary small" data-qc-acao="dias">Salvar dias preenchidos</button>
-        <span class="hint" data-qc-status="dias" role="status"></span></div>`;
+      <div class="perm-editor-acoes"><span class="hint cfg-f-esq" data-qc-status="dias" role="status"></span>
+        <button type="button" class="primary small" data-qc-acao="dias">Salvar dias preenchidos</button></div>`;
   }
 
   function blocoInvalidas() {
     const lista = dados.previa.unidadesInvalidas;
-    if (!lista.length) return '<div class="hint">✅ Nenhuma unidade inválida.</div>';
-    return `<div class="hint">Nome que parece cabeçalho de planilha importado por engano. Desativar tira da lista e das contagens; o histórico fica guardado.</div>
-      <ul>${lista.map((u) => `<li>${esc(u.unidade)} <span class="hint">(${u.provedores} provedor(es))</span>
-        <button type="button" class="ghost small" data-qc-acao="desativar" data-local="${esc(u.localId)}">Desativar</button></li>`).join('')}</ul>
+    if (!lista.length) return '<p class="hint">✅ Nenhuma unidade inválida.</p>';
+    return `<p class="cfg-intro">Nome que parece cabeçalho de planilha importado por engano. Desativar tira da lista e das contagens; o histórico fica guardado.</p>
+      <div class="cfg-list">${lista.map((u) => `<div class="cfg-row"><div class="cfg-grow">${esc(u.unidade)}<small>${u.provedores} provedor(es)</small></div>
+        <button type="button" class="ghost small" data-qc-acao="desativar" data-local="${esc(u.localId)}">Desativar</button></div>`).join('')}</div>
       <span class="hint" data-qc-status="desativar" role="status"></span>`;
   }
 
   function desenhar() {
-    if (!pode()) { box.innerHTML = '<div class="hint">Seu perfil não pode corrigir o cadastro (permissão "Criar e editar locais").</div>'; return; }
+    if (!pode()) { box.innerHTML = '<section class="cfg-cartao"><div class="cfg-cartao-b hint">Seu perfil não pode corrigir o cadastro (permissão "Criar e editar locais").</div></section>'; return; }
     const p = dados.previa;
+    const secao = (k, padrao, titulo, sub, corpo) => `<details class="cfg-acc" data-qc-sec="${k}"${aberta(k, padrao)}>
+      <summary><b>${titulo}</b><span class="cfg-acc-sub">${sub}</span></summary><div class="cfg-acc-body">${corpo}</div></details>`;
     box.innerHTML = `${resumo()}
-      <details class="nr-disc"${p.unificar.length ? ' open' : ''}><summary>Unificar nomes de provedor <span class="hint">${p.resumo.unificar} cadastro(s)</span></summary><div class="nr-disc-body">${blocoUnificar()}</div></details>
-      <details class="nr-disc"><summary>Dia de vencimento <span class="hint">${p.resumo.vencimento} sem dia · ${p.resumo.vencimentoComSugestao} com sugestão</span></summary><div class="nr-disc-body">${blocoDias()}</div></details>
-      <details class="nr-disc"${p.unidadesInvalidas.length ? ' open' : ''}><summary>Unidades inválidas <span class="hint">${p.resumo.unidadesInvalidas}</span></summary><div class="nr-disc-body">${blocoInvalidas()}</div></details>`;
+      ${secao('dias', true, 'Dia de vencimento', `${p.resumo.vencimento} sem dia · ${p.resumo.vencimentoComSugestao} com sugestão`, blocoDias())}
+      ${secao('unificar', p.unificar.length > 0, 'Unificar nomes de provedor', `${p.resumo.unificar} cadastro(s)`, blocoUnificar())}
+      ${secao('invalidas', p.unidadesInvalidas.length > 0, 'Unidades inválidas', `${p.resumo.unidadesInvalidas}`, blocoInvalidas())}`;
+    const total = dados.qualidade?.total;
+    window.SIGP_CONFIG_LAYOUT?.marcar('qualidade', total || '', total ? 'warn' : '');
   }
 
   async function carregar() {

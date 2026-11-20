@@ -1,5 +1,6 @@
-// Configurações > Integração: listas recolhíveis com os campos e balões de ajuda (o que é, para que serve,
-// como configurar, onde achar). Grava em window.SIGP_CONFIG; o estado do servidor vem de GET /api/integracao/estado.
+// Configurações > API e n8n (#cfgIntegracao) e Servidor e serviços (#cfgServidor): cartões com os campos e balões de
+// ajuda (o que é, para que serve, como configurar, onde achar). Grava em window.SIGP_CONFIG; o estado do servidor vem de
+// GET /api/integracao/estado.
 (() => {
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   let seq = 0;
@@ -17,7 +18,9 @@
 
   const ORIGEM = { tela: 'configurado nesta tela', instalacao: 'padrão da instalação (.env)', vazio: 'não configurado' };
 
-  function campo(nome) {
+  const WORKFLOW = { webhookNotaLancada: 'WF-01', webhookNotaPaga: 'WF-02', webhookEventos: 'WF-05' };
+
+  function campo(nome, classe = '') {
     const c = window.SIGP_CONFIG.CAMPOS[nome];
     const valor = window.SIGP_CONFIG.get(nome);
     const origem = window.SIGP_CONFIG.origem(nome);
@@ -29,10 +32,11 @@
       entrada = `<div class="cfg-linha"><input class="f mono-in" type="${tipo}" data-cfg="${nome}" value="${esc(valor)}" autocomplete="off" placeholder="${esc(c.padrao() || '')}">
         ${c.tipo === 'segredo' ? '<button type="button" class="ghost small" data-cfg-mostrar title="Mostrar/ocultar">👁</button>' : ''}</div>`;
     }
-    return `<div class="cfg-campo">
-      <div class="cfg-rotulo"><label>${esc(c.rotulo)}</label>${balao(c.ajuda)}</div>
+    const rotulo = c.tipo === 'webhook' ? c.rotulo.replace(/^Webhook:\s*/, '').replace(/^./, (l) => l.toUpperCase()) : c.rotulo;
+    return `<div class="cfg-campo${classe ? ` ${classe}` : ''}">
+      <div class="cfg-rotulo"><label>${esc(rotulo)}${WORKFLOW[nome] ? ` <span class="hint">${WORKFLOW[nome]}</span>` : ''}</label>${balao(c.ajuda)}</div>
       ${entrada}
-      <div class="hint" data-cfg-origem="${nome}">${esc(ORIGEM[origem])}${c.tipo === 'webhook' && window.SIGP_CONFIG.webhookUrl(nome) ? ` · ${esc(window.SIGP_CONFIG.webhookUrl(nome))}` : ''}</div>
+      <div class="cfg-dica" data-cfg-origem="${nome}">${esc(ORIGEM[origem])}${c.tipo === 'webhook' && window.SIGP_CONFIG.webhookUrl(nome) ? ` · ${esc(window.SIGP_CONFIG.webhookUrl(nome))}` : ''}</div>
     </div>`;
   }
 
@@ -55,9 +59,12 @@
     ['Notificações', 'E-mail do relatório, Telegram e WhatsApp.', 'Enviar alertas e resumos para fora do sistema.', 'SIGP_RELATORIO_EMAIL, SIGP_TELEGRAM_CHAT_ID, SIGP_WHATSAPP_URL/NUMERO/APIKEY; credenciais no n8n.', 'Arquivo .env e Credentials do n8n.'],
   ];
 
-  function linhaSomenteLeitura([nome, oque, para, como, onde], estado) {
-    const st = estado ? `<span class="cfg-estado ${estado.ok ? 'cfg-ok' : 'cfg-falta'}">${esc(estado.texto)}</span>` : '';
-    return `<div class="cfg-campo cfg-leitura"><div class="cfg-rotulo"><code>${esc(nome)}</code>${balao({ oque, para, como, onde })}${st}</div></div>`;
+  const CURTO_N8N = { 'SIGP_API_URL': 'docker-compose', 'SIGP_API_KEY (no n8n)': 'vem do .env', 'Conta do Gmail': 'Credentials no n8n', 'Notificações': '.env + n8n' };
+
+  // Linha "nome · para que serve · estado" com o balão de ajuda abrindo por baixo da linha inteira.
+  function linhaKv([nome, oque, para, como, onde], direita) {
+    return `<div class="cfg-kv-linha"><code>${esc(nome)}</code><span class="cfg-kv-d">${esc(oque)}</span>
+      <span class="cfg-kv-e">${direita || ''}${balao({ oque, para, como, onde })}</span></div>`;
   }
 
   function estadoServidor(nome, s) {
@@ -66,6 +73,24 @@
     if (!v) return null;
     if (v.segredo) return { ok: v.definida, texto: v.definida ? 'definida' : 'não definida' };
     return { ok: v.definida, texto: v.definida ? (v.valor || 'definida') : 'não definida' };
+  }
+  const pilula = (e) => (e ? `<span class="cfg-pill ${e.ok ? 'cfg-pill-ok' : 'cfg-pill-bad'}" title="${esc(e.texto)}">${esc(e.texto)}</span>` : '');
+
+  function cartaoStatus(rotulo, ok, texto, detalhe = '', attr = '') {
+    const cls = ok === null ? 'cfg-st-espera' : ok ? 'cfg-st-ok' : 'cfg-st-bad';
+    return `<div class="cfg-st ${cls}"${attr}><span>${esc(rotulo)}</span><b><i></i>${esc(texto)}${detalhe ? ` <small>${esc(detalhe)}</small>` : ''}</b></div>`;
+  }
+
+  function desenharServidor(srv, estado) {
+    if (!srv) return;
+    const ollama = estado?.ollama?.modeloConfigurado;
+    srv.innerHTML = `
+      <section class="cfg-cartao"><div class="cfg-cartao-h"><h2>Arquivo .env</h2>
+        <span class="hint">${estado ? 'mudou o .env? rode <code>docker compose up -d</code> na pasta do sistema' : 'API sem resposta: estado desconhecido'}</span></div>
+        <div class="cfg-cartao-b cfg-kv">${SERVIDOR.map((l) => linhaKv(l, pilula(estadoServidor(l[0], estado)))).join('')}</div></section>
+      <section class="cfg-cartao"><div class="cfg-cartao-h"><h2>Variáveis do n8n e e-mail</h2><span class="hint">configuradas no n8n e no docker-compose</span></div>
+        <div class="cfg-cartao-b cfg-kv">${N8N.map((l) => linhaKv(l, `<span class="hint">${esc(l[0].startsWith('SIGP_OLLAMA') && ollama ? ollama : (CURTO_N8N[l[0]] || 'docker-compose'))}</span>`)).join('')}</div></section>`;
+    ligarAjuda(srv);
   }
 
   async function render(alvo) {
@@ -76,38 +101,56 @@
       const r = await fetch(`${window.SIGP_CONFIG.apiUrl()}/api/integracao/estado`);
       if (r.ok) estado = await r.json();
     } catch (e) { estado = null; }
-    const grupos = (g) => Object.keys(window.SIGP_CONFIG.CAMPOS).filter((n) => window.SIGP_CONFIG.CAMPOS[n].grupo === g).map(campo).join('');
-    // O bloco do webhook de contas (campos, fila e log da tela) é preservado entre um desenho e outro.
+    const doGrupo = (g) => Object.keys(window.SIGP_CONFIG.CAMPOS).filter((n) => window.SIGP_CONFIG.CAMPOS[n].grupo === g);
+    const webhooks = doGrupo('n8n').filter((n) => window.SIGP_CONFIG.CAMPOS[n].tipo === 'webhook');
+    const enderecos = [...doGrupo('api'), ...doGrupo('n8n').filter((n) => !webhooks.includes(n))];
+    // O cartão do webhook de contas (campos, fila e log, em agencias.html) é preservado entre um desenho e outro.
     const contas = document.getElementById('cfgContasHolder');
-    const contasAberto = box.querySelector('#cfgGrupoContas')?.open;
     if (contas) contas.remove();
+    const ocr = estado?.ocr;
+    const ia = estado?.ollama;
     box.innerHTML = `
-      <details class="nr-list cfg-grupo" open><summary><span class="nr-list-title">1. Sistema (API)</span><span class="hint">onde ficam os dados e as regras</span></summary>
-        <div class="cfg-corpo">${grupos('api')}
-          <div class="task-add-row"><button type="button" class="ghost small" data-cfg-testar="api">🔌 Testar API</button><span class="hint" data-cfg-resultado="api"></span></div></div></details>
-      <details class="nr-list cfg-grupo"><summary><span class="nr-list-title">2. n8n e webhooks</span><span class="hint">orquestrador: Gmail, IA local, alertas</span></summary>
-        <div class="cfg-corpo">${grupos('n8n')}
-          <div class="task-add-row"><button type="button" class="ghost small" data-cfg-testar="n8n">🔌 Testar n8n</button><span class="hint" data-cfg-resultado="n8n"></span></div></div></details>
-      <details class="nr-list cfg-grupo" id="cfgGrupoContas"><summary><span class="nr-list-title">3. Webhook de contas de provedores</span><span class="hint">envio de alterações de contas, com fila e reenvio</span></summary>
-        <div class="cfg-corpo" id="cfgContasCorpo"></div></details>
-      <details class="nr-list cfg-grupo"><summary><span class="nr-list-title">4. Servidor e serviços</span><span class="hint">arquivo .env · só leitura${estado ? '' : ' · API sem resposta'}</span></summary>
-        <div class="cfg-corpo">
-          ${estado ? `<div class="hint">OCR: ${estado.ocr?.ok ? `no ar · ${estado.ocr.regrasSenha ?? 0} regra(s) de senha de PDF` : 'sem resposta'} · IA local: ${estado.ollama?.disponivel ? `no ar (${esc(estado.ollama.modeloConfigurado || '')})` : 'sem resposta'} · Eventos para o n8n: ${esc(estado.eventos?.texto || '—')}</div>` : ''}
-          ${SERVIDOR.map((l) => linhaSomenteLeitura(l, estadoServidor(l[0], estado))).join('')}
-          <div class="hint">Mudou o .env? Rode <code>docker compose up -d</code> na pasta do sistema para aplicar.</div></div></details>
-      <details class="nr-list cfg-grupo"><summary><span class="nr-list-title">5. Variáveis do n8n e e-mail</span><span class="hint">configuradas no n8n e no docker-compose</span></summary>
-        <div class="cfg-corpo">${N8N.map((l) => linhaSomenteLeitura(l, null)).join('')}</div></details>
-      <div class="task-add-row" style="margin-top:10px">
-        <button class="primary small" type="button" data-cfg-salvar>Salvar integração</button>
-        <button class="ghost small" type="button" data-cfg-restaurar>Usar padrões da instalação</button>
-        <span class="hint" data-cfg-status role="status" aria-live="polite"></span>
-      </div>`;
+      <div class="cfg-status-row" aria-label="Estado dos serviços">
+        ${cartaoStatus('API', Boolean(estado), estado ? 'Online' : 'Sem resposta', estado ? '' : 'confira o endereço')}
+        ${cartaoStatus('n8n', null, 'Verificando…', '', ' data-cfg-st="n8n"')}
+        ${cartaoStatus('IA local', estado ? Boolean(ia?.disponivel) : false, ia?.disponivel ? 'No ar' : 'Sem resposta', ia?.modeloConfigurado || '')}
+        ${cartaoStatus('OCR', estado ? Boolean(ocr?.ok) : false, ocr?.ok ? 'No ar' : 'Sem resposta', ocr?.ok ? `${ocr.regrasSenha ?? 0} regra(s) de senha` : '')}
+      </div>
+      <section class="cfg-cartao"><div class="cfg-cartao-h"><h2>Endereços</h2><span class="hint">onde ficam os dados (API) e o orquestrador (n8n)</span></div>
+        <div class="cfg-cartao-b cfg-grid">${enderecos.map((n, i) => campo(n, i >= 2 ? 'full' : '')).join('')}</div>
+        <div class="cfg-cartao-f"><span class="hint cfg-f-esq" data-cfg-resultado="api"></span><span class="hint" data-cfg-resultado="n8n"></span>
+          <button type="button" class="ghost small" data-cfg-testar="api">🔌 Testar API</button>
+          <button type="button" class="ghost small" data-cfg-testar="n8n">🔌 Testar n8n</button></div></section>
+      <section class="cfg-cartao"><div class="cfg-cartao-h"><h2>Webhooks do n8n</h2><span class="hint">só o caminho; a tela junta com o endereço do n8n</span></div>
+        <div class="cfg-cartao-b cfg-grid">${webhooks.map((n, i) => campo(n, i === webhooks.length - 1 && webhooks.length % 2 ? 'full' : '')).join('')}</div>
+        <div class="cfg-cartao-f"><span class="hint cfg-f-esq" data-cfg-status role="status" aria-live="polite">Salvar grava os endereços e os webhooks.</span>
+          <button class="ghost small" type="button" data-cfg-restaurar>Usar padrões da instalação</button>
+          <button class="primary small" type="button" data-cfg-salvar>Salvar integração</button></div></section>
+      <section class="cfg-cartao" id="cfgGrupoContas"></section>
+      ${estado?.eventos?.texto ? `<div class="hint">Eventos da API para o n8n: ${esc(estado.eventos.texto)}</div>` : ''}`;
     if (contas) {
       contas.hidden = false;
-      box.querySelector('#cfgContasCorpo').appendChild(contas);
-      if (contasAberto) box.querySelector('#cfgGrupoContas').open = true;
+      box.querySelector('#cfgGrupoContas').appendChild(contas);
     }
+    desenharServidor(document.getElementById('cfgServidor'), estado);
+    window.SIGP_CONFIG_LAYOUT?.marcar('integracao', '', estado ? 'ok' : 'bad');
     ligar(box);
+    verificarN8n(box);
+  }
+
+  // O n8n não libera CORS para esta tela: "no-cors" só confirma que o endereço responde.
+  async function verificarN8n(box) {
+    const alvo = box.querySelector('[data-cfg-st="n8n"]');
+    const url = String(window.SIGP_CONFIG.get('n8nUrl') || '').trim().replace(/\/+$/, '');
+    if (!alvo) return;
+    let ok = false;
+    if (url) {
+      const ctl = new AbortController();
+      const t = setTimeout(() => ctl.abort(), 4000);
+      try { await fetch(`${url}/healthz`, { mode: 'no-cors', signal: ctl.signal }); ok = true; } catch (e) { ok = false; }
+      clearTimeout(t);
+    }
+    alvo.outerHTML = cartaoStatus('n8n', ok, ok ? 'Online' : 'Sem resposta', url ? '' : 'sem endereço', ' data-cfg-st="n8n"');
   }
 
   function fecharBaloes(box, exceto) {
@@ -118,18 +161,26 @@
     });
   }
 
+  function ligarAjuda(box) {
+    if (box.dataset.ajudaLigada) return;
+    box.dataset.ajudaLigada = '1';
+    box.addEventListener('click', (ev) => {
+      const help = ev.target.closest('[data-cfg-help]');
+      if (!help) return;
+      const aberto = help.getAttribute('aria-expanded') === 'true';
+      fecharBaloes(box, help);
+      help.setAttribute('aria-expanded', String(!aberto));
+      document.getElementById(help.getAttribute('aria-controls')).hidden = aberto;
+    });
+    box.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') fecharBaloes(box); });
+  }
+
   function ligar(box) {
+    ligarAjuda(box);
     if (box.dataset.ligado) return;
     box.dataset.ligado = '1';
     box.addEventListener('click', async (ev) => {
-      const help = ev.target.closest('[data-cfg-help]');
-      if (help) {
-        const aberto = help.getAttribute('aria-expanded') === 'true';
-        fecharBaloes(box, help);
-        help.setAttribute('aria-expanded', String(!aberto));
-        document.getElementById(help.getAttribute('aria-controls')).hidden = aberto;
-        return;
-      }
+      if (ev.target.closest('[data-cfg-help]')) return;
       if (ev.target.closest('[data-cfg-mostrar]')) {
         const inp = ev.target.closest('.cfg-linha').querySelector('input');
         inp.type = inp.type === 'password' ? 'text' : 'password';
@@ -164,7 +215,6 @@
         saida.textContent = await (testar.dataset.cfgTestar === 'api' ? testarApi(url) : testarN8n(url));
       }
     });
-    box.addEventListener('keydown', (ev) => { if (ev.key === 'Escape') fecharBaloes(box); });
   }
 
   async function testarApi(url) {

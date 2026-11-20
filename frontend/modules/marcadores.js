@@ -222,30 +222,39 @@
         <div class="mk-conds">${conds.map(linhaCondicao).join('')}</div>
         <button type="button" class="ghost small" data-mk-acao="mais-cond">+ condição</button>
         <div class="mk-previa" data-mk-previa aria-live="polite"></div>` : ''}
-      <div class="task-add-row"><button type="button" class="primary small" data-mk-acao="salvar">Salvar</button>
-        <button type="button" class="ghost small" data-mk-acao="cancelar">Cancelar</button><span class="hint" data-mk-status></span></div>
+      <div class="perm-editor-acoes"><span class="hint cfg-f-esq" data-mk-status></span>
+        <button type="button" class="ghost small" data-mk-acao="cancelar">Cancelar</button>
+        <button type="button" class="primary small" data-mk-acao="salvar">Salvar</button></div>
     </div>`;
   }
   function cartao(m) {
     const membros = (m.membros || []).map((x) => `<li>${esc(x.nome)} <span class="hint">${esc(ROTULO_TIPO[x.tipo] || x.tipo || '')}${x.cidade ? ` · ${esc(x.cidade)}` : ''}</span></li>`).join('');
+    const detalhe = [m.descricao || 'Sem descrição', m.tipo === 'grupo' ? `Regra: ${m.regraTexto}` : '', (m.apelidos || []).length ? `Apelidos: ${m.apelidos.join(', ')}` : '']
+      .filter(Boolean).map(esc).join(' · ');
     return `<div class="mk-card" data-mk-id="${esc(m.id)}">
       <div class="mk-card-topo">${pilula(m.nome, m.cor, { grupo: m.tipo === 'grupo' })}
-        <button type="button" class="ghost small" data-mk-acao="membros" data-id="${esc(m.id)}" title="Ver os locais">${m.locais} ${m.locais === 1 ? 'local' : 'locais'}</button>
-        ${pode() ? `<span class="mk-card-acoes"><button type="button" class="ghost small" data-mk-acao="editar" data-id="${esc(m.id)}">Editar</button>
-          <button type="button" class="ghost small" data-mk-acao="excluir" data-id="${esc(m.id)}" style="color:var(--danger)">Excluir</button></span>` : ''}</div>
-      <div class="hint">${esc(m.descricao || 'Sem descrição')}${m.tipo === 'grupo' ? ` · Regra: ${esc(m.regraTexto)}` : ''}${(m.apelidos || []).length ? ` · Apelidos: ${esc(m.apelidos.join(', '))}` : ''}</div>
+        <button type="button" class="mk-locais" data-mk-acao="membros" data-id="${esc(m.id)}" title="Ver os locais" aria-expanded="${abertos.has(m.id)}">${m.locais} ${m.locais === 1 ? 'local' : 'locais'}</button>
+        ${pode() ? `<span class="mk-card-acoes"><button type="button" class="cfg-icon-btn" data-mk-acao="editar" data-id="${esc(m.id)}" title="Editar" aria-label="Editar ${esc(m.nome)}">✎</button>
+          <button type="button" class="cfg-icon-btn cfg-perigo" data-mk-acao="excluir" data-id="${esc(m.id)}" title="Excluir" aria-label="Excluir ${esc(m.nome)}">🗑</button></span>` : ''}</div>
+      <p class="mk-card-desc">${detalhe}</p>
       ${abertos.has(m.id) ? `<ul class="mk-membros">${membros || '<li class="hint">Nenhum local.</li>'}</ul>` : ''}
     </div>`;
   }
   function desenhar() {
     if (!box) return;
-    const acoes = pode() ? `<div class="task-add-row"><button type="button" class="primary small" data-mk-acao="novo-marcador">+ Criar marcador</button>
-      <button type="button" class="ghost small" data-mk-acao="novo-grupo">+ Criar grupo</button></div>` : '<div class="hint">Só leitura: editar marcadores e grupos pede a permissão "Criar e editar locais".</div>';
-    box.innerHTML = `${acoes}${edicao ? formulario() : ''}
-      <div class="section-label">Marcadores <span class="hint">postos à mão em cada local · renomear ou excluir vale para todos os locais</span></div>
-      <div class="mk-cards">${soMarcadores().map(cartao).join('') || '<div class="hint">Nenhum marcador.</div>'}</div>
-      <div class="section-label">Grupos <span class="hint">automáticos pela regra do cadastro · contas (vencida etc.) não entram aqui</span></div>
-      <div class="mk-cards">${soGrupos().map(cartao).join('') || '<div class="hint">Nenhum grupo. Ex.: "He-Net" = locais com internet da He-Net.</div>'}</div>`;
+    const botao = (acao, texto, cls) => (pode() ? `<button type="button" class="${cls} small" data-mk-acao="${acao}">${texto}</button>` : '');
+    const marcadores = soMarcadores();
+    const grupos = soGrupos();
+    box.innerHTML = `${edicao ? `<section class="cfg-cartao mk-form-cartao">${formulario()}</section>` : ''}
+      <section class="cfg-cartao"><div class="cfg-cartao-h"><h2>Marcadores <span class="hint">${marcadores.length}</span></h2>${botao('novo-marcador', '+ Criar marcador', 'primary')}</div>
+        <div class="cfg-cartao-b">
+          <p class="cfg-intro">Postos à mão em cada local. Renomear ou excluir vale para todos os locais.${pode() ? '' : ' Só leitura: editar pede a permissão "Criar e editar locais".'}</p>
+          <div class="mk-cards">${marcadores.map(cartao).join('') || '<div class="hint">Nenhum marcador.</div>'}</div></div></section>
+      <section class="cfg-cartao"><div class="cfg-cartao-h"><h2>Grupos <span class="hint">${grupos.length}</span></h2>${botao('novo-grupo', '+ Criar grupo', 'ghost')}</div>
+        <div class="cfg-cartao-b">
+          <p class="cfg-intro">Automáticos pela regra do cadastro (provedor, cidade, tipo, link reserva, marcador). Contas vencidas não entram aqui.</p>
+          <div class="mk-cards">${grupos.map(cartao).join('') || '<div class="hint">Nenhum grupo. Ex.: "He-Net" = locais com internet da He-Net.</div>'}</div></div></section>`;
+    window.SIGP_CONFIG_LAYOUT?.marcar('marcadores', itens.length);
     if (edicao && edicao.tipo === 'grupo') pedirPrevia();
   }
   function lerFormulario() {

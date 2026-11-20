@@ -7,10 +7,20 @@
     { id: 'preferencias', grupo: 'Geral', titulo: 'Preferências', desc: 'Alertas, arquivamento e caminhos usados pelo sistema.', secoes: ['Preferências'] },
     { id: 'empresa', grupo: 'Geral', titulo: 'Empresa prestadora', desc: 'Aparecem no PDF das Ordens de Serviço.', secoes: ['Dados da Empresa Prestadora'] },
     { id: 'alertas', grupo: 'Geral', titulo: 'Alertas por e-mail', secoes: ['Alertas por e-mail'] },
-    { id: 'marcadores', grupo: 'Cadastros', titulo: 'Marcadores e grupos', secoes: ['Marcadores e grupos'] },
-    { id: 'qualidade', grupo: 'Cadastros', titulo: 'Qualidade do cadastro', secoes: ['Qualidade do cadastro'] },
-    { id: 'acesso', grupo: 'Acesso', titulo: 'Perfis e permissões', secoes: ['Perfis e permissões'] },
-    { id: 'integracao', grupo: 'Integrações', titulo: 'API e n8n', secoes: ['Integração'] },
+    // nu: o módulo desenha os próprios cartões (o layout não embrulha a seção num cartão).
+    { id: 'marcadores', grupo: 'Cadastros', titulo: 'Marcadores e grupos', nu: true,
+      desc: 'Marcadores são postos à mão em cada local. Grupos são automáticos pela regra do cadastro.', secoes: ['Marcadores e grupos'] },
+    { id: 'qualidade', grupo: 'Cadastros', titulo: 'Qualidade do cadastro', nu: true,
+      desc: 'O que falta ou está inconsistente. Correções com prévia e backup do banco.', secoes: ['Qualidade do cadastro'] },
+    { id: 'usuarios', grupo: 'Acesso', titulo: 'Usuários e integrações', nu: true,
+      desc: 'Quem entra no sistema e quais automações usam chave de API.', secoes: ['Usuários e integrações'] },
+    { id: 'grupos', grupo: 'Acesso', titulo: 'Grupos de permissão', nu: true,
+      desc: 'Conjuntos de permissões. Ajustes individuais ficam no cadastro de cada usuário. A regra vale na API.', secoes: ['Grupos de permissão'] },
+    { id: 'auditoria', grupo: 'Acesso', titulo: 'Auditoria de acesso', nu: true, desc: 'Últimas gravações, recusas e entradas no sistema.', secoes: ['Auditoria de acesso'] },
+    { id: 'integracao', grupo: 'Integrações', titulo: 'API e n8n', nu: true,
+      desc: 'Endereços, webhooks e envio de contas de provedores. Nada fica no código.', secoes: ['Integração'] },
+    { id: 'servidor', grupo: 'Integrações', titulo: 'Servidor e serviços', nu: true,
+      desc: 'Valores do arquivo .env e do n8n. Somente leitura.', secoes: ['Servidor e serviços'] },
     { id: 'ferramentas', grupo: 'Integrações', titulo: 'Winbox', desc: 'Abrir o Winbox direto pelo IP das unidades.', secoes: ['Integração Winbox', 'NFS-e', 'NFSe'] },
     { id: 'sistema', grupo: 'Sistema', titulo: 'Sobre, log e backup', desc: 'Informações do sistema e histórico local.',
       secoes: ['Sobre', 'Possíveis cadastros duplicados', 'Log de atividades', 'Versões de backup', 'Vínculos quebrados'] },
@@ -55,7 +65,7 @@
     layout.innerHTML = `<aside class="cfg-nav" aria-label="Seções das configurações">
         <input type="search" class="cfg-nav-busca" placeholder="Buscar configuração…" aria-label="Buscar configuração">
         ${grupos.map((g) => `<div class="cfg-nav-grupo"><h4>${esc(g)}</h4>${PAGINAS.filter((p) => p.grupo === g && porPagina.get(p.id).length)
-          .map((p) => `<button type="button" class="cfg-nav-item" data-cfg-pagina="${p.id}">${esc(p.titulo)}</button>`).join('')}</div>`).join('')}
+          .map((p) => `<button type="button" class="cfg-nav-item" data-cfg-pagina="${p.id}"><span>${esc(p.titulo)}</span><span class="cfg-nav-n" data-cfg-n="${p.id}" hidden></span></button>`).join('')}</div>`).join('')}
       </aside><div class="cfg-conteudo"></div>`;
     const conteudo = layout.querySelector('.cfg-conteudo');
     PAGINAS.forEach((p) => {
@@ -69,8 +79,8 @@
       pagina.innerHTML = `<div class="cfg-pagina-h"><h1>${esc(p.titulo)}</h1>${desc ? `<p>${esc(desc)}</p>` : ''}</div>`;
       lista.forEach((s) => {
         const cartao = document.createElement('section');
-        cartao.className = 'cfg-cartao';
-        const mostrarCabecalho = lista.length > 1 || s.titulo !== p.titulo && !/^Dados da Empresa|^Integração$|^Perfis/.test(s.titulo);
+        cartao.className = p.nu ? 'cfg-cartao cfg-cartao-nu' : 'cfg-cartao';
+        const mostrarCabecalho = !p.nu && (lista.length > 1 || s.titulo !== p.titulo && !/^Dados da Empresa/.test(s.titulo));
         if (mostrarCabecalho) {
           cartao.innerHTML = `<div class="cfg-cartao-h"><h2>${esc(s.titulo)}</h2>${s.hint && lista.length > 1 ? `<span class="hint">${esc(s.hint)}</span>` : ''}</div>`;
         }
@@ -122,5 +132,15 @@
     return pagina ? ir(pagina.dataset.cfgPagina) : false;
   }
 
-  window.SIGP_CONFIG_LAYOUT = { montar, ir, irPara };
+  // Contagem ou sinal ao lado do item do menu: marcar('qualidade', 126, 'warn'); marcar('integracao', '', 'ok') = ponto verde.
+  function marcar(id, texto, tipo = '') {
+    const el = document.querySelector(`#view_config [data-cfg-n="${id}"]`);
+    if (!el) return;
+    const vazio = texto === '' || texto === null || texto === undefined;
+    el.textContent = vazio ? '' : String(texto);
+    el.className = `cfg-nav-n${tipo ? ` cfg-nav-n-${tipo}` : ''}${vazio ? ' cfg-nav-ponto' : ''}`;
+    el.hidden = vazio && !tipo;
+  }
+
+  window.SIGP_CONFIG_LAYOUT = { montar, ir, irPara, marcar };
 })();
