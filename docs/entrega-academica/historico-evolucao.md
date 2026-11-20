@@ -32,9 +32,9 @@ no repositório.
 | H-18 | 20/11 | IA | Fine-tuning nos casos reais (4 configurações) | Ajuste não compensou (7/16) | Nenhuma: é resultado | — | LIMITAÇÃO |
 | H-19 | 20/11 | Otimização | Consulta 1 (total por local, provedor e mês) | **REPROVADO** (índice só tirou 20%) | Desnormalização: resumo diário com gatilho e RLS | 168,7 → 25,3 ms | `62d0283` |
 | H-20 | 20/11 | Otimização (teste) | Testes do resumo diário | ERRO DO TESTE (abortou com 3930; depois esperado escrito errado) | Erro guardado no CATCH; texto do esperado | APROVADO | `62d0283` |
-| H-21 | 20/11 | Segurança | Trilha de auditoria: quem gravou, alterou ou apagou notas; trilha protegida | **REPROVADO** (9 falhas: nada registrado; operador forjava evento) | Gatilho de auditoria, SQL Server Audit e DENY INSERT na trilha | APROVADO (12/12) | etapa 6a |
-| H-22 | 20/11 | Banco | Acentos nos dados e nas mensagens do banco | **REPROVADO** ("FictÃ­cia" em 200 mil linhas e nas mensagens) | Marca UTF-8 nos scripts, `-f 65001` no setup e reparo dos dados | 0 linhas quebradas | etapa 6a |
-| H-23 | 20/11 | Segurança (teste) | Primeiras execuções do teste da trilha e da conferência de acentos | ERRO DO TESTE (coluna curta descartou o T1b; conferência sem diferenciar maiúsculas) | Colunas maiores; comparação binária | Resultado certo | etapa 6a |
+| H-21 | 20/11 | Segurança | Trilha de auditoria: quem gravou, alterou ou apagou notas; trilha protegida | **REPROVADO** (9 falhas: nada registrado; operador forjava evento) | Gatilho de auditoria, SQL Server Audit e DENY INSERT na trilha | APROVADO (12/12) | `1dbd7f7` |
+| H-22 | 20/11 | Banco | Acentos nos dados e nas mensagens do banco | **REPROVADO** ("FictÃ­cia" em 200 mil linhas e nas mensagens) | Marca UTF-8 nos scripts, `-f 65001` no setup e reparo dos dados | 0 linhas quebradas | `1dbd7f7` |
+| H-23 | 20/11 | Segurança (teste) | Primeiras execuções do teste da trilha e da conferência de acentos | ERRO DO TESTE (coluna curta descartou o T1b; conferência sem diferenciar maiúsculas) | Colunas maiores; comparação binária | Resultado certo | `1dbd7f7` |
 
 ## Detalhes
 
