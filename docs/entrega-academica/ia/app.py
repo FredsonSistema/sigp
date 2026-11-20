@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import hmac
 import json
@@ -58,12 +60,40 @@ MODEL_OUTPUT_SCHEMA = {
 }
 TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
 INJECTION_PATTERNS = tuple(re.compile(pattern) for pattern in (
+    # inglês
     r"\bignore\b.{0,100}\b(previous|prior|all|the)\b.{0,50}\b(instructions?|rules?|policies)\b",
     r"\b(system|developer)\s*:",
     r"\b(you are now|act as|pretend to be)\b",
     r"\b(reveal|show|expose|disclose|dump|list)\b.{0,100}\b(data|secrets?|docs?|documents?|providers?|records?)\b",
-    r"\b(automatic[_ ]payment)\s*=\s*true\b",
+    r"\bautomatic[_ ]?payment\b",
+    # português: mandar ignorar as regras
+    r"\b(ignor\w*|desconsider\w*|esquec\w*|desprez\w*|nao (siga|obedeca|considere))\b.{0,60}"
+    r"\b(regras?|instrucoes|instrucao|orientacoes|politicas?|ordens|tudo|acima|anteriores?)\b",
+    # troca de papel
+    r"\b(a partir de agora|de agora em diante)\b.{0,40}\b(voce|vc|seja|aja|atue)\b",
+    r"\bvoce (agora )?(e|sera|passa a ser)\b.{0,20}\b(o|a|um|uma)\b.{0,30}"
+    r"\b(gerente|administrador|admin|diretor|sistema|assistente|financeiro|aprovador)\b",
+    r"\b(aja|atue|finja|fingir|faca de conta)\b.{0,20}\b(como|que|ser)\b",
+    # falsa mensagem de sistema ou recado ao assistente
+    r"\b(sistema|assistente|desenvolvedor|administrador|admin)\s*[:\]]",
+    # mandar aprovar, pagar ou forçar a saída
+    r"\b(aprove|aprovar|aprova|autorize|autorizar|autoriza|libere|liberar)\b.{0,30}\bpagamentos?\b",
+    r"\bpagamento\b.{0,20}\b(aprovado|autorizado|liberado)\b",
+    r"\b(marque|marcar|classifique|classificar|responda|retorne|devolva)\b.{0,40}"
+    r"\b(contratado|divergente|revisar|pago|paga|aprovad[oa]s?|classification)\b",
+    r"\bresponda (somente|apenas|so)\b",
+    r"\bcobrancas?\b.{0,40}\b(esta|estao|sao)\b.{0,10}\baprovad[oa]s?\b",
+    # pedir dados (exfiltração)
+    r"\b(liste|listar|revele|revelar|mostre|mostrar|exiba|exibir|envie|enviar|informe|informar)\b.{0,60}"
+    r"\b(notas|chaves?|registros|senhas?|todas as|todos os)\b",
+    # instrução escondida
+    r"\b(decodifique|decodificar|decode)\b",
 ))
+# Caracteres invisíveis (categoria Cf: zero-width, BOM, marcas de direção) e troca de letras por números.
+_LEET = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t", "@": "a", "$": "s"})
+_LETRAS_SEPARADAS = re.compile(r"\b(?:[a-z] ){2,}[a-z]\b")
+_BASE64 = re.compile(r"[A-Za-z0-9+/]{16,}={0,2}")
+_SUFIXO_SOCIETARIO = re.compile(r"(\s+(ltda|ltd|s\s*/?\s*a|me|epp|eireli|mei)\.?)+$")
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024
@@ -169,9 +199,48 @@ def _normalize_invoice(invoice: dict) -> dict:
     return normalized
 
 
+def _variants_for_detection(text: str) -> list[str]:
+    """Formas do texto em que os padrões são procurados (só para detectar; o texto original segue igual)."""
+    visible = "".join(char for char in text if unicodedata.category(char) != "Cf")
+    base = re.sub(r"\s+", " ", _normalise(visible))
+    deleet = base.translate(_LEET)
+    joined = _LETRAS_SEPARADAS.sub(lambda m: m.group(0).replace(" ", ""), deleet)
+    variants = [base, deleet, joined]
+    for token in _BASE64.findall(visible):
+        try:
+            decoded = base64.b64decode(token + "=" * (-len(token) % 4), validate=True).decode("utf-8")
+        except (binascii.Error, UnicodeDecodeError, ValueError):
+            continue
+        if decoded.isprintable():
+            variants.append(re.sub(r"\s+", " ", _normalise(decoded)))
+    return variants
+
+
 def _contains_prompt_injection(text: str) -> bool:
-    normalized = _normalise(text)
-    return any(pattern.search(normalized) for pattern in INJECTION_PATTERNS)
+    return any(pattern.search(variant) for variant in _variants_for_detection(text) for pattern in INJECTION_PATTERNS)
+
+
+def _parse_amount(value) -> float:
+    """Aceita 450.00, 450,00, 1.234,56 e R$ 450,00 (faturas brasileiras usam vírgula decimal)."""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return float(value)
+    if not isinstance(value, str):
+        raise ValueError("amount ausente")
+    text = re.sub(r"^\s*r\$\s*", "", value.strip(), flags=re.IGNORECASE).replace(" ", "")
+    if not re.fullmatch(r"\d{1,3}(\.\d{3})*(,\d{1,2})?|\d+(,\d{1,2})?|\d+(\.\d{1,2})?|\d{1,3}(,\d{3})*(\.\d{1,2})?", text):
+        raise ValueError("amount inválido")
+    if "," in text and ("." not in text or text.rfind(",") > text.rfind(".")):
+        text = text.replace(".", "").replace(",", ".")
+    else:
+        text = text.replace(",", "")
+    return float(text)
+
+
+def _provider_key(provider: str) -> str:
+    """Nome do provedor para a busca do contrato: sem acento, sem pontuação solta e sem sufixo societário."""
+    key = re.sub(r"[^a-z0-9/ ]+", " ", _normalise(provider))
+    key = re.sub(r"\s+", " ", key).strip()
+    return _SUFIXO_SOCIETARIO.sub("", key).strip()
 
 
 def _load_corpus() -> list[dict]:
@@ -420,7 +489,7 @@ def ask_model(prompt: str) -> tuple[dict, str]:
 def _classify_from_evidence(invoice: dict, retrieved: list[dict]) -> dict:
     description = _normalise(invoice["description"])
     source_ids = [item["id"] for item in retrieved]
-    if _contains_prompt_injection(description) or any(
+    if _contains_prompt_injection(f"{invoice.get('provider', '')}\n{invoice['description']}") or any(
         term in description for term in ("ignore as regras", "revele dados", "ignore todas")
     ):
         return {
@@ -526,18 +595,18 @@ def analyze():
     if len(provider) > 80 or len(description) > 1000:
         return jsonify({"ok": False, "error": "provider ou description excede o limite permitido."}), 400
     try:
-        amount_value = float(amount)
+        amount_value = _parse_amount(amount)
     except (TypeError, ValueError):
-        return jsonify({"ok": False, "error": "amount deve ser numérico."}), 400
+        return jsonify({"ok": False, "error": "amount deve ser numérico (ex.: 450.00 ou 450,00)."}), 400
     if not math.isfinite(amount_value) or amount_value < 0 or amount_value >= 10_000_000_000:
         return jsonify({"ok": False, "error": "amount inválido."}), 400
 
-    provider_id = PROVIDER_IDS.get(_normalise(provider).strip())
+    provider_id = PROVIDER_IDS.get(_provider_key(provider))
     if provider_id is None:
         provider_id = "PROV-UNKNOWN"
 
     correlation_id = str(uuid4())
-    injection = _contains_prompt_injection(description)
+    injection = _contains_prompt_injection(f"{provider}\n{description}")
     context_read = False
     try:
         database_context = get_authorized_context(provider_id, correlation_id)
@@ -550,7 +619,7 @@ def analyze():
         ))
         retrieved = retrieve_documents(rag_query, LOCAL_ID, provider_id)
         log_retrieved_sources(correlation_id, [item["id"] for item in retrieved])
-        assessment = _classify_from_evidence(invoice, retrieved)
+        assessment = _classify_from_evidence({**invoice, "amount": amount_value}, retrieved)
         prompt = json.dumps({
             "invoice": invoice,
             "authorized_database_context": database_context,
