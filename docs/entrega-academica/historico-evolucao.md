@@ -32,6 +32,9 @@ no repositório.
 | H-18 | 20/11 | IA | Fine-tuning nos casos reais (4 configurações) | Ajuste não compensou (7/16) | Nenhuma: é resultado | — | LIMITAÇÃO |
 | H-19 | 20/11 | Otimização | Consulta 1 (total por local, provedor e mês) | **REPROVADO** (índice só tirou 20%) | Desnormalização: resumo diário com gatilho e RLS | 168,7 → 25,3 ms | `62d0283` |
 | H-20 | 20/11 | Otimização (teste) | Testes do resumo diário | ERRO DO TESTE (abortou com 3930; depois esperado escrito errado) | Erro guardado no CATCH; texto do esperado | APROVADO | `62d0283` |
+| H-21 | 20/11 | Segurança | Trilha de auditoria: quem gravou, alterou ou apagou notas; trilha protegida | **REPROVADO** (9 falhas: nada registrado; operador forjava evento) | Gatilho de auditoria, SQL Server Audit e DENY INSERT na trilha | APROVADO (12/12) | etapa 6a |
+| H-22 | 20/11 | Banco | Acentos nos dados e nas mensagens do banco | **REPROVADO** ("FictÃ­cia" em 200 mil linhas e nas mensagens) | Marca UTF-8 nos scripts, `-f 65001` no setup e reparo dos dados | 0 linhas quebradas | etapa 6a |
+| H-23 | 20/11 | Segurança (teste) | Primeiras execuções do teste da trilha e da conferência de acentos | ERRO DO TESTE (coluna curta descartou o T1b; conferência sem diferenciar maiúsculas) | Colunas maiores; comparação binária | Resultado certo | etapa 6a |
 
 ## Detalhes
 
@@ -148,6 +151,36 @@ Nos 16 casos reais, o ajustado com RAG acertou 7/16, igual ao base com RAG, e a 
 2. A segunda execução marcou "FALHA" num resultado certo, porque o esperado estava escrito "só LOC-001" e o obtido era "LOC-001". Corrigimos o texto do esperado.
 
 A terceira execução deu APROVADO. Em nenhuma das três o banco mudou: as 100.020 notas, o resumo e o gatilho ativo foram conferidos depois de cada uma.
+
+### H-21 · Trilha de auditoria incompleta e falsificável — REPROVADO → APROVADO
+
+- **Teste:** [`sqlserver/14_auditoria_testes.sql`](sqlserver/14_auditoria_testes.sql), 12 verificações.
+- **Falha** (rodada antes, [`trilha-antes.txt`](sqlserver/evidence/parte3/auditoria/trilha-antes.txt)):
+  - nenhuma gravação nas notas deixava rastro: 0 eventos para inserção, alteração, exclusão e lote;
+  - as tentativas negadas não ficavam registradas;
+  - **o operador conseguia forjar um evento na trilha** (T2a: PERMITIDO), por exemplo um "NOTA_EXCLUIDA" em nome do auditor.
+- **Causa:** a trilha `audit.Eventos` só recebia os eventos da IA. O papel da API tinha INSERT direto nela, sem uso nenhum.
+- **Correção:**
+  - gatilho `app.trg_Notas_Auditoria`, com o usuário real, o antes e o depois, a chave fiscal omitida e lotes num evento só;
+  - SQL Server Audit ([`13_sql_server_audit.sql`](sqlserver/13_sql_server_audit.sql)) para as tentativas, incluído no setup;
+  - `DENY INSERT` do papel da API na trilha.
+- **Reteste** ([`trilha-depois.txt`](sqlserver/evidence/parte3/auditoria/trilha-depois.txt)): APROVADO, 12/12. Os testes das etapas anteriores continuam passando. Documento: [`seguranca/trilha-auditoria.md`](seguranca/trilha-auditoria.md).
+
+### H-22 · Acentos gravados errado desde a instalação — REPROVADO → corrigido
+
+- **Falha:** os nomes dos locais e provedores, as 100.020 descrições de itens, as 100.020 justificativas e as mensagens dos procedimentos da IA estavam gravados com a leitura errada: "AgÃªncia Centro FictÃ­cia", "nÃ£o autorizado". O problema apareceu como um T1b reprovado com o texto certo na tela, porque a seta do gatilho tinha virado "â†’".
+- **Causa:** os scripts `.sql` não tinham a marca UTF-8 (BOM), e o `setup-academic.ps1` chamava o `sqlcmd` sem `-f 65001`. O `sqlcmd` lia os arquivos na página de código do Windows. As decisões da IA não mudavam, porque usam arquivos JSON, mas o modelo recebia os nomes quebrados no contexto.
+- **Correção:**
+  - marca UTF-8 nos 13 scripts;
+  - `-f 65001` nas chamadas do setup;
+  - reparo no `01_schema_seed.sql` (`dbo.fn_reparar_utf8_lido_como_1252`), que só age nas linhas com o sinal da leitura errada.
+- **Reteste:** a conferência em comparação binária deu 0 linhas quebradas. A mensagem voltou a ser "não autorizado" e o provedor "Conecta Alfa Fictícia".
+
+### H-23 · Erros nos testes desta etapa — ERRO DO TESTE
+
+1. A coluna `esperado` do teste da trilha tinha 40 caracteres. O texto do T1b não cabia, e a linha foi descartada (erro 2628) sem aparecer no resultado. Aumentamos as colunas para 120 caracteres.
+2. A conferência de acentos apontou módulos "quebrados" que estavam certos. A busca não diferenciava maiúsculas, então o "ã" correto de "não" casava com o "Ã" procurado. Passamos a usar comparação binária. O único módulo que sobrou com "Ã" é a própria função de reparo, que procura esse caractere.
+3. O T2c ("desligar o gatilho") daria "negado" mesmo sem o gatilho existir, porque o erro 1088 também significa "objeto não existe". O teste passou a conferir antes se o gatilho existe. Na rodada antes, ele aparece como "gatilho de auditoria não existe".
 
 ## Como manter
 

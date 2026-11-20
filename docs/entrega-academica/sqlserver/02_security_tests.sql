@@ -1,4 +1,4 @@
-USE SIGpAcademic;
+﻿USE SIGpAcademic;
 GO
 
 SET NOCOUNT ON;

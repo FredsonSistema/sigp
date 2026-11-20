@@ -1,4 +1,4 @@
-/* Parte 2 — Proteção de dado sensível: mascaramento dinâmico (Dynamic Data Masking) + UNMASK granular.
+﻿/* Parte 2 — Proteção de dado sensível: mascaramento dinâmico (Dynamic Data Masking) + UNMASK granular.
    Colunas sensíveis: app.Notas.chave_fiscal e app.Pagamentos.referencia.
    - sigp_api (aplicação) lê as linhas do seu escopo, mas a chave fiscal vem mascarada (não precisa dela).
    - sigp_fiscal (novo papel) tem UNMASK só nessas duas colunas: vê o valor real.

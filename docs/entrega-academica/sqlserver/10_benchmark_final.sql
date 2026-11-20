@@ -1,4 +1,4 @@
-/* Entrega final — Otimização: as duas consultas lentas, medidas em cada configuração.
+﻿/* Entrega final — Otimização: as duas consultas lentas, medidas em cada configuração.
    Consulta 1: total faturado por local, provedor e mês nos últimos 12 meses (soma ~47 mil das 100.020 notas).
    Consulta 2: as 500 notas pendentes vencidas mais antigas sem conciliação concluída.
      A = linha de base (só chaves primárias; índices candidatos desabilitados)

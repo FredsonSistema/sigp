@@ -57,6 +57,8 @@ O schema cria três locais fictícios, uma carga inicial idempotente de 20 notas
 - `ai.vw_contexto_minimo` não contém a chave fiscal. O acesso da IA à view e às tabelas permanece explicitamente negado.
 - Usuários de integração reais só devem ser criados após integrar autenticação individual e validar o fluxo de segredos.
 
+`13_sql_server_audit.sql` liga a auditoria nativa do SQL Server (tentativas negadas, mudanças de papel e de permissão); o gatilho `app.trg_Notas_Auditoria` (no `01`) registra em `audit.Eventos` quem inseriu, alterou ou apagou cada nota. `14_auditoria_testes.sql` prova a trilha e deve terminar com `APROVADO`. Todos os scripts `.sql` têm a marca UTF-8; ao rodar manualmente, use também `-f 65001`.
+
 `08_ataque_escalonamento.sql` reproduz a falha antiga (só FILTER) e roda 8 ataques de escalonamento vertical e horizontal contra a política corrigida, mais um controle positivo; deve terminar com `APROVADO`. Rode sempre com `-I` (os índices filtrados da otimização exigem `QUOTED_IDENTIFIER`).
 
 `02_security_tests.sql` verifica leitura autorizada, negação de tabela/view direta, bloqueio de escopo cruzado, `DENY DELETE` da API, negação de principal sem role e visibilidade de auditoria. Execução com `sqlcmd -b` deve terminar com `resultado = PASS`; qualquer falha emite erro e retorna código de saída não zero.

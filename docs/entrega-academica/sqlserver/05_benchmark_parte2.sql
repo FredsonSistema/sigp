@@ -1,4 +1,4 @@
-/* Parte 2 — Otimização: duas consultas lentas medidas em três configurações de índice.
+﻿/* Parte 2 — Otimização: duas consultas lentas medidas em três configurações de índice.
    A = linha de base (só chaves primárias; índices candidatos desabilitados temporariamente)
    B = índices candidatos de 02/11 (01_schema_seed.sql)
    C = índices ajustados para cada consulta (criados aqui e mantidos)

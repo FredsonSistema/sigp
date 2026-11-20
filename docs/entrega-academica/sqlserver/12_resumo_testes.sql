@@ -1,4 +1,4 @@
-/* Testes do resumo diário (app.ResumoDiario), a desnormalização da consulta 1.
+﻿/* Testes do resumo diário (app.ResumoDiario), a desnormalização da consulta 1.
    1. Consistência: inserir, alterar valor, mudar o dia e apagar notas; o resumo tem de ficar igual ao total recalculado.
    2. Segurança: o operador do LOC-001 só lê o resumo do LOC-001; a IA não lê o resumo; a API não grava nele.
    3. Custo: tempo de gravação com e sem o gatilho (lote de 1.000 notas e 200 notas uma a uma).

@@ -136,7 +136,7 @@ if (-not $ready) {
 }
 
 Invoke-Sqlcmd @(
-    "-S", "127.0.0.1,14333", "-U", "sa", "-d", "master", "-C", "-I", "-b",
+    "-S", "127.0.0.1,14333", "-U", "sa", "-d", "master", "-C", "-I", "-f", "65001", "-b",
     "-i", "docs/entrega-academica/sqlserver/01_schema_seed.sql"
 )
 
@@ -172,7 +172,7 @@ GO
 )
 try {
     Invoke-Sqlcmd @(
-        "-S", "127.0.0.1,14333", "-U", "sa", "-d", "master", "-C", "-I", "-b",
+        "-S", "127.0.0.1,14333", "-U", "sa", "-d", "master", "-C", "-I", "-f", "65001", "-b",
         "-i", $provisionFile
     )
 }
@@ -181,12 +181,18 @@ finally {
 }
 
 Invoke-Sqlcmd @(
-    "-S", "127.0.0.1,14333", "-U", "sa", "-d", "master", "-C", "-I", "-b",
+    "-S", "127.0.0.1,14333", "-U", "sa", "-d", "master", "-C", "-I", "-f", "65001", "-b",
     "-i", "docs/entrega-academica/sqlserver/01_schema_seed.sql"
 )
 
+# Auditoria nativa do SQL Server: registra também as tentativas negadas (o gatilho só vê o que foi gravado).
 Invoke-Sqlcmd @(
-    "-S", "127.0.0.1,14333", "-U", "sa", "-d", "SIGpAcademic", "-C", "-I", "-b",
+    "-S", "127.0.0.1,14333", "-U", "sa", "-d", "master", "-C", "-I", "-f", "65001", "-b",
+    "-i", "docs/entrega-academica/sqlserver/13_sql_server_audit.sql"
+)
+
+Invoke-Sqlcmd @(
+    "-S", "127.0.0.1,14333", "-U", "sa", "-d", "SIGpAcademic", "-C", "-I", "-f", "65001", "-b",
     "-i", "docs/entrega-academica/sqlserver/02_security_tests.sql"
 )
 

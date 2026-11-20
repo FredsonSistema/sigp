@@ -1,4 +1,4 @@
-/* Ataque de escalonamento de privilégio (vertical e horizontal) contra o SQL Server acadêmico.
+﻿/* Ataque de escalonamento de privilégio (vertical e horizontal) contra o SQL Server acadêmico.
 
    Fase 1 (antes): reproduz a falha encontrada. Dentro de uma transação, a política de RLS volta a ter só o
    predicado FILTER (como estava até 20/11/2026) e o operador regional, com escopo só no LOC-001, tenta gravar no

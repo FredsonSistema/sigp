@@ -1,4 +1,4 @@
-/* Entrega final — leituras lógicas e plano real das consultas numa configuração (mesmas de 10_benchmark_final.sql).
+﻿/* Entrega final — leituras lógicas e plano real das consultas numa configuração (mesmas de 10_benchmark_final.sql).
    Variável sqlcmd: CFG = A | B | C | D. Em D só roda a consulta 1 sobre o resumo diário (os índices ficam como em C).
    Uso: sqlcmd ... -I -v CFG=A -i 11_planos_final.sql  (chamado por benchmark-final.ps1). */
 USE SIGpAcademic;

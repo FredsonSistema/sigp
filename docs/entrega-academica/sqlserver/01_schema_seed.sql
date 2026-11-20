@@ -1,4 +1,4 @@
-/*
+﻿/*
   SIGp acadêmico: esquema e carga estritamente fictícios para SQL Server.
   Executar apenas em instância local de desenvolvimento. Não usar dados reais.
 */
@@ -279,6 +279,64 @@ BEGIN
 END;
 GO
 
+-- Trilha de auditoria das gravações em app.Notas: quem inseriu, alterou ou apagou, o que mudou e quando.
+-- SEM "EXECUTE AS": USER_NAME() é o principal real de quem gravou. O gatilho e audit.Eventos têm o mesmo dono, então a
+-- gravação na trilha passa pelo encadeamento de propriedade, mesmo com o DENY INSERT direto do papel da API.
+-- A chave fiscal (dado sensível) nunca entra no texto: só o aviso de que mudou. Mais de 100 linhas viram um evento só.
+CREATE OR ALTER TRIGGER app.trg_Notas_Auditoria
+ON app.Notas
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    SET NOCOUNT ON;
+    DECLARE @ins INT = (SELECT COUNT(*) FROM inserted);
+    DECLARE @del INT = (SELECT COUNT(*) FROM deleted);
+    IF @ins = 0 AND @del = 0
+        RETURN;
+    DECLARE @acao NVARCHAR(40) = CASE WHEN @ins > 0 AND @del > 0 THEN N'NOTA_ALTERADA'
+                                      WHEN @ins > 0 THEN N'NOTA_INSERIDA' ELSE N'NOTA_EXCLUIDA' END;
+    DECLARE @ator NVARCHAR(80) = LEFT(USER_NAME(), 80);
+    DECLARE @quem NVARCHAR(200) = CONCAT(N'db_principal=', USER_NAME(), N'; login=', ORIGINAL_LOGIN(), N'; app=', LEFT(APP_NAME(), 40));
+    DECLARE @cid UNIQUEIDENTIFIER = NEWID();
+
+    IF @ins > 100 OR @del > 100
+    BEGIN
+        INSERT INTO audit.Eventos (ator, acao, objeto, correlation_id, detalhe_redigido)
+        SELECT @ator, CONCAT(@acao, N'_LOTE'), N'app.Notas', @cid,
+               LEFT(CONCAT(N'linhas=', CASE WHEN @ins > @del THEN @ins ELSE @del END,
+                           N'; ids=', MIN(id), N'..', MAX(id),
+                           N'; locais=', (SELECT STRING_AGG(local_id, N',') WITHIN GROUP (ORDER BY local_id)
+                                          FROM (SELECT local_id FROM inserted UNION SELECT local_id FROM deleted) AS l),
+                           N'; ', @quem), 500)
+        FROM (SELECT id FROM inserted UNION ALL SELECT id FROM deleted) AS x;
+        RETURN;
+    END;
+
+    INSERT INTO audit.Eventos (ator, acao, objeto, correlation_id, detalhe_redigido)
+    SELECT @ator, @acao, N'app.Notas', @cid,
+           LEFT(CONCAT(
+               N'nota_id=', COALESCE(i.id, d.id), N'; local_id=', COALESCE(i.local_id, d.local_id),
+               CASE
+                   WHEN d.id IS NULL THEN CONCAT(N'; provedor_id=', i.provedor_id, N'; valor=', i.valor_total,
+                                                 N'; emissao=', i.data_emissao, N'; vencimento=', i.vencimento, N'; status=', i.status)
+                   WHEN i.id IS NULL THEN CONCAT(N'; provedor_id=', d.provedor_id, N'; valor=', d.valor_total,
+                                                 N'; vencimento=', d.vencimento, N'; status=', d.status)
+                   ELSE CONCAT(N'; mudou:',
+                       CASE WHEN i.local_id <> d.local_id THEN CONCAT(N' local ', d.local_id, N'→', i.local_id, N';') ELSE N'' END,
+                       CASE WHEN i.provedor_id <> d.provedor_id THEN CONCAT(N' provedor ', d.provedor_id, N'→', i.provedor_id, N';') ELSE N'' END,
+                       CASE WHEN i.valor_total <> d.valor_total THEN CONCAT(N' valor ', d.valor_total, N'→', i.valor_total, N';') ELSE N'' END,
+                       CASE WHEN i.data_emissao <> d.data_emissao THEN CONCAT(N' emissao ', d.data_emissao, N'→', i.data_emissao, N';') ELSE N'' END,
+                       CASE WHEN i.vencimento <> d.vencimento THEN CONCAT(N' vencimento ', d.vencimento, N'→', i.vencimento, N';') ELSE N'' END,
+                       CASE WHEN i.status <> d.status THEN CONCAT(N' status ', d.status, N'→', i.status, N';') ELSE N'' END,
+                       CASE WHEN i.numero <> d.numero OR i.serie <> d.serie THEN N' numero/serie;' ELSE N'' END,
+                       CASE WHEN i.chave_fiscal <> d.chave_fiscal THEN N' chave_fiscal (valor omitido);' ELSE N'' END)
+               END,
+               N'; ', @quem), 500)
+    FROM inserted AS i
+    FULL OUTER JOIN deleted AS d ON d.id = i.id;
+END;
+GO
+
 -- Preenche (ou refaz) o resumo a partir das notas quando os totais não batem: carga inicial e banco antigo.
 -- Roda antes da política ser recriada; o dono do banco vê todas as notas.
 IF EXISTS (
@@ -294,6 +352,32 @@ BEGIN
     FROM app.Notas
     GROUP BY data_emissao, local_id, provedor_id;
 END;
+GO
+
+-- Reparo de acentos. Até 20/11/2026 os scripts não tinham a marca UTF-8 (BOM) e o sqlcmd sem "-f 65001" os lia na
+-- página de código do Windows: "Fictícia" virava "FictÃ­cia" nos nomes, itens, conciliações e mensagens dos
+-- procedimentos. Os scripts agora têm a marca e o setup passa "-f 65001"; este bloco conserta o que já foi gravado.
+-- Só age onde há o sinal da leitura errada (idempotente).
+CREATE OR ALTER FUNCTION dbo.fn_reparar_utf8_lido_como_1252 (@t NVARCHAR(4000))
+RETURNS NVARCHAR(4000)
+WITH SCHEMABINDING
+AS
+BEGIN
+    IF @t IS NULL OR @t NOT LIKE N'%Ã%'
+        RETURN @t;
+    RETURN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(
+           REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@t COLLATE Latin1_General_100_BIN2,
+           NCHAR(195) + NCHAR(161), N'á'), NCHAR(195) + NCHAR(160), N'à'), NCHAR(195) + NCHAR(162), N'â'), NCHAR(195) + NCHAR(163), N'ã'),
+           NCHAR(195) + NCHAR(167), N'ç'), NCHAR(195) + NCHAR(169), N'é'), NCHAR(195) + NCHAR(170), N'ê'), NCHAR(195) + NCHAR(173), N'í'),
+           NCHAR(195) + NCHAR(179), N'ó'), NCHAR(195) + NCHAR(180), N'ô'), NCHAR(195) + NCHAR(181), N'õ'), NCHAR(195) + NCHAR(186), N'ú'),
+           NCHAR(195) + NCHAR(8240), N'É'), NCHAR(195) + NCHAR(8225), N'Ç'), NCHAR(195) + NCHAR(402), N'Ã'), NCHAR(195) + NCHAR(8220), N'Ó'),
+           NCHAR(195) + NCHAR(353), N'Ú'), NCHAR(195) + NCHAR(129), N'Á'), NCHAR(195) + NCHAR(141), N'Í'), NCHAR(195) + NCHAR(8226), N'Õ');
+END;
+GO
+UPDATE app.Locais SET nome = dbo.fn_reparar_utf8_lido_como_1252(nome) WHERE nome LIKE N'%Ã%';
+UPDATE app.Provedores SET nome = dbo.fn_reparar_utf8_lido_como_1252(nome) WHERE nome LIKE N'%Ã%';
+UPDATE app.ItensNota SET descricao = dbo.fn_reparar_utf8_lido_como_1252(descricao) WHERE descricao LIKE N'%Ã%';
+UPDATE app.Conciliacoes SET justificativa = dbo.fn_reparar_utf8_lido_como_1252(justificativa) WHERE justificativa LIKE N'%Ã%';
 GO
 
 IF EXISTS (
@@ -560,8 +644,10 @@ GRANT SELECT, INSERT, UPDATE ON OBJECT::app.Provedores TO sigp_api;
 GRANT SELECT ON OBJECT::app.ResumoDiario TO sigp_api;
 DENY INSERT, UPDATE, DELETE ON OBJECT::app.ResumoDiario TO sigp_api;
 DENY DELETE ON SCHEMA::app TO sigp_api;
-GRANT INSERT ON OBJECT::audit.Eventos TO sigp_api;
-DENY SELECT, UPDATE, DELETE ON OBJECT::audit.Eventos TO sigp_api;
+-- A trilha só recebe eventos pelos procedimentos da IA e pelo gatilho de auditoria (encadeamento de propriedade).
+-- O INSERT direto do papel da API permitia forjar eventos (teste T2a de 14_auditoria_testes.sql) e não era usado.
+REVOKE INSERT ON OBJECT::audit.Eventos FROM sigp_api;
+DENY INSERT, SELECT, UPDATE, DELETE ON OBJECT::audit.Eventos TO sigp_api;
 GRANT SELECT ON OBJECT::ai.vw_contexto_minimo TO sigp_auditor;
 GRANT SELECT ON OBJECT::audit.Eventos TO sigp_auditor;
 GRANT EXECUTE ON OBJECT::ai.usp_get_context TO sigp_ia;

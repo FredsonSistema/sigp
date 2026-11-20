@@ -1,4 +1,4 @@
-/* Parte 2 — leituras lógicas e plano real das duas consultas em uma configuração de índice.
+﻿/* Parte 2 — leituras lógicas e plano real das duas consultas em uma configuração de índice.
    Variável sqlcmd: CFG = A | B | C (mesmas configurações de 05_benchmark_parte2.sql).
    Uso: sqlcmd ... -v CFG=A -i 06_planos_parte2.sql  (chamado por benchmark-parte2.ps1). */
 USE SIGpAcademic;
