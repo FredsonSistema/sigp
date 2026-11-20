@@ -298,6 +298,46 @@ def log_retrieved_sources(correlation_id: str, source_ids: list[str]) -> None:
     _sqlcmd(query)
 
 
+def _sha256(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def _response_sha256(body: dict) -> str:
+    # Hash da resposta entregue, sem a latência (que muda a cada chamada): o auditor confere uma resposta guardada.
+    stable = {key: value for key, value in body.items() if key != "latency_ms"}
+    return _sha256(json.dumps(stable, ensure_ascii=False, sort_keys=True, separators=(",", ":")))
+
+
+def log_ai_response(correlation_id: str, status: str, *, provider_id: str, amount: float | None,
+                    description: str, injection: bool, classification: str | None = None,
+                    model_classification: str | None = None, model_name: str | None = None,
+                    reason: str | None = None, source_ids: list[str] | None = None,
+                    context_rows: int | None = None, response_sha256: str | None = None) -> None:
+    def opt(value) -> str:
+        return "NULL" if value is None else _sql_literal(str(value))
+
+    query = (
+        "SET NOCOUNT ON; EXEC ai.usp_log_response "
+        f"@local_id={_sql_literal(LOCAL_ID)}, "
+        f"@correlation_id='{correlation_id}', "
+        f"@status={_sql_literal(status)}, "
+        f"@provider_id={_sql_literal(provider_id)}, "
+        f"@amount={'NULL' if amount is None else f'{amount:.2f}'}, "
+        f"@description_sha256={_sql_literal(_sha256(description))}, "
+        f"@injection_detected={1 if injection else 0}, "
+        f"@classification={opt(classification)}, "
+        f"@model_classification={opt(model_classification)}, "
+        f"@model_name={opt((model_name or '')[:60] or None)}, "
+        f"@prompt_version={_sql_literal(PROMPT_VERSION)}, "
+        f"@reason={opt((reason or '')[:160] or None)}, "
+        f"@source_ids={opt(','.join(source_ids)[:200] if source_ids else None)}, "
+        f"@context_rows={'NULL' if context_rows is None else int(context_rows)}, "
+        f"@response_sha256={opt(response_sha256)}, "
+        f"@requested_by={_sql_literal(REQUESTER)};"
+    )
+    _sqlcmd(query)
+
+
 def ask_ollama(prompt: str) -> tuple[dict, str]:
     body = json.dumps({
         "model": OLLAMA_MODEL,
@@ -489,7 +529,7 @@ def analyze():
         amount_value = float(amount)
     except (TypeError, ValueError):
         return jsonify({"ok": False, "error": "amount deve ser numérico."}), 400
-    if not math.isfinite(amount_value) or amount_value < 0:
+    if not math.isfinite(amount_value) or amount_value < 0 or amount_value >= 10_000_000_000:
         return jsonify({"ok": False, "error": "amount inválido."}), 400
 
     provider_id = PROVIDER_IDS.get(_normalise(provider).strip())
@@ -497,8 +537,11 @@ def analyze():
         provider_id = "PROV-UNKNOWN"
 
     correlation_id = str(uuid4())
+    injection = _contains_prompt_injection(description)
+    context_read = False
     try:
         database_context = get_authorized_context(provider_id, correlation_id)
+        context_read = True
         rag_query = " ".join((
             provider,
             description,
@@ -517,13 +560,21 @@ def analyze():
         model_result, model_name = ask_model(prompt)
         model_classification = _validate_model_classification(model_result)
     except RuntimeError as exc:
+        if context_read:
+            # O contexto já foi lido (e auditado): registra que a análise não terminou. Melhor esforço,
+            # porque a própria falha pode ser do banco.
+            try:
+                log_ai_response(correlation_id, "ERRO", provider_id=provider_id, amount=amount_value,
+                                description=description, injection=injection, reason=str(exc))
+            except RuntimeError:
+                app.logger.error("Não foi possível auditar a falha da análise %s.", correlation_id)
         return jsonify({
             "ok": False,
             "correlation_id": correlation_id,
             "error": str(exc),
         }), 503
 
-    return jsonify({
+    body = {
         "ok": True,
         "correlation_id": correlation_id,
         "requester": REQUESTER,
@@ -544,7 +595,24 @@ def analyze():
         "retrieved_documents": len(retrieved),
         "latency_ms": round((time.perf_counter() - started) * 1000, 2),
         "automatic_payment": False,
-    })
+        "audit": "AI_RESPONSE",
+    }
+    # Auditoria completa: sem o registro do que a IA respondeu, a resposta não é entregue (falha fechada).
+    try:
+        log_ai_response(
+            correlation_id, "OK", provider_id=provider_id, amount=amount_value, description=description,
+            injection=injection, classification=assessment["classification"],
+            model_classification=model_classification, model_name=model_name, reason=assessment["reason"],
+            source_ids=assessment["source_ids"], context_rows=len(database_context),
+            response_sha256=_response_sha256(body),
+        )
+    except RuntimeError:
+        return jsonify({
+            "ok": False,
+            "correlation_id": correlation_id,
+            "error": "Não foi possível registrar a resposta na auditoria; a análise não foi entregue.",
+        }), 503
+    return jsonify(body)
 
 
 if __name__ == "__main__":

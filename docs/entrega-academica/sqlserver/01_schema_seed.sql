@@ -379,6 +379,80 @@ BEGIN
 END;
 GO
 
+-- O que a IA respondeu, ligado ao mesmo correlation_id da leitura do contexto e das fontes.
+-- Campos estruturados (não texto livre): a decisão e a sugestão do modelo só podem ser uma das classificações
+-- permitidas; o pedido entra resumido (provedor, valor e o hash da descrição, que pode trazer texto malicioso).
+CREATE OR ALTER PROCEDURE ai.usp_log_response
+    @local_id NVARCHAR(40),
+    @correlation_id UNIQUEIDENTIFIER,
+    @status NVARCHAR(10),
+    @provider_id NVARCHAR(40),
+    @amount DECIMAL(12,2) = NULL,
+    @description_sha256 CHAR(64) = NULL,
+    @injection_detected BIT = 0,
+    @classification NVARCHAR(20) = NULL,
+    @model_classification NVARCHAR(20) = NULL,
+    @model_name NVARCHAR(60) = NULL,
+    @prompt_version NVARCHAR(10) = NULL,
+    @reason NVARCHAR(160) = NULL,
+    @source_ids NVARCHAR(200) = NULL,
+    @context_rows INT = NULL,
+    @response_sha256 CHAR(64) = NULL,
+    @requested_by NVARCHAR(80) = NULL
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    DECLARE @db_actor SYSNAME = USER_NAME();
+    DECLARE @actor NVARCHAR(80) = COALESCE(NULLIF(LTRIM(RTRIM(@requested_by)), N''), USER_NAME());
+
+    IF @status NOT IN (N'OK', N'ERRO')
+        THROW 51004, 'status deve ser OK ou ERRO.', 1;
+    IF @classification IS NOT NULL AND @classification NOT IN (N'CONTRATADO', N'DIVERGENTE', N'REVISAR')
+        THROW 51005, 'Classificação fora do conjunto permitido.', 1;
+    IF @model_classification IS NOT NULL AND @model_classification NOT IN (N'CONTRATADO', N'DIVERGENTE', N'REVISAR')
+        THROW 51005, 'Classificação do modelo fora do conjunto permitido.', 1;
+    IF @status = N'OK' AND (@classification IS NULL OR @response_sha256 IS NULL)
+        THROW 51006, 'Resposta OK exige a classificação e o hash da resposta.', 1;
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM security.LocalScope
+        WHERE principal_name COLLATE DATABASE_DEFAULT = @db_actor COLLATE DATABASE_DEFAULT
+          AND local_id = @local_id
+    )
+    BEGIN
+        INSERT INTO audit.Eventos (ator, acao, objeto, correlation_id, detalhe_redigido)
+        VALUES (
+            @actor, N'AI_RESPONSE_DENIED', N'ai.analise', @correlation_id,
+            CONCAT(N'local_id=', @local_id, N'; db_principal=', @db_actor, N'; reason=scope_denied')
+        );
+        THROW 51007, 'Registro da resposta para o local solicitado não autorizado.', 1;
+    END;
+
+    INSERT INTO audit.Eventos (ator, acao, objeto, correlation_id, detalhe_redigido)
+    VALUES (
+        @actor,
+        CASE WHEN @status = N'OK' THEN N'AI_RESPONSE' ELSE N'AI_RESPONSE_FAILED' END,
+        N'ai.analise',
+        @correlation_id,
+        LEFT(CONCAT(
+            N'local_id=', @local_id, N'; db_principal=', @db_actor,
+            N'; pedido=', @provider_id, N' ', COALESCE(CONVERT(NVARCHAR(20), @amount), N'?'),
+            N' desc_sha256=', COALESCE(LEFT(@description_sha256, 16), N'-'),
+            N'; injecao=', @injection_detected,
+            N'; decisao=', COALESCE(@classification, N'-'),
+            N'; modelo=', COALESCE(@model_classification, N'-'), N' (', COALESCE(@model_name, N'-'), N', prompt ', COALESCE(@prompt_version, N'-'), N')',
+            N'; motivo=', COALESCE(@reason, N'-'),
+            N'; fontes=', COALESCE(@source_ids, N'-'),
+            N'; linhas=', COALESCE(CONVERT(NVARCHAR(10), @context_rows), N'-'),
+            N'; resposta_sha256=', COALESCE(@response_sha256, N'-'),
+            N'; pagamento_automatico=0'
+        ), 500)
+    );
+END;
+GO
+
 IF DATABASE_PRINCIPAL_ID(N'sigp_api') IS NULL CREATE ROLE sigp_api;
 IF DATABASE_PRINCIPAL_ID(N'sigp_auditor') IS NULL CREATE ROLE sigp_auditor;
 IF DATABASE_PRINCIPAL_ID(N'sigp_ia') IS NULL CREATE ROLE sigp_ia;
@@ -397,6 +471,7 @@ GRANT SELECT ON OBJECT::ai.vw_contexto_minimo TO sigp_auditor;
 GRANT SELECT ON OBJECT::audit.Eventos TO sigp_auditor;
 GRANT EXECUTE ON OBJECT::ai.usp_get_context TO sigp_ia;
 GRANT EXECUTE ON OBJECT::ai.usp_log_sources TO sigp_ia;
+GRANT EXECUTE ON OBJECT::ai.usp_log_response TO sigp_ia;
 DENY SELECT, INSERT, UPDATE, DELETE ON SCHEMA::app TO sigp_ia;
 DENY SELECT, INSERT, UPDATE, DELETE ON SCHEMA::audit TO sigp_ia;
 DENY SELECT, INSERT, UPDATE, DELETE ON OBJECT::ai.vw_contexto_minimo TO sigp_ia;

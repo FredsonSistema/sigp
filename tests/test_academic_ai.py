@@ -30,6 +30,7 @@ def _post_case(client, case, monkeypatch):
         lambda correlation_id, source_ids: seen_sources.extend(source_ids),
     )
     monkeypatch.setattr(academic_ai, "ask_ollama", _fake_result)
+    monkeypatch.setattr(academic_ai, "log_ai_response", lambda *_args, **_kwargs: None)
     response = client.post(
         "/api/analyze",
         json={"invoice": case["invoice"]},
@@ -76,6 +77,7 @@ def test_api_accepts_nfeproc_json_and_minimizes_invoice_before_model(monkeypatch
 
     monkeypatch.setattr(academic_ai, "get_authorized_context", lambda *_args: [])
     monkeypatch.setattr(academic_ai, "log_retrieved_sources", lambda *_args: None)
+    monkeypatch.setattr(academic_ai, "log_ai_response", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(academic_ai, "ask_ollama", fake_result)
     response = academic_ai.app.test_client().post(
         "/api/analyze",
@@ -215,7 +217,7 @@ def test_ollama_request_constrains_schema_and_generation_length(monkeypatch):
 
     assert result["classification"] == "REVISAR"
     assert model == "stub"
-    assert seen["timeout"] == 120
+    assert seen["timeout"] == academic_ai.OLLAMA_TIMEOUT_SECONDS
     assert seen["payload"]["format"]["required"] == ["classification"]
     assert seen["payload"]["options"]["num_predict"] == 160
 
@@ -250,3 +252,84 @@ def test_transformers_request_uses_internal_classification_endpoint(monkeypatch)
     assert seen["url"] == f"{academic_ai.MODEL_URL}/classify"
     assert set(seen["payload"]) == {"system", "prompt"}
     assert seen["timeout"] == 180
+
+
+ALFA = {"provider": "Conecta Alfa Fictícia", "description": "link principal fibra 300 Mbps", "amount": "450.00"}
+
+
+def _stub_pipeline(monkeypatch, context=None):
+    monkeypatch.setattr(academic_ai, "get_authorized_context", lambda *_args: context if context is not None else [
+        {"nota_id": 1, "local_id": "LOC-001", "provider_id": "PROV-001"}])
+    monkeypatch.setattr(academic_ai, "log_retrieved_sources", lambda *_args: None)
+    monkeypatch.setattr(academic_ai, "ask_ollama", _fake_result)
+
+
+def test_response_is_audited_with_decision_model_and_hash(monkeypatch):
+    _stub_pipeline(monkeypatch)
+    seen = []
+    monkeypatch.setattr(academic_ai, "log_ai_response",
+                        lambda correlation_id, status, **kw: seen.append((correlation_id, status, kw)))
+    response = academic_ai.app.test_client().post(
+        "/api/analyze", json={"invoice": ALFA}, headers={"X-API-Key": "unit-test-key"})
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert len(seen) == 1
+    correlation_id, status, kw = seen[0]
+    assert status == "OK" and correlation_id == body["correlation_id"]
+    assert kw["classification"] == body["classification"]
+    assert kw["model_classification"] == body["model_classification"]
+    assert kw["source_ids"] == body["source_ids"] and kw["context_rows"] == body["context_rows"]
+    # o hash gravado é o da resposta entregue (sem a latência)
+    assert kw["response_sha256"] == academic_ai._response_sha256(body)
+    assert body["audit"] == "AI_RESPONSE"
+
+
+def test_response_is_not_delivered_when_audit_fails(monkeypatch):
+    _stub_pipeline(monkeypatch)
+
+    def falha(*_args, **_kwargs):
+        raise RuntimeError("banco fora")
+
+    monkeypatch.setattr(academic_ai, "log_ai_response", falha)
+    response = academic_ai.app.test_client().post(
+        "/api/analyze", json={"invoice": ALFA}, headers={"X-API-Key": "unit-test-key"})
+
+    assert response.status_code == 503
+    body = response.get_json()
+    assert body["ok"] is False and "auditoria" in body["error"]
+    assert "classification" not in body and "model_classification" not in body
+
+
+def test_model_failure_after_context_read_is_audited_as_error(monkeypatch):
+    _stub_pipeline(monkeypatch)
+
+    def modelo_fora(_prompt):
+        raise RuntimeError("O modelo local está indisponível; nenhuma análise foi gravada como concluída.")
+
+    seen = []
+    monkeypatch.setattr(academic_ai, "ask_ollama", modelo_fora)
+    monkeypatch.setattr(academic_ai, "log_ai_response",
+                        lambda correlation_id, status, **kw: seen.append((status, kw)))
+    response = academic_ai.app.test_client().post(
+        "/api/analyze", json={"invoice": ALFA}, headers={"X-API-Key": "unit-test-key"})
+
+    assert response.status_code == 503
+    assert [status for status, _kw in seen] == ["ERRO"]
+    assert seen[0][1].get("classification") is None
+
+
+def test_denied_context_is_not_audited_as_response(monkeypatch):
+    # Escopo negado pelo banco: a negação já fica na auditoria (AI_CONTEXT_DENIED) e não há resposta a registrar.
+    def negado(*_args):
+        raise RuntimeError("Não foi possível consultar o contexto autorizado no banco.")
+
+    seen = []
+    monkeypatch.setattr(academic_ai, "get_authorized_context", negado)
+    monkeypatch.setattr(academic_ai, "log_ai_response", lambda *args, **kw: seen.append(args))
+    response = academic_ai.app.test_client().post(
+        "/api/analyze", json={"invoice": ALFA}, headers={"X-API-Key": "unit-test-key"})
+
+    assert response.status_code == 503
+    assert seen == []
+    assert "classification" not in response.get_json()
