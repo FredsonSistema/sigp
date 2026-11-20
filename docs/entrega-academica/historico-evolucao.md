@@ -30,8 +30,8 @@ no repositório.
 | H-16 | 20/11 | IA (medição) | Latência do sistema no ar | ERRO DO TESTE (0,8 s otimista, por cache) | Prompt novo a cada chamada | 31,3 s (fatura nova) | `ccdaa84` |
 | H-17 | 20/11 | IA (medição) | Carga de CPU da máquina | ERRO DO TESTE (0,0%) | Contador com o nome em português | 44% registrado | `ccdaa84` |
 | H-18 | 20/11 | IA | Fine-tuning nos casos reais (4 configurações) | Ajuste não compensou (7/16) | Nenhuma: é resultado | — | LIMITAÇÃO |
-| H-19 | 20/11 | Otimização | Consulta 1 (total por local, provedor e mês) | **REPROVADO** (índice só tirou 20%) | Desnormalização: resumo diário com gatilho e RLS | 168,7 → 25,3 ms | etapa 5 |
-| H-20 | 20/11 | Otimização (teste) | Testes do resumo diário | ERRO DO TESTE (abortou com 3930; depois esperado escrito errado) | Erro guardado no CATCH; texto do esperado | APROVADO | etapa 5 |
+| H-19 | 20/11 | Otimização | Consulta 1 (total por local, provedor e mês) | **REPROVADO** (índice só tirou 20%) | Desnormalização: resumo diário com gatilho e RLS | 168,7 → 25,3 ms | `62d0283` |
+| H-20 | 20/11 | Otimização (teste) | Testes do resumo diário | ERRO DO TESTE (abortou com 3930; depois esperado escrito errado) | Erro guardado no CATCH; texto do esperado | APROVADO | `62d0283` |
 
 ## Detalhes
 
