@@ -224,8 +224,31 @@ RETURN
       AND s.local_id = @local_id;
 GO
 
+-- Predicado de ESCRITA (BLOCK). O FILTER só esconde linhas na leitura; sem BLOCK, quem tem escopo só no LOC-001
+-- consegue gravar uma nota no LOC-002 ou mover uma nota para outro local (escalonamento horizontal, ataques E6 e E7
+-- de 08_ataque_escalonamento.sql). db_owner passa porque já pode alterar a própria política (e a carga de volume
+-- 03_load_benchmark.sql grava como dono do banco); os demais só gravam no local do seu escopo.
+CREATE OR ALTER FUNCTION security.fn_local_scope_escrita(@local_id NVARCHAR(40))
+RETURNS TABLE
+WITH SCHEMABINDING
+AS
+    RETURN
+    SELECT 1 AS permitido
+    WHERE IS_MEMBER(N'db_owner') = 1
+       OR EXISTS (
+            SELECT 1
+            FROM security.LocalScope AS s
+            WHERE s.principal_name COLLATE DATABASE_DEFAULT = USER_NAME() COLLATE DATABASE_DEFAULT
+              AND s.local_id = @local_id
+       );
+GO
+
 CREATE SECURITY POLICY security.LocalScopePolicy
-    ADD FILTER PREDICATE security.fn_local_scope(local_id) ON app.Notas
+    ADD FILTER PREDICATE security.fn_local_scope(local_id) ON app.Notas,
+    ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas AFTER INSERT,
+    ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas BEFORE UPDATE,
+    ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas AFTER UPDATE,
+    ADD BLOCK PREDICATE security.fn_local_scope_escrita(local_id) ON app.Notas BEFORE DELETE
     WITH (STATE = ON);
 GO
 
@@ -385,6 +408,7 @@ IF DATABASE_PRINCIPAL_ID(N'sigp_ia_loc002') IS NULL CREATE USER sigp_ia_loc002 W
 IF DATABASE_PRINCIPAL_ID(N'sigp_api_test') IS NULL CREATE USER sigp_api_test WITHOUT LOGIN;
 IF DATABASE_PRINCIPAL_ID(N'sigp_auditor_test') IS NULL CREATE USER sigp_auditor_test WITHOUT LOGIN;
 IF DATABASE_PRINCIPAL_ID(N'sigp_denied_test') IS NULL CREATE USER sigp_denied_test WITHOUT LOGIN;
+IF DATABASE_PRINCIPAL_ID(N'sigp_operador_loc001') IS NULL CREATE USER sigp_operador_loc001 WITHOUT LOGIN;
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id = DATABASE_PRINCIPAL_ID(N'sigp_ia') AND member_principal_id = DATABASE_PRINCIPAL_ID(N'sigp_ia_loc001'))
@@ -395,6 +419,11 @@ IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id =
     ALTER ROLE sigp_api ADD MEMBER sigp_api_test;
 IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id = DATABASE_PRINCIPAL_ID(N'sigp_auditor') AND member_principal_id = DATABASE_PRINCIPAL_ID(N'sigp_auditor_test'))
     ALTER ROLE sigp_auditor ADD MEMBER sigp_auditor_test;
+-- Operador regional: grava como a API, mas o escopo é só o LOC-001 (alvo do teste de escalonamento horizontal).
+IF NOT EXISTS (SELECT 1 FROM sys.database_role_members WHERE role_principal_id = DATABASE_PRINCIPAL_ID(N'sigp_api') AND member_principal_id = DATABASE_PRINCIPAL_ID(N'sigp_operador_loc001'))
+    ALTER ROLE sigp_api ADD MEMBER sigp_operador_loc001;
+IF NOT EXISTS (SELECT 1 FROM security.LocalScope WHERE principal_name = N'sigp_operador_loc001' AND local_id = N'LOC-001')
+    INSERT INTO security.LocalScope (principal_name, local_id) VALUES (N'sigp_operador_loc001', N'LOC-001');
 GO
 
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE object_id = OBJECT_ID(N'app.Notas') AND name = N'IX_Notas_Local_Vencimento_Status')

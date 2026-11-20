@@ -51,10 +51,13 @@ O schema cria três locais fictícios, uma carga inicial idempotente de 20 notas
 
 - `security.LocalScope` associa cada principal de teste a um ou mais locais.
 - Row-Level Security filtra `app.Notas` por `USER_NAME()` e pelo escopo cadastrado.
+- A mesma política tem predicados **BLOCK** (inserir, alterar e apagar): ninguém grava nota em local fora do próprio escopo nem move uma nota para outro local. O ataque de escalonamento que motivou a correção, com o antes e o depois, está em `08_ataque_escalonamento.sql` e em `../seguranca/ataque-escalonamento.md`.
 - A identidade `sigp_ia` não lê tabelas/view diretamente; só executa `ai.usp_get_context`.
 - O procedimento rejeita local não autorizado e registra ator, ação, objeto, correlation ID, local solicitado e total de linhas. Não registra XML, chave fiscal, nem payload integral.
 - `ai.vw_contexto_minimo` não contém a chave fiscal. O acesso da IA à view e às tabelas permanece explicitamente negado.
 - Usuários de integração reais só devem ser criados após integrar autenticação individual e validar o fluxo de segredos.
+
+`08_ataque_escalonamento.sql` reproduz a falha antiga (só FILTER) e roda 8 ataques de escalonamento vertical e horizontal contra a política corrigida, mais um controle positivo; deve terminar com `APROVADO`. Rode sempre com `-I` (os índices filtrados da otimização exigem `QUOTED_IDENTIFIER`).
 
 `02_security_tests.sql` verifica leitura autorizada, negação de tabela/view direta, bloqueio de escopo cruzado, `DENY DELETE` da API, negação de principal sem role e visibilidade de auditoria. Execução com `sqlcmd -b` deve terminar com `resultado = PASS`; qualquer falha emite erro e retorna código de saída não zero.
 
