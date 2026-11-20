@@ -35,6 +35,8 @@ no repositório.
 | H-21 | 20/11 | Segurança | Trilha de auditoria: quem gravou, alterou ou apagou notas; trilha protegida | **REPROVADO** (9 falhas: nada registrado; operador forjava evento) | Gatilho de auditoria, SQL Server Audit e DENY INSERT na trilha | APROVADO (12/12) | `1dbd7f7` |
 | H-22 | 20/11 | Banco | Acentos nos dados e nas mensagens do banco | **REPROVADO** ("FictÃ­cia" em 200 mil linhas e nas mensagens) | Marca UTF-8 nos scripts, `-f 65001` no setup e reparo dos dados | 0 linhas quebradas | `1dbd7f7` |
 | H-23 | 20/11 | Segurança (teste) | Primeiras execuções do teste da trilha e da conferência de acentos | ERRO DO TESTE (coluna curta descartou o T1b; conferência sem diferenciar maiúsculas) | Colunas maiores; comparação binária | Resultado certo | `1dbd7f7` |
+| H-24 | 20/11 | Segurança (teste) | Matriz de permissões gerada do banco e prova do DENY | ERRO DO TESTE (controle exigia leitura; "não" ilegível) | Controle sem WHERE; saída do sqlcmd em arquivo | APROVADO (5/5) | etapa 6b |
+| H-25 | 20/11 | Integração | Nenhum segredo nos fluxos do n8n exportados | **REPROVADO** (cabeçalho `apikey` literal num modelo) | Modelo usa `$env`; texto de exemplo vira aviso | APROVADO (0 falhas em 35 arquivos) | etapa 6b |
 
 ## Detalhes
 
@@ -181,6 +183,22 @@ A terceira execução deu APROVADO. Em nenhuma das três o banco mudou: as 100.0
 1. A coluna `esperado` do teste da trilha tinha 40 caracteres. O texto do T1b não cabia, e a linha foi descartada (erro 2628) sem aparecer no resultado. Aumentamos as colunas para 120 caracteres.
 2. A conferência de acentos apontou módulos "quebrados" que estavam certos. A busca não diferenciava maiúsculas, então o "ã" correto de "não" casava com o "Ã" procurado. Passamos a usar comparação binária. O único módulo que sobrou com "Ã" é a própria função de reparo, que procura esse caractere.
 3. O T2c ("desligar o gatilho") daria "negado" mesmo sem o gatilho existir, porque o erro 1088 também significa "objeto não existe". O teste passou a conferir antes se o gatilho existe. Na rodada antes, ele aparece como "gatilho de auditoria não existe".
+
+### H-24 · Erros no gerador da matriz de permissões — ERRO DO TESTE
+
+1. **O controle da prova do DENY deu "negado".** O controle coloca a API no papel `db_datawriter` e apaga numa tabela sem DENY. Mas o `DELETE ... WHERE principal_name = ...` exige também permissão de leitura, para avaliar o WHERE, e o `db_datawriter` só dá escrita. Corrigimos com `DELETE TOP (1)`, sem WHERE, dentro da mesma transação desfeita, e acrescentamos a conferência de que as 13 linhas do escopo continuam lá depois do ROLLBACK.
+2. **"não" saía como "n�o"** nas frases do próprio script. A investigação mostrou um comportamento do `sqlcmd` (ODBC 17): a **primeira** chamada numa janela sai na página 850 do Windows mesmo com `-f 65001`, e as seguintes saem em UTF-8. Por isso o defeito aparecia e sumia. Corrigimos fazendo o gerador pedir a saída num arquivo (`-o`), que sai sempre em UTF-8, e recusar a saída se vier com caractere inválido.
+
+Reteste: matriz gerada com os acentos certos e prova do DENY APROVADA, 5/5. Documento: [`seguranca/matriz-permissoes.md`](seguranca/matriz-permissoes.md).
+
+### H-25 · Modelo de workflow com chave literal — REPROVADO → APROVADO
+
+- **Teste:** [`ia/verificar_segredos_n8n.py --ao-vivo`](ia/verificar_segredos_n8n.py), sobre 21 arquivos do repositório e 14 workflows exportados do n8n em execução.
+- **Falha:** o nó "Notificar WhatsApp (Evolution API)" do `n8n_workflow_contas_provedores.json` tinha valor literal no cabeçalho `apikey`, e o número de destino também era literal. Era texto de exemplo (`COLE_AQUI_A_APIKEY_EVOLUTION`) num workflow que não está ativo, então nada vazou. Mas o modelo convidava a colar a chave no nó, e ela iria para o próximo arquivo exportado.
+- **Correção:**
+  - o nó usa `{{ $env.SIGP_WHATSAPP_URL }}`, `{{ $env.SIGP_WHATSAPP_APIKEY }}` e `{{ $env.SIGP_WHATSAPP_NUMERO }}`, como os nós de WhatsApp do WF-05, do WF-06 e do WF-99;
+  - o verificador trata texto de exemplo como AVISO.
+- **Reteste:** APROVADO, com 0 falhas. Avisos que ficam: um Gmail no filtro de busca do WF-08, e o e-mail da conta dona do n8n nos metadados da exportação ao vivo, que é temporária e não vai para o Git. Documento: [`ia/segredos-n8n.md`](ia/segredos-n8n.md).
 
 ## Como manter
 

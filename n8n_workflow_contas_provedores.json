@@ -178,13 +178,13 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "=https://SEU_SERVIDOR_EVOLUTION/message/sendText/SEU_INSTANCE",
+        "url": "={{ $env.SIGP_WHATSAPP_URL }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             {
               "name": "apikey",
-              "value": "COLE_AQUI_A_APIKEY_EVOLUTION"
+              "value": "={{ $env.SIGP_WHATSAPP_APIKEY }}"
             }
           ]
         },
@@ -193,7 +193,7 @@
           "parameters": [
             {
               "name": "number",
-              "value": "COLE_AQUI_O_NUMERO_WHATSAPP"
+              "value": "={{ $env.SIGP_WHATSAPP_NUMERO }}"
             },
             {
               "name": "text",
