@@ -20,7 +20,7 @@ const { launch, shot, check, loginFresh, apiAdmin } = require('./lib');
   try {
     await apiAdmin('/api/locais/agencia', { method: 'PUT', body: JSON.stringify({ items: [...ag, ...extras] }) });
     await loginFresh(page);
-    await page.evaluate(() => document.querySelector('.tab[data-view="config"]').click());
+    await page.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgMarcadores'); });
     const box = page.locator('#cfgMarcadores');
     const cartaoReg = box.locator('.mk-card', { hasText: REG });
     await cartaoReg.waitFor({ timeout: 20000 });
@@ -70,7 +70,7 @@ const { launch, shot, check, loginFresh, apiAdmin } = require('./lib');
     check(results, 'marcador novo entrou no catálogo', (await catalogo()).some((m) => m.nome === `MK${T} Novo`));
 
     // Renomear e excluir no catálogo valem para o local (API e cópia do navegador)
-    await page.evaluate(() => document.querySelector('.tab[data-view="config"]').click());
+    await page.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgMarcadores'); });
     await box.locator('.mk-card', { hasText: REG }).locator('[data-mk-acao="editar"]').click();
     await box.locator('[data-mk-campo-form="nome"]').fill(`${REG} Sul`);
     await box.locator('[data-mk-acao="salvar"]').click();

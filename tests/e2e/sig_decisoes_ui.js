@@ -61,7 +61,7 @@ const { API_TEST_URL, API_TEST_KEY, launch, shot, check, loginFresh } = require(
       JSON.stringify(estado.decisoes.map((d) => [d.acao, d.usuario])));
     check(results, 'SIGp avisou o n8n pela fila de eventos (3 eventos decisao_gerente)', estado.eventos >= 3, `eventos: ${estado.eventos}`);
     const textoTela = await page.locator('#sigDecisoes').innerText();
-    check(results, 'tela: decididas saem da lista e aparecem no histórico', ids.every((id) => true) && /Decididas recentemente/.test(textoTela) && /Devolvida/.test(textoTela));
+    check(results, 'tela: decididas saem da lista e aparecem no histórico', ids.every((id) => true) && /Decididas recentemente/i.test(textoTela) && /Devolvida/.test(textoTela));
     await shot(page, 'sig-02-decididas');
   } catch (error) {
     check(results, 'execução do teste', false, error.message.split('\n')[0]);

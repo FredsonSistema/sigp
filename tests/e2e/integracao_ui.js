@@ -10,7 +10,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh } = require('./lib');
     await loginFresh(page);
     const env = await page.evaluate(() => window.SIGP_ENV || null);
     check(results, 'padrões da instalação chegam por /sigp-env.js (vindos do .env)', Boolean(env && env.apiUrl && env.n8nUrl), JSON.stringify(env));
-    await page.evaluate(() => document.querySelector('.tab[data-view="config"]').click());
+    await page.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgIntegracao'); });
     await page.waitForSelector('#cfgIntegracao details.cfg-grupo', { timeout: 20000 });
     const grupos = await page.locator('#cfgIntegracao details.cfg-grupo > summary .nr-list-title').allInnerTexts();
     check(results, 'cinco grupos de integração', grupos.length === 5 && /Sistema/.test(grupos[0]) && /n8n/.test(grupos[1]), grupos.join(' | '));

@@ -65,9 +65,13 @@
   .topo-ferramentas .perfil-chip{ margin:0; background:var(--accent-bg); border-color:rgba(45,212,191,.4); }
   .topo-ferramentas #globalSearch{ width:220px; min-width:0; height:34px; }
   .topo-subbarra{ padding:10px 24px; }
-  .topo-subbarra:not(:has(.toolbar:not([style*="none"]))){ display:none; }
+  .topo-subbarra:not(:has(.toolbar:not([style*="none"]):not(.toolbar-vazia))){ display:none; }
+  .topo-subbarra .topo-duplicado, .topo-subbarra .toolbar-vazia{ display:none !important; }
+  .topo-icone{ width:34px; height:34px; padding:0; border-radius:8px; font-size:14px; }
+  .topo-sair{ height:34px; padding:0 12px; }
   .topo-subbarra .brand, .topo-subbarra .global-search-wrap{ display:none; }
-  @media (max-width: 1100px){ .topo-linha .brand-text .tagline{ display:none; } .topo-ferramentas #globalSearch{ width:150px; } }
+  @media (max-width: 1500px){ .topo-linha .brand-text .tagline{ display:none; } .topo-ferramentas #globalSearch{ width:180px; } .topo-linha{ gap:16px; } }
+  @media (max-width: 1200px){ .topo-ferramentas #globalSearch{ width:130px; } .menu-btn{ padding:0 10px; } .topo-ferramentas .perfil-chip{ display:none; } }
   @media (max-width: 760px){ .topo-linha{ gap:10px; padding:0 10px; overflow-x:auto; } .topo-ferramentas .perfil-chip{ display:none; } }
   .header-top{
     display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
@@ -246,6 +250,10 @@
     min-width:220px; outline:none;
   }
   input[type=text]:focus{ border-color: var(--accent-dim); }
+  input[type=search], input[type=email], input[type=url], input[type=password], input[type=number]{
+    background: var(--panel-2); border:1px solid var(--line-2); color:var(--text); padding:8px 12px; border-radius:8px; font-family:var(--sans); font-size:13.5px; outline:none; }
+  input[type=search]:focus, input[type=email]:focus, input[type=url]:focus, input[type=password]:focus, input[type=number]:focus{ border-color: var(--accent-dim); }
+  select{ color-scheme:dark; } select option{ background:var(--panel); color:var(--text); }
   button{
     font-family:var(--sans); font-size:13px; cursor:pointer;
     border-radius:8px; border:1px solid var(--line-2); background:transparent;
@@ -537,7 +545,74 @@
   .sig-bar-track{ height:9px; background:var(--panel-2); border-radius:6px; overflow:hidden; }
   .sig-bar-track span{ display:block; height:100%; border-radius:6px; background:var(--accent); }
   .sig-bar-value{ white-space:nowrap; color:var(--text); }
-  .sig-status-list{ max-height:190px; overflow:auto; }
+  .sig-status-list{ max-height:190px; overflow:auto; }
+  /* Cabeçalho de página e SIG (frontend/modules/sig-dashboard.js) */
+  .pagina-h{ display:flex; justify-content:space-between; align-items:center; gap:16px; margin-bottom:14px; flex-wrap:wrap; }
+  .pagina-h h2{ margin:0; font-size:19px; font-weight:600; display:flex; align-items:center; gap:8px; }
+  .pagina-h .sub{ margin:2px 0 0; color:var(--text-dim); font-size:12.5px; }
+  .pagina-h-acao{ display:inline-flex; align-items:center; height:34px; padding:0 14px; border:1px solid var(--line-2); border-radius:8px; color:var(--text); text-decoration:none; font-size:13px; }
+  .pagina-h-acao:hover{ background:#18222e; border-color:var(--faint); }
+  .info-tip{ display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border:1px solid var(--line-2); border-radius:50%; font-size:10px; color:var(--faint); cursor:help; font-weight:400; }
+  .vg-brand h2 + .sub, .vg-brand + .sub{ color:var(--text-dim); font-size:12.5px; }
+  .sig-filters{ background:var(--panel); border-radius:10px; padding:12px 16px; gap:12px; }
+  .sig-filters label{ text-transform:uppercase; letter-spacing:.6px; color:var(--faint); }
+  .nfse-card.sig-card{ padding:0; }
+  .nfse-card > p.hint, .nfse-card > .hint{ font-size:13px; color:var(--text-dim); }
+  .nfse-header .section-label{ border-top:0; padding-top:0; color:var(--faint); letter-spacing:.9px; font-size:11px; }
+  .sig-card{ padding:0; display:flex; flex-direction:column; min-width:0; overflow:hidden; }
+  .sig-card-h{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--line); flex-wrap:wrap; }
+  .sig-card-h h3, .sig-chart-grid .sig-card-h h3{ margin:0; font-size:12px; font-weight:600; letter-spacing:.9px; text-transform:uppercase; color:var(--text-dim); display:flex; align-items:center; gap:8px; }
+  .sig-card-h .hint{ font-size:11.5px; color:var(--faint); }
+  .sig-card-b{ padding:14px 16px; }
+  .sig-pill{ background:rgba(239,68,68,.14); color:#f87171; border-radius:999px; padding:1px 8px; font-size:11px; letter-spacing:0; }
+  .sig-pill--n{ background:#1a2331; color:var(--text-dim); }
+  .sig-ordem{ height:30px !important; min-width:180px !important; width:auto !important; font-size:12px !important; padding:0 8px !important; }
+  .sig-tabela-wrap{ max-height:320px; overflow:auto; }
+  .sig-tabela{ width:100%; border-collapse:collapse; font-size:13px; }
+  .sig-tabela th{ position:sticky; top:0; background:var(--panel); text-align:left; font-size:11px; font-weight:500; color:var(--faint); text-transform:uppercase; letter-spacing:.6px; padding:8px 12px; border-bottom:1px solid var(--line); white-space:nowrap; }
+  .sig-tabela td{ padding:8px 12px; border-bottom:1px solid var(--line); }
+  .sig-tabela td:nth-child(4){ white-space:nowrap; }
+  .sig-tabela tr:hover td{ background:#131c26; }
+  .sig-num{ text-align:right !important; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .sig-muted{ color:var(--text-dim); }
+  .sig-tag{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; padding:1px 8px; border-radius:999px; white-space:nowrap; background:#1a2331; color:var(--text-dim); }
+  .sig-tag--danger{ background:rgba(239,68,68,.14); color:#f87171; }
+  .sig-tag--warn{ background:rgba(245,158,11,.14); color:#fbbf24; }
+  .sig-card-f{ display:flex; justify-content:space-between; gap:12px; padding:10px 16px; border-top:1px solid var(--line); color:var(--faint); font-size:12px; margin-top:auto; }
+  .sig-ia-msg{ margin:0; color:#cbd5e1; font-size:13.5px; line-height:1.6; white-space:pre-wrap; }
+  .sig-chips{ display:flex; flex-wrap:wrap; gap:8px; margin:14px 0 4px; }
+  .sig-chip{ border:1px solid var(--line-2); background:#131c26; border-radius:8px; padding:8px 12px; font-size:12px; color:var(--text-dim); }
+  .sig-chip b{ display:block; font-size:17px; color:var(--text); font-weight:600; }
+  .sig-chip--danger b{ color:#f87171; } .sig-chip--warn b{ color:#fbbf24; }
+  details.sig-mais{ margin-top:10px; }
+  details.sig-mais summary{ cursor:pointer; color:var(--accent); font-size:12.5px; }
+  details.sig-mais div{ margin-top:8px; color:var(--text-dim); font-size:12.5px; line-height:1.7; }
+  #sigDecisoes > .sig-card-h + *{ margin:0; }
+  details.sig-decidir{ border-bottom:1px solid var(--line); }
+  details.sig-decidir:last-of-type{ border-bottom:0; }
+  details.sig-decidir > summary{ list-style:none; display:flex; align-items:center; gap:12px; padding:12px 16px; cursor:pointer; flex-wrap:wrap; }
+  details.sig-decidir > summary::-webkit-details-marker{ display:none; }
+  details.sig-decidir > summary::before{ content:'\25B6'; color:var(--faint); font-size:10px; transition:transform .15s; }
+  details.sig-decidir[open] > summary::before{ transform:rotate(90deg); }
+  details.sig-decidir > summary:hover{ background:#131c26; }
+  .sig-decidir-data{ color:var(--faint); font-size:12px; min-width:110px; }
+  .sig-decidir-titulo{ flex:1; min-width:220px; }
+  .sig-badge{ font-size:11px; font-weight:600; letter-spacing:.5px; padding:2px 9px; border-radius:6px; }
+  .sig-badge--rev{ background:rgba(245,158,11,.14); color:#fbbf24; border:1px solid rgba(245,158,11,.35); }
+  .sig-badge--ok{ background:rgba(45,212,191,.1); color:var(--accent); border:1px solid rgba(45,212,191,.35); }
+  .sig-decidir-corpo{ padding:4px 16px 16px 40px; }
+  .sig-decidir-caixas{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .sig-caixa{ background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:12px 14px; min-width:0; }
+  .sig-caixa h4{ margin:0 0 8px; font-size:11px; color:var(--faint); text-transform:uppercase; letter-spacing:.8px; font-weight:600; }
+  .sig-caixa ul{ margin:0; padding-left:16px; color:#cbd5e1; font-size:13px; line-height:1.7; }
+  .sig-caixa dl{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:13px; }
+  .sig-caixa dt{ color:var(--faint); } .sig-caixa dd{ margin:0; color:#cbd5e1; } .sig-caixa .sig-dl-full{ grid-column:1 / -1; }
+  .sig-btn-ok{ background:transparent !important; border-color:rgba(34,197,94,.45) !important; color:#86e0a5 !important; }
+  .sig-btn-ok:hover{ background:rgba(34,197,94,.1) !important; filter:none !important; }
+  #sigDecisoes > .dash-empty, #sigDecisoes > h4, #sigDecisoes > .dash-row{ margin-left:16px; margin-right:16px; }
+  #sigDecisoes > h4{ font-size:11.5px; font-weight:600; letter-spacing:.9px; text-transform:uppercase; color:var(--faint); margin-top:18px !important; }
+  #sigDecisoes > .dash-row{ font-size:12.5px; }
+  @media (max-width: 1100px){ .sig-chart-grid{ grid-template-columns:1fr; } .sig-decidir-caixas{ grid-template-columns:1fr; } .sig-decidir-corpo{ padding-left:16px; } }
   @media(max-width:950px){ .sig-filters{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
   @media(max-width:700px){ .sig-kpis{ grid-template-columns:repeat(2,minmax(0,1fr)); } .sig-chart-grid{ grid-template-columns:1fr; } }
   @media(max-width:480px){ .sig-filters{ grid-template-columns:repeat(2,minmax(0,1fr)); } .sig-kpis{ grid-template-columns:1fr; } }
@@ -696,11 +771,10 @@
   .field-grid .full{ grid-column: 1 / -1; }
 
   .nfse-card{
-    background: linear-gradient(180deg, rgba(27,36,46,.96), rgba(16,22,28,.98));
+    background: var(--panel);
     border:1px solid var(--line);
-    border-radius:16px;
-    padding:18px 18px 14px;
-    box-shadow: 0 12px 28px rgba(0,0,0,.18);
+    border-radius:12px;
+    padding:16px 18px;
     margin: 10px 0 14px;
   }
   .nfse-header{
@@ -708,7 +782,7 @@
     flex-wrap:wrap; margin-bottom:14px;
   }
   .nfse-header h3{
-    margin:4px 0 0; font-size:18px; color:var(--text); font-weight:700;
+    margin:4px 0 0; font-size:15px; color:var(--text); font-weight:600;
   }
   .section-label{
     display:inline-block; font-size:11px; letter-spacing:.12em; text-transform:uppercase;
@@ -807,6 +881,50 @@
   .dyn-remove:hover{ color:var(--danger); border-color:var(--danger); }
   .modal-actions{ display:flex; justify-content:space-between; align-items:center; margin-top:22px; }
   .modal-actions .right{ display:flex; gap:8px; }
+  /* Configurações em páginas com menu lateral (frontend/modules/config-layout.js) */
+  #view_config > .vg-brand{ display:none; }
+  .cfg-layout{ display:grid; grid-template-columns:250px minmax(0,1fr); gap:0; margin:-20px -28px -60px; min-height:calc(100vh - 120px); }
+  .cfg-nav{ border-right:1px solid var(--line); padding:20px 14px; position:sticky; top:var(--topo-altura, 56px); align-self:start; max-height:calc(100vh - var(--topo-altura, 56px)); overflow:auto; }
+  .cfg-nav-busca{ width:100%; min-width:0 !important; height:34px; margin-bottom:16px; }
+  .cfg-nav-grupo{ margin-bottom:16px; }
+  .cfg-nav-grupo[hidden]{ display:none; }
+  .cfg-nav-grupo h4{ margin:0 0 6px 10px; font-size:10.5px; letter-spacing:1px; text-transform:uppercase; color:var(--faint); font-weight:600; }
+  .cfg-nav-item{ display:flex; width:100%; text-align:left; background:none; border:0; border-left:2px solid transparent; border-radius:8px; color:var(--text-dim); padding:8px 10px; font-size:13.5px; }
+  .cfg-nav-item[hidden]{ display:none; }
+  .cfg-nav-item:hover{ background:#141c27; color:var(--text); border-color:transparent; }
+  .cfg-nav-item.active{ background:var(--accent-bg); color:var(--text); border-left-color:var(--accent); }
+  .cfg-conteudo{ padding:24px 32px 60px; min-width:0; }
+  .cfg-pagina{ max-width:1000px; }
+  .cfg-pagina[hidden]{ display:none; }
+  .cfg-pagina-h{ margin-bottom:18px; }
+  .cfg-pagina-h h1{ margin:0; font-size:20px; font-weight:600; }
+  .cfg-pagina-h p{ margin:4px 0 0; color:var(--text-dim); font-size:13px; }
+  .cfg-cartao{ background:var(--panel); border:1px solid var(--line); border-radius:12px; margin-bottom:16px; }
+  .cfg-cartao-h{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--line); }
+  .cfg-cartao-h h2{ margin:0; font-size:14px; font-weight:600; }
+  .cfg-cartao-h .hint{ font-size:12px; color:var(--faint); text-align:right; }
+  .cfg-cartao-b{ padding:18px; }
+  .cfg-cartao-b > .field-grid{ grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:16px; }
+  .cfg-cartao-b > .task-add-row:last-child{ margin:16px -18px -18px !important; padding:12px 18px; border-top:1px solid var(--line); background:var(--panel-2); border-radius:0 0 12px 12px; justify-content:flex-end; }
+  .cfg-layout input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=color]):not([type=range]), .cfg-layout select, .cfg-layout textarea{
+    width:100%; min-width:0; height:36px; background:#0a0f15; border:1px solid var(--line-2); border-radius:8px; color:var(--text); padding:0 12px; font-family:var(--sans); font-size:13.5px; outline:none; }
+  .cfg-layout textarea{ height:auto; min-height:72px; padding:8px 12px; }
+  .cfg-layout input:focus, .cfg-layout select:focus, .cfg-layout textarea:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(45,212,191,.15); }
+  .cfg-layout input.mono-in{ font-family:var(--mono); font-size:13px; }
+  .cfg-layout input[type=checkbox], .cfg-layout input[type=radio]{ accent-color:var(--accent); }
+  .cfg-layout label{ font-size:12px; color:var(--text-dim); }
+  .cfg-cartao-b .section-label{ font-size:11.5px; font-weight:600; letter-spacing:.9px; text-transform:uppercase; color:var(--text-dim); }
+  .cfg-cartao-b .dash-empty{ padding:14px; border:1px dashed var(--line-2); border-radius:8px; color:var(--faint); background:none; }
+  @media (max-width: 900px){
+    .cfg-layout{ grid-template-columns:1fr; margin:-20px -12px -60px; }
+    .cfg-nav{ position:static; max-height:none; border-right:0; border-bottom:1px solid var(--line); display:flex; gap:12px; overflow-x:auto; padding:10px; }
+    .cfg-nav-busca{ display:none; }
+    .cfg-nav-grupo{ margin:0; display:flex; gap:4px; align-items:center; }
+    .cfg-nav-grupo h4{ display:none; }
+    .cfg-nav-item{ white-space:nowrap; border-left:0; border-bottom:2px solid transparent; }
+    .cfg-nav-item.active{ border-bottom-color:var(--accent); }
+    .cfg-conteudo{ padding:18px 14px 50px; }
+  }
   /* Formulário do local em abas (frontend/modules/abas-local.js): cabeçalho, abas e rodapé fixos; só o conteúdo rola */
   .overlay:has(> .loc-modal){ align-items:center; padding:20px; }
   .loc-modal{ max-width:920px; padding:0; display:flex; flex-direction:column; max-height:calc(100vh - 40px); overflow:hidden; border-radius:14px; box-shadow:0 30px 80px rgba(0,0,0,.55); }
@@ -1851,7 +1969,8 @@
 <script src="frontend/modules/situacao-conta.js?v=20261120a"></script>
 <script src="frontend/modules/notas-disponiveis.js?v=20261120a"></script>
 <script src="frontend/modules/abas-local.js?v=20261120b"></script>
-<script src="frontend/modules/menu-topo.js?v=20261120c"></script>
+<script src="frontend/modules/menu-topo.js?v=20261121a"></script>
+<script src="frontend/modules/config-layout.js?v=20261121a"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -1863,7 +1982,7 @@
 <script src="frontend/modules/painel-ia.js?v=20261114"></script>
 <script src="frontend/modules/assistente.js?v=20261117e"></script>
 <script src="frontend/modules/webhook-client.js"></script>
-<script src="frontend/modules/sig-dashboard.js?v=20261120-kpi"></script>
+<script src="frontend/modules/sig-dashboard.js?v=20261121a"></script>
 <script src="frontend/modules/sie-dashboard.js?v=20261115-config"></script>
 
 <script>
@@ -3253,7 +3372,7 @@ function renderConfigTab(){
     }
   };
 
-  document.getElementById('btnSalvarNFSE').onclick = async ()=>{
+  if(document.getElementById('btnSalvarNFSE')) document.getElementById('btnSalvarNFSE').onclick = async ()=>{
     if(!window.SIGP_NFSE) return toast('Módulo de NFSe não carregado');
     const payload = {
       chave: document.getElementById('nfse_chave').value.trim(),
@@ -3287,16 +3406,16 @@ function renderConfigTab(){
     toast('NFSe lançada e persistida no backend. O n8n será acionado após a conciliação do pagamento.');
   };
 
-  document.getElementById('btnImportarNFSEArquivo').onclick = ()=> document.getElementById('importarNFSEFile').click();
-  document.getElementById('importarNFSEFile').onchange = async (event) => {
+  if(document.getElementById('btnImportarNFSEArquivo')) document.getElementById('btnImportarNFSEArquivo').onclick = ()=> document.getElementById('importarNFSEFile').click();
+  if(document.getElementById('importarNFSEFile')) document.getElementById('importarNFSEFile').onchange = async (event) => {
     const [file] = event.target.files || [];
     if (!file) return;
     await importarArquivoNFSE(file, 'normal');
     event.target.value = '';
   };
 
-  document.getElementById('btnImportarNotaPaga').onclick = ()=> document.getElementById('importarNFSEPagaFile').click();
-  document.getElementById('importarNFSEPagaFile').onchange = async (event) => {
+  if(document.getElementById('btnImportarNotaPaga')) document.getElementById('btnImportarNotaPaga').onclick = ()=> document.getElementById('importarNFSEPagaFile').click();
+  if(document.getElementById('importarNFSEPagaFile')) document.getElementById('importarNFSEPagaFile').onchange = async (event) => {
     const [file] = event.target.files || [];
     if (!file) return;
     await importarArquivoNFSE(file, 'paga');
@@ -3304,12 +3423,12 @@ function renderConfigTab(){
   };
 
   ['nfse_paga_chave', 'nfse_paga_numero', 'nfse_paga_valor', 'nfse_paga_data', 'nfse_paga_cidade'].forEach((id) => {
-    document.getElementById(id).addEventListener('input', () => {
+    document.getElementById(id)?.addEventListener('input', () => {
       notaPagaImportada = null;
     });
   });
 
-  document.getElementById('btnValidarNotaPaga').onclick = validarPagamentoNFSE;
+  if(document.getElementById('btnValidarNotaPaga')) document.getElementById('btnValidarNotaPaga').onclick = validarPagamentoNFSE;
 
   renderNFSELista();
   }
@@ -3424,6 +3543,8 @@ function renderConfigTab(){
       return `<div class="archive-row"><span>${formatDateTimeBR(version.ts)} — <b>${esc(version.filename)}</b> · ${total} registros</span></div>`;
     }).join('');
   }
+  // Páginas com menu lateral (frontend/modules/config-layout.js): só reorganiza os mesmos elementos.
+  window.SIGP_CONFIG_LAYOUT?.montar(box);
 }
 
 function downloadTextFile(filename, content){

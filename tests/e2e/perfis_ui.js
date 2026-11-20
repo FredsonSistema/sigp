@@ -9,7 +9,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh, entrarComTemporaria } = r
   page.on('dialog', (d) => d.accept());
   try {
     await loginFresh(page);
-    await page.evaluate(() => document.querySelector('.tab[data-view="config"]').click());
+    await page.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgPermissoes'); });
     await page.waitForSelector('#cfgPermissoes details.cfg-grupo', { timeout: 20000 });
     const secoes = await page.locator('#cfgPermissoes details.cfg-grupo > summary .nr-list-title').allInnerTexts();
     check(results, 'quatro seções: usuários, grupos, funcionalidades e auditoria', secoes.join('|') === 'Usuários|Grupos de permissão|Funcionalidades do sistema|Auditoria de acesso', secoes.join(' | '));
@@ -52,7 +52,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh, entrarComTemporaria } = r
       return [r.status, (await r.json()).error];
     }, API_TEST_URL);
     check(results, 'API recusa gravação do perfil Leitura com mensagem clara', gravar[0] === 403 && /Leitura/.test(gravar[1]), gravar.join(' · '));
-    await p2.evaluate(() => document.querySelector('.tab[data-view="config"]').click());
+    await p2.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgPermissoes'); });
     await p2.waitForSelector('#cfgPermissoes [data-trocar-senha]', { timeout: 15000 });
     check(results, 'pessoa vê o próprio perfil, sem poder editar', /Só o administrador altera/.test(await p2.locator('#cfgPermissoes').innerText()));
     await shot(p2, 'perm-02-usuario');
@@ -60,7 +60,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh, entrarComTemporaria } = r
     // Auditoria registra a recusa e o login
     await page.reload();
     await page.waitForFunction(() => getComputedStyle(document.querySelector('#appRoot')).display !== 'none', null, { timeout: 20000 });
-    await page.evaluate(() => document.querySelector('.tab[data-view="config"]').click());
+    await page.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgPermissoes'); });
     await page.waitForSelector('#cfgPermissoes details.cfg-grupo', { timeout: 20000 });
     await page.locator('#cfgPermissoes details.cfg-grupo').nth(3).locator(':scope > summary').click();
     const aud = await page.locator('#cfgPermissoes details.cfg-grupo').nth(3).innerText();

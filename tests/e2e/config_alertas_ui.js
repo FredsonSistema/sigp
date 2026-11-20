@@ -14,7 +14,7 @@ const api = (caminho, opcoes = {}) => fetch(`${API_TEST_URL}${caminho}`, {
   try {
     await api('/api/configuracoes/alertas', { method: 'PUT', body: JSON.stringify({ emails: [] }) });
     await loginFresh(page);
-    await page.evaluate(() => document.querySelector('.tab[data-view="config"]').click());
+    await page.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgAlertas'); });
     const box = page.locator('#cfgAlertas');
     await box.locator('[data-alerta-salvar]').waitFor({ timeout: 20000 });
     check(results, 'lista vazia avisa que o resumo não é enviado', /não é enviado|Nenhum e-mail/.test(await box.innerText()));

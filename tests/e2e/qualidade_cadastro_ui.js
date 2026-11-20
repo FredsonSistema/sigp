@@ -16,7 +16,7 @@ const { launch, shot, check, loginFresh, apiAdmin } = require('./lib');
   try {
     await apiAdmin('/api/locais/agencia', { method: 'PUT', body: JSON.stringify({ items: [...ag, ...extras] }) });
     await loginFresh(page);
-    await page.evaluate(() => document.querySelector('.tab[data-view="config"]').click());
+    await page.evaluate(() => { document.querySelector('.tab[data-view="config"]').click(); window.SIGP_CONFIG_LAYOUT.irPara('#cfgQualidade'); });
     const box = page.locator('#cfgQualidade');
     await box.locator('.qc-chips').waitFor({ timeout: 20000 });
     check(results, 'resumo da qualidade com contagens', (await box.locator('.qc-chip').count()) >= 3);

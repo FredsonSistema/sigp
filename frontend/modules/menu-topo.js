@@ -54,8 +54,28 @@
       if (aba.dataset.view === 'config') aba.textContent = '⚙';
       ferramentas.appendChild(aba);
     });
+    // Conta e Sair uma vez só, no topo (cada barra de tela tinha os seus ⚙ e "Sair" repetidos).
+    const conta = document.createElement('button');
+    conta.type = 'button';
+    conta.className = 'topo-icone';
+    conta.title = 'Minha conta (trocar senha)';
+    conta.setAttribute('aria-label', conta.title);
+    conta.textContent = '👤';
+    conta.addEventListener('click', () => document.getElementById('btnAccount')?.click());
+    const sair = document.createElement('button');
+    sair.type = 'button';
+    sair.className = 'topo-sair';
+    sair.textContent = 'Sair';
+    sair.addEventListener('click', () => document.getElementById('btnLogout')?.click());
+    ferramentas.append(conta, sair);
     linha.appendChild(ferramentas);
     header.insertBefore(linha, topo);
+    topo.querySelectorAll('.toolbar button[id]').forEach((b) => {
+      if (/(^|_)btn(Account|Logout)/.test(b.id)) b.classList.add('topo-duplicado');
+    });
+    topo.querySelectorAll('.toolbar').forEach((t) => {
+      if (![...t.children].some((c) => !c.classList.contains('topo-duplicado') && c.type !== 'file' && c.style.display !== 'none')) t.classList.add('toolbar-vazia');
+    });
     topo.classList.add('topo-subbarra');
 
     const fechar = (exceto) => nav.querySelectorAll('.menu-grupo.aberto').forEach((m) => {
