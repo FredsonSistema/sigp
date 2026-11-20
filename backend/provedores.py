@@ -13,6 +13,7 @@ Regras:
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 import unicodedata
 from typing import Any, Dict, List, Optional, Tuple
 from uuid import uuid4
@@ -57,7 +58,13 @@ def mesma_empresa(nome_a: Any, nome_b: Any) -> bool:
     """Mesma regra de correspondência do provedor: nome igual, um contém o outro ou mesma marca."""
     if not str(nome_a or "").strip() or not str(nome_b or "").strip():
         return False
-    return encontrar_provedor([{"nome": str(nome_b)}], str(nome_a))[0] is not None
+    return _mesma_empresa(str(nome_a), str(nome_b))
+
+
+@lru_cache(maxsize=20000)
+def _mesma_empresa(nome_a: str, nome_b: str) -> bool:
+    # Função pura dos dois nomes: guardada em cache (a lista de notas recebidas compara milhares de pares).
+    return encontrar_provedor([{"nome": nome_b}], nome_a)[0] is not None
 
 
 def competencia(data_vencimento: Any) -> str:

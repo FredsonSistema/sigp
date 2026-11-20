@@ -237,14 +237,14 @@
       ${qualityWarning}
       ${quality.notasSemDataEmissao ? `<p class="hint">${quality.notasSemDataEmissao} nota(s) sem data de emissão não entram no recorte de período.</p>` : ''}
       <div class="sig-kpis">
-        <article class="dash-card"><h3>Valor lançado</h3><strong>${formatMoney(indicators.valorLancado)}</strong><span>${indicators.notasLancadas} nota(s)</span></article>
-        <article class="dash-card"><h3>Valor pago no período</h3><strong>${formatMoney(indicators.valorPago)}</strong><span>${indicators.pagamentos} pagamento(s)</span></article>
+        <article class="dash-card kpi-info"><h3>Valor lançado</h3><strong>${formatMoney(indicators.valorLancado)}</strong><span>${indicators.notasLancadas} nota(s)</span></article>
+        <article class="dash-card kpi-ok"><h3>Valor pago no período</h3><strong>${formatMoney(indicators.valorPago)}</strong><span>${indicators.pagamentos} pagamento(s)</span></article>
         <article class="dash-card"><h3>Saldo pendente</h3><strong>${formatMoney(indicators.valorPendente)}</strong><span>${indicators.pendentes} pendência(s)</span></article>
-        <article class="dash-card"><h3>Notas vencidas</h3><strong>${indicators.vencidas}</strong><span>com saldo em aberto</span></article>
-        <article class="dash-card"><h3>Conciliações aprovadas</h3><strong>${indicators.conciliadas}</strong><span>status MATCH</span></article>
-        <article class="dash-card"><h3>Divergências</h3><strong>${indicators.divergencias}</strong><span>requerem revisão</span></article>
+        <article class="dash-card${indicators.vencidas ? ' kpi-danger' : ''}"><h3>Notas vencidas</h3><strong>${indicators.vencidas}</strong><span>com saldo em aberto</span></article>
+        <article class="dash-card${indicators.conciliadas ? ' kpi-ok' : ''}"><h3>Conciliações aprovadas</h3><strong>${indicators.conciliadas}</strong><span>status MATCH</span></article>
+        <article class="dash-card${indicators.divergencias ? ' kpi-warn' : ''}"><h3>Divergências</h3><strong>${indicators.divergencias}</strong><span>requerem revisão</span></article>
         <article class="dash-card"><h3>Aguardando fatura</h3><strong>${indicators.aguardandoFatura || 0}</strong><span>lançada e paga conferem</span></article>
-        <article class="dash-card"><h3>Sem fatura</h3><strong>${indicators.semFatura || 0}</strong><span>fatura ainda não disponível</span></article>
+        <article class="dash-card${indicators.semFatura ? ' kpi-warn' : ''}"><h3>Sem fatura</h3><strong>${indicators.semFatura || 0}</strong><span>fatura ainda não disponível</span></article>
       </div>
       <div class="sig-chart-grid">
         <section class="nfse-card"><h3>Alertas</h3><div class="sig-status-list">${renderAlerts(extras)}</div></section>

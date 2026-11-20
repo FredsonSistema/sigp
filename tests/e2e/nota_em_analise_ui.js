@@ -42,7 +42,7 @@ const { API_TEST_URL, launch, shot, check, loginFresh, abrirNota } = require('./
     await page.reload();
     // Logo após recarregar, a tela ainda pode estar iniciando: clica de novo até a aba abrir.
     for (let tentativa = 0; tentativa < 10; tentativa += 1) {
-      await page.locator('.tab[data-view="notas-recebidas"]').click();
+      await page.evaluate(() => document.querySelector('.tab[data-view="notas-recebidas"]').click());
       if (await page.locator('#notasRecebidasFiltro').isVisible()) break;
       await page.waitForTimeout(1000);
     }

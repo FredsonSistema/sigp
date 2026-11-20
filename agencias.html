@@ -6,21 +6,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
   :root{
-    --bg: #10151b;
-    --panel: #171e26;
-    --panel-2: #1d2530;
-    --line: #2a3441;
-    --text: #dbe3ea;
-    --text-dim: #7c8a99;
-    --accent: #4fb8ac;
-    --accent-dim: #35766f;
-    --warn: #d99a4e;
-    --danger: #c1614f;
-    --mono: 'IBM Plex Mono', 'Consolas', ui-monospace, monospace;
-    --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    color-scheme: dark;
+    --bg: #0a0e13;
+    --panel: #10171f;
+    --panel-2: #0c1218;
+    --line: #1c2733;
+    --line-2: #2a3646;
+    --text: #e6edf3;
+    --text-dim: #8b98a9;
+    --faint: #5f6c7d;
+    --accent: #2dd4bf;
+    --accent-dim: #1f9d8e;
+    --accent-bg: rgba(45,212,191,.12);
+    --blue: #3b82f6;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --danger: #ef4444;
+    --mono: ui-monospace, 'Cascadia Mono', 'Consolas', monospace;
+    --sans: Inter, system-ui, 'Segoe UI', Roboto, sans-serif;
   }
   *{ box-sizing: border-box; }
-  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--sans); }
+  html,body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:var(--sans); line-height:1.45; }
+  *{ scrollbar-width:thin; scrollbar-color:var(--line-2) transparent; }
+  ::-webkit-scrollbar{ width:8px; height:8px; } ::-webkit-scrollbar-thumb{ background:var(--line-2); border-radius:8px; }
   body{ min-height:100vh; }
 
   header{
@@ -29,6 +37,38 @@
     border-bottom: 1px solid var(--line);
     padding: 18px 28px 14px;
   }
+  /* Topo em menus (frontend/modules/menu-topo.js) */
+  header:has(.topo-linha){ padding:0; }
+  .topo-linha{ display:flex; align-items:center; gap:24px; height:56px; padding:0 24px; background:var(--panel); border-bottom:1px solid var(--line); }
+  .topo-linha .brand img{ height:30px; width:30px; border-radius:8px; }
+  .topo-linha .brand-text .wordmark{ font-size:16px; }
+  .topo-linha .brand-text .tagline{ font-size:11px; color:var(--faint); }
+  .topo-linha nav.tabs{ margin:0; flex:1; display:flex; gap:2px; align-items:stretch; height:56px; min-width:0; }
+  .menu-grupo{ position:relative; display:flex; }
+  .menu-grupo[hidden]{ display:none; }
+  .menu-btn{ background:none; border:0; border-radius:0; color:var(--text-dim); font-size:13.5px; padding:0 14px; height:56px; display:flex; align-items:center; gap:6px;
+    border-bottom:2px solid transparent; white-space:nowrap; }
+  .menu-btn::after{ content:'\25BE'; font-size:9px; opacity:.6; }
+  .menu-btn:hover, .menu-grupo.aberto > .menu-btn{ color:var(--text); background:none; border-color:transparent; }
+  .menu-grupo.ativo > .menu-btn{ color:var(--text); border-bottom-color:var(--accent); }
+  .menu-drop{ display:none; position:absolute; top:56px; left:0; min-width:210px; background:var(--panel); border:1px solid var(--line-2); border-radius:10px; padding:6px;
+    box-shadow:0 16px 40px rgba(0,0,0,.5); z-index:30; flex-direction:column; }
+  .menu-grupo.aberto > .menu-drop{ display:flex; }
+  @media (hover:hover){ .menu-grupo:hover > .menu-drop{ display:flex; } }
+  .menu-drop .tab{ display:block; width:100%; text-align:left; margin:0; padding:8px 12px; border:0; border-radius:6px; color:var(--text-dim); font-size:13.5px; font-weight:400; }
+  .menu-drop .tab:hover, .menu-drop .tab:focus-visible{ background:#18222e; color:var(--text); outline:none; }
+  .menu-drop .tab.active{ color:var(--accent); font-weight:500; }
+  .menu-drop .tab[hidden]{ display:none; }
+  .topo-ferramentas .tab.menu-solto{ margin:0; width:34px; height:34px; padding:0; border:1px solid var(--line-2); border-radius:8px; color:var(--text-dim); font-size:15px; display:inline-flex; align-items:center; justify-content:center; }
+  .topo-ferramentas .tab.menu-solto.active{ color:var(--accent); border-color:rgba(45,212,191,.5); background:var(--accent-bg); }
+  .topo-ferramentas{ display:flex; align-items:center; gap:10px; flex:none; }
+  .topo-ferramentas .perfil-chip{ margin:0; background:var(--accent-bg); border-color:rgba(45,212,191,.4); }
+  .topo-ferramentas #globalSearch{ width:220px; min-width:0; height:34px; }
+  .topo-subbarra{ padding:10px 24px; }
+  .topo-subbarra:not(:has(.toolbar:not([style*="none"]))){ display:none; }
+  .topo-subbarra .brand, .topo-subbarra .global-search-wrap{ display:none; }
+  @media (max-width: 1100px){ .topo-linha .brand-text .tagline{ display:none; } .topo-ferramentas #globalSearch{ width:150px; } }
+  @media (max-width: 760px){ .topo-linha{ gap:10px; padding:0 10px; overflow-x:auto; } .topo-ferramentas .perfil-chip{ display:none; } }
   .header-top{
     display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
   }
@@ -208,12 +248,13 @@
   input[type=text]:focus{ border-color: var(--accent-dim); }
   button{
     font-family:var(--sans); font-size:13px; cursor:pointer;
-    border-radius:5px; border:1px solid var(--line); background:var(--panel-2);
-    color:var(--text); padding:8px 13px; transition: border-color .12s, color .12s;
+    border-radius:8px; border:1px solid var(--line-2); background:transparent;
+    color:var(--text); padding:8px 14px; transition: border-color .15s, color .15s, background .15s;
   }
-  button:hover{ border-color: var(--accent-dim); color:#fff; }
-  button.primary{ background: var(--accent-dim); border-color: var(--accent-dim); color:#0d1113; font-weight:600; }
-  button.primary:hover{ background: var(--accent); border-color: var(--accent); }
+  button:hover{ border-color: var(--faint); background:#18222e; color:#fff; }
+  button:disabled{ opacity:.45; cursor:not-allowed; }
+  button.primary{ background: var(--accent); border-color: var(--accent); color:#04201c; font-weight:600; }
+  button.primary:hover{ background: var(--accent); border-color: var(--accent); filter:brightness(1.08); color:#04201c; }
   button.ghost{ background:transparent; }
   button.icon{ padding:6px 8px; font-size:14px; line-height:1; }
   button.small{ padding:5px 9px; font-size:12px; }
@@ -439,7 +480,7 @@
   .ticket-form .tf-actions{ display:flex; gap:6px; justify-content:flex-end; }
 
   .dash-hoje{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:20px; }
-  .dash-card{ background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; }
+  .dash-card{ background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
   #view_geral .dash-card{ position:relative; overflow:hidden; border-top:3px solid var(--dash-color, var(--accent)); }
   #view_geral .dash-card::after{ content:''; position:absolute; width:86px; height:86px; right:-28px; top:-34px; border-radius:50%; background:var(--dash-color, var(--accent)); opacity:.12; }
   #view_geral .dash-card:nth-child(4n+1){ --dash-color:#4fb8ac; }
@@ -467,10 +508,15 @@
   .sig-filters{ display:grid; grid-template-columns:repeat(6,minmax(120px,1fr)); gap:10px; align-items:end; margin:0 0 16px; padding:12px; background:var(--panel); border:1px solid var(--line); border-radius:8px; }
   .sig-filters label{ display:block; margin-bottom:4px; color:var(--text-dim); font-size:11px; }
   .sig-filter-actions{ display:flex; gap:6px; }
-  .sig-kpis{ display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:14px 0; }
-  .sig-kpis .dash-card{ display:flex; flex-direction:column; gap:5px; }
-  .sig-kpis strong{ font-size:21px; color:var(--text); }
-  .sig-kpis span{ color:var(--text-dim); font-size:11px; }
+  .sig-kpis{ display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:12px; margin:14px 0; }
+  .sig-kpis .dash-card{ display:flex; flex-direction:column; gap:2px; padding:12px 14px; border-left:3px solid var(--line-2); }
+  .sig-kpis .dash-card h3{ margin:0; font-size:10.5px; color:var(--faint); letter-spacing:.7px; }
+  .sig-kpis strong{ font-size:22px; font-weight:600; color:var(--text); line-height:1.2; }
+  .sig-kpis span{ color:var(--text-dim); font-size:12px; }
+  .sig-kpis .kpi-info{ border-left-color:var(--blue); }
+  .sig-kpis .kpi-ok{ border-left-color:var(--ok); } .sig-kpis .kpi-ok strong{ color:#86e0a5; }
+  .sig-kpis .kpi-danger{ border-left-color:var(--danger); } .sig-kpis .kpi-danger strong{ color:#f87171; }
+  .sig-kpis .kpi-warn{ border-left-color:var(--warn); } .sig-kpis .kpi-warn strong{ color:#fbbf24; }
   .sig-chart-grid{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
   .sig-chart-grid .nfse-card{ min-width:0; }
   .sig-chart-grid h3{ margin:0 0 12px; font-size:14px; }
@@ -514,7 +560,7 @@
 
   .vg-brand{ display:flex; align-items:center; gap:12px; margin-bottom:20px; }
   .vg-brand img{ height:44px; width:44px; border-radius:8px; }
-  .vg-brand h2{ margin:0; font-size:18px; font-weight:600; color:var(--text); }
+  .vg-brand h2{ margin:0; font-size:19px; font-weight:600; color:var(--text); }
 
   .global-search-wrap{ position:relative; flex-shrink:0; }
   #globalSearch{
@@ -798,7 +844,13 @@
   /* Rede e links: cada provedor como cartão */
   .loc-modal .dyn-row.provider-row{ border:1px solid var(--line); border-radius:10px; padding:12px; background:var(--panel-2); gap:10px; }
   /* Responsáveis: linhas como tabela */
-  .loc-modal [id$="respList"] .dyn-row{ padding:6px 0; border-bottom:1px solid var(--line); }
+  .loc-modal [id$="respList"] .dyn-row{ padding:6px 0; border-bottom:1px solid var(--line); }
+  .resp-cab, .resp-lista .dyn-row{ display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) minmax(0,1.4fr) 68px 34px; gap:8px; align-items:center; }
+  .resp-cab{ font-size:11.5px; color:var(--faint); padding:0 0 6px; border-bottom:1px solid var(--line); }
+  .resp-cab:has(+ .resp-lista:empty){ display:none; }
+  .resp-lista .dyn-row-actions button{ width:30px; height:30px; padding:0; border-color:transparent; color:var(--text-dim); }
+  .resp-lista .dyn-row-actions button:not(:disabled):hover{ color:var(--accent); border-color:var(--line-2); }
+  @media (max-width: 760px){ .resp-cab{ display:none; } .resp-lista .dyn-row{ grid-template-columns:1fr 1fr; } }
   @media (max-width: 760px){
     .loc-modal .field-grid > .c2, .loc-modal .field-grid > .c3, .loc-modal .field-grid > .c5, .loc-modal .field-grid > .c6{ grid-column:1 / -1; }
     .overlay:has(> .loc-modal){ padding:8px; }
@@ -1391,7 +1443,8 @@
         </div></section>
       <section class="loc-painel" data-loc-painel="resp" role="tabpanel" hidden><div class="field-grid">
         <div class="section-label">Responsáveis</div>
-        <div class="full dyn-list" id="respList"></div>
+        <div class="full resp-cab" aria-hidden="true"><span>Nome</span><span>Telefone / WhatsApp</span><span>E-mail</span><span></span><span></span></div>
+        <div class="full dyn-list resp-lista" id="respList"></div>
         <div class="full"><button type="button" class="ghost small" id="btnAddResp">+ responsável</button></div>
 
         </div></section>
@@ -1797,7 +1850,8 @@
 <script src="frontend/modules/marcadores.js?v=20261120b"></script>
 <script src="frontend/modules/situacao-conta.js?v=20261120a"></script>
 <script src="frontend/modules/notas-disponiveis.js?v=20261120a"></script>
-<script src="frontend/modules/abas-local.js?v=20261120b"></script>
+<script src="frontend/modules/abas-local.js?v=20261120b"></script>
+<script src="frontend/modules/menu-topo.js?v=20261120c"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -1809,7 +1863,7 @@
 <script src="frontend/modules/painel-ia.js?v=20261114"></script>
 <script src="frontend/modules/assistente.js?v=20261117e"></script>
 <script src="frontend/modules/webhook-client.js"></script>
-<script src="frontend/modules/sig-dashboard.js?v=20261115-config"></script>
+<script src="frontend/modules/sig-dashboard.js?v=20261120-kpi"></script>
 <script src="frontend/modules/sie-dashboard.js?v=20261115-config"></script>
 
 <script>
@@ -4591,7 +4645,8 @@ function locationModalHTML(cfg){
           </div></section>
       <section class="loc-painel" data-loc-painel="resp" role="tabpanel" hidden><div class="field-grid">
         <div class="section-label">Responsáveis</div>
-          <div class="full dyn-list" id="${cfg.prefix}_respList"></div>
+          <div class="full resp-cab" aria-hidden="true"><span>Nome</span><span>Telefone / WhatsApp</span><span>E-mail</span><span></span><span></span></div>
+          <div class="full dyn-list resp-lista" id="${cfg.prefix}_respList"></div>
           <div class="full"><button type="button" class="ghost small" id="${cfg.prefix}_btnAddResp">+ responsável</button></div>
 
           </div></section>
@@ -6494,7 +6549,13 @@ function renderDynRows(containerId, arr, fieldsConfig, rowActions, statusFn){
       rowActions(item, containerId, fieldsConfig, rowActions, statusFn).forEach(a=>{
         const btn = document.createElement('button');
         btn.type = 'button'; btn.className = 'ghost small'; btn.title = a.title; btn.textContent = a.icon;
-        btn.onclick = ()=> a.onClick();
+        btn.setAttribute('aria-label', a.title);
+        btn.onclick = ()=> a.onClick(row);
+        if(typeof a.enabled === 'function'){
+          const sync = ()=>{ btn.disabled = !a.enabled(row); };
+          row.addEventListener('input', sync);
+          setTimeout(sync, 0);
+        }
         actWrap.appendChild(btn);
       });
       row.appendChild(actWrap);
@@ -6521,12 +6582,15 @@ document.getElementById('btnAddResp').onclick = ()=> addDynRow('respList', RESP_
 document.getElementById('btnAddProv').onclick = ()=> addDynRow('provList', PROV_FIELDS, provRowActions, providerDueStatus);
 document.getElementById('btnAddRede').onclick = ()=> addDynRow('redeList', REDE_FIELDS, redeRowActions);
 
-function respRowActions(item){
-  const acts = [];
-  const wa = waLink(item.telefone);
-  if(wa) acts.push({ icon:'💬', title:'Abrir WhatsApp', onClick:()=> window.open(wa,'_blank') });
-  if(item.email) acts.push({ icon:'✉️', title:'Enviar e-mail', onClick:()=> location.href='mailto:'+item.email });
-  return acts;
+// Responsáveis: e-mail e WhatsApp sempre visíveis na linha; ativos quando o campo tem valor válido (lido na hora).
+function respRowActions(){
+  const val = (row, k)=> (row?.querySelector(`[data-f="${k}"]`)?.value || '').trim();
+  return [
+    { icon:'✉', title:'Enviar e-mail', enabled:(row)=> /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val(row,'email')),
+      onClick:(row)=>{ const e = val(row,'email'); if(e) location.href = 'mailto:' + e; } },
+    { icon:'💬', title:'Abrir WhatsApp', enabled:(row)=> Boolean(waLink(val(row,'telefone'))) && onlyDigits(val(row,'telefone')).length >= 10,
+      onClick:(row)=>{ const w = waLink(val(row,'telefone')); if(w) window.open(w, '_blank', 'noopener'); } },
+  ];
 }
 
 function updateProviderInvoice(containerId, providerId, invoice){

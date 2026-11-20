@@ -23,7 +23,7 @@ const iso = (deslocamento) => { const d = new Date(); d.setDate(d.getDate() + de
     await loginFresh(page);
     await page.evaluate(() => document.querySelector('.tab[data-view="agencias"]').click());
     await page.waitForFunction(() => !document.getElementById('filtroSituacao').hidden, null, { timeout: 20000 });
-    await page.fill('#search', `SC E2E`);
+    await page.fill('#search', T); // só as deste teste (sobras de execuções interrompidas não contam)
     await page.waitForFunction((n) => [...document.querySelectorAll('#tbody tr')].some((tr) => tr.textContent.includes(n) && tr.textContent.includes('Vencida')), atrasada.nome, { timeout: 15000 });
     const todas = await linhas();
     check(results, 'selo "Vencida" no local com conta vencida', todas.some((l) => l.includes(atrasada.nome) && l.includes('Vencida')));

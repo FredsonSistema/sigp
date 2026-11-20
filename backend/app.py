@@ -1271,7 +1271,7 @@ def _serialize_nota_recebida_api(item: Dict[str, Any]) -> Dict[str, Any]:
     if ((item.get("dados") or {}).get("xmlArquivo") or {}).get("storage"):
         result["xmlUrl"] = f"/api/notas-recebidas/{item['id']}/xml"
     if item.get("entidade_id"):
-        local = get_local(str(item["entidade_id"]))
+        local = _locais_da_requisicao()["por_id"].get(str(item["entidade_id"])) or get_local(str(item["entidade_id"]))
         result["local"] = local
     elif item.get("dados"):
         data = item["dados"]
@@ -1288,7 +1288,7 @@ def _serialize_nota_recebida_api(item: Dict[str, Any]) -> Dict[str, Any]:
         normalized_name = normalize_company_name(company_name)
         candidates = []
         if normalized_name or company_cnpj:
-            for local in list_locais():
+            for local in _locais_da_requisicao()["ativos"]:
                 details = local.get("dados") if isinstance(local.get("dados"), dict) else {}
                 names = [
                     str(local.get("nome") or ""),
@@ -1317,7 +1317,7 @@ def _serialize_nota_recebida_api(item: Dict[str, Any]) -> Dict[str, Any]:
         por_codigo = []
         locais_do_provedor = set()
         emissor_nota = str(data.get("emissorNome") or "")
-        for local in list_locais():
+        for local in _locais_da_requisicao()["ativos"]:
             for prov in local.get("provedores") or []:
                 if not isinstance(prov, dict):
                     continue
@@ -1340,14 +1340,30 @@ def _serialize_nota_recebida_api(item: Dict[str, Any]) -> Dict[str, Any]:
     return result
 
 
+def _locais_da_requisicao() -> Dict[str, Any]:
+    """Locais lidos uma vez por requisição (a lista de notas recebidas consultava o banco para cada nota)."""
+    if "sigp_locais" not in g:
+        todos = list_locais(incluir_inativos=True)
+        g.sigp_locais = {"ativos": [l for l in todos if l.get("ativo", True)], "por_id": {str(l["id"]): l for l in todos}}
+    return g.sigp_locais
+
+
+def _disponiveis_para_historico() -> List[Dict[str, Any]]:
+    try:
+        return notas_disponiveis.listar()
+    except sqlite3.Error:
+        return []
+
+
 def _indice_historico() -> Dict[str, Any]:
     """Provedores já vistos em cada local ativo (notas lançadas + provedores cadastrados), uma vez por requisição."""
     if "sigp_historico" in g:
         return g.sigp_historico
-    locais = {str(local["id"]): local for local in list_locais()}
+    locais = {str(local["id"]): local for local in _locais_da_requisicao()["ativos"]}
+    # Histórico: notas lançadas do financeiro e notas disponíveis (documentos do e-mail já associados ao local).
     por_nota: list[tuple[str, str]] = [
         (str(note.get("provedor_nome") or ""), str(note.get("entidade_id") or ""))
-        for note in list_nota_lancadas() if str(note.get("entidade_id") or "") in locais
+        for note in [*list_nota_lancadas(), *_disponiveis_para_historico()] if str(note.get("entidade_id") or "") in locais
     ]
     g.sigp_historico = {"locais": locais, "notas": por_nota}
     return g.sigp_historico
