@@ -35,8 +35,8 @@ no repositório.
 | H-21 | 20/11 | Segurança | Trilha de auditoria: quem gravou, alterou ou apagou notas; trilha protegida | **REPROVADO** (9 falhas: nada registrado; operador forjava evento) | Gatilho de auditoria, SQL Server Audit e DENY INSERT na trilha | APROVADO (12/12) | `1dbd7f7` |
 | H-22 | 20/11 | Banco | Acentos nos dados e nas mensagens do banco | **REPROVADO** ("FictÃ­cia" em 200 mil linhas e nas mensagens) | Marca UTF-8 nos scripts, `-f 65001` no setup e reparo dos dados | 0 linhas quebradas | `1dbd7f7` |
 | H-23 | 20/11 | Segurança (teste) | Primeiras execuções do teste da trilha e da conferência de acentos | ERRO DO TESTE (coluna curta descartou o T1b; conferência sem diferenciar maiúsculas) | Colunas maiores; comparação binária | Resultado certo | `1dbd7f7` |
-| H-24 | 20/11 | Segurança (teste) | Matriz de permissões gerada do banco e prova do DENY | ERRO DO TESTE (controle exigia leitura; "não" ilegível) | Controle sem WHERE; saída do sqlcmd em arquivo | APROVADO (5/5) | etapa 6b |
-| H-25 | 20/11 | Integração | Nenhum segredo nos fluxos do n8n exportados | **REPROVADO** (cabeçalho `apikey` literal num modelo) | Modelo usa `$env`; texto de exemplo vira aviso | APROVADO (0 falhas em 35 arquivos) | etapa 6b |
+| H-24 | 20/11 | Segurança (teste) | Matriz de permissões gerada do banco e prova do DENY | ERRO DO TESTE (controle exigia leitura; "não" ilegível) | Controle sem WHERE; saída do sqlcmd em arquivo | APROVADO (5/5) | `2a2009b` |
+| H-25 | 20/11 | Integração | Nenhum segredo nos fluxos do n8n exportados | **REPROVADO** (cabeçalho `apikey` literal num modelo) | Modelo usa `$env`; texto de exemplo vira aviso | APROVADO (0 falhas em 35 arquivos) | `2a2009b` |
 
 ## Detalhes
 
