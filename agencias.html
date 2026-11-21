@@ -221,6 +221,10 @@
 .nd-docs{margin:4px 0 0 18px; padding:0} .nd-docs li{margin:2px 0}
 .mk-card > .hint, .mk-editor > .hint, .mk-pills > .hint, .mk-previa .hint, .mk-form .task-add-row .hint, #cfgMarcadores > .hint{font-size:12px; color:var(--text-dim); letter-spacing:normal; margin-top:3px}
 .cfg-alertas-lista{list-style:none; margin:4px 0 8px; padding:0; display:flex; flex-wrap:wrap; gap:6px}
+.cfg-ef-ajuda{margin-top:8px; border:1px solid var(--border, #c6d3dc); border-radius:8px; padding:6px 10px; font-size:13px}
+.cfg-ef-ajuda summary{cursor:pointer}
+.cfg-ef-ajuda ol{margin:6px 0; padding-left:20px}
+.cfg-ef-ajuda li{margin:3px 0}
 .cfg-alertas-lista li{display:flex; align-items:center; gap:4px; border:1px solid var(--border, #c6d3dc); border-radius:14px; padding:2px 4px 2px 10px; font-size:13px}
 /* ---- login gate ---- */
   #authScreen{
@@ -2095,13 +2099,14 @@
 <script src="frontend/modules/config-integracao-tela.js?v=20261122a"></script>
 <script src="frontend/modules/perfis-permissoes.js?v=20261122a"></script>
 <script src="frontend/modules/config-alertas.js?v=20261117"></script>
+<script src="frontend/modules/config-email-faturas.js?v=20261121"></script>
 <script src="frontend/modules/qualidade-cadastro.js?v=20261122a"></script>
 <script src="frontend/modules/marcadores.js?v=20261122a"></script>
 <script src="frontend/modules/situacao-conta.js?v=20261120a"></script>
 <script src="frontend/modules/notas-disponiveis.js?v=20261120a"></script>
 <script src="frontend/modules/abas-local.js?v=20261120b"></script>
 <script src="frontend/modules/menu-topo.js?v=20261121a"></script>
-<script src="frontend/modules/config-layout.js?v=20261122a"></script>
+<script src="frontend/modules/config-layout.js?v=20261122b"></script>
 <script src="frontend/modules/documentos-contract.js"></script>
 <script src="frontend/modules/xml-fiscal.js?v=20261114"></script>
 <script src="frontend/modules/importar-csv.js?v=20261114"></script>
@@ -3052,6 +3057,8 @@ function renderConfigTab(){
     <div id="cfgQualidade"><div class="dash-empty">Carregando a qualidade do cadastro…</div></div>
     <div class="section-divider">Alertas por e-mail <span class="hint">quem recebe o resumo diário das contas · um ou mais e-mails</span></div>
     <div id="cfgAlertas"><div class="dash-empty">Carregando os e-mails dos alertas…</div></div>
+    <div class="section-divider">E-mail das faturas <span class="hint">remetentes que o sistema procura no Gmail · troca de responsável sem abrir o n8n</span></div>
+    <div id="cfgEmailFaturas"><div class="dash-empty">Carregando os remetentes das faturas…</div></div>
     <div class="section-divider">Usuários e integrações</div>
     <div id="cfgUsuarios"><div class="dash-empty">Carregando usuários…</div></div>
     <div class="section-divider">Grupos de permissão</div>
@@ -3322,6 +3329,7 @@ function renderConfigTab(){
   window.SIGP_CONFIG_TELA.render('cfgIntegracao');
   window.SIGP_PERMISSOES.render('cfgPermissoes');
   window.SIGP_CONFIG_ALERTAS.render('cfgAlertas');
+  window.SIGP_CONFIG_EMAIL_FATURAS.render('cfgEmailFaturas');
   window.SIGP_QUALIDADE_CADASTRO.render('cfgQualidade');
   window.SIGP_MARCADORES.render('cfgMarcadores');
 

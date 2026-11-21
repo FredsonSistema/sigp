@@ -1,11 +1,10 @@
 {
-  "executado_em_utc": "2026-11-20T18:21:04.252223+00:00",
+  "executado_em_utc": "2026-11-21T03:26:45.918441+00:00",
   "segredos_procurados": 7,
   "arquivos_do_repositorio": 21,
   "workflows_ao_vivo": 14,
   "arquivos_com_falha": [],
   "arquivos_com_aviso": [
-    "n8n_workflow_wf08_gmail_inbox.json",
     "n8n-ao-vivo/WF-08 - Receber notas fiscais do Gmail.json",
     "n8n-ao-vivo/SIGp - Extrair fatura PDF de provedor.json",
     "n8n-ao-vivo/SIGp Acadêmico - RAG e Análise.json",
@@ -145,15 +144,7 @@
     {
       "arquivo": "n8n_workflow_wf08_gmail_inbox.json",
       "falhas": [],
-      "avisos": [
-        {
-          "regra": "email_no_arquivo",
-          "quantidade": 1,
-          "exemplos": [
-            "f***@gmail.com"
-          ]
-        }
-      ],
+      "avisos": [],
       "ok": true,
       "origem": "repositório"
     },
@@ -184,9 +175,8 @@
       "avisos": [
         {
           "regra": "email_no_arquivo",
-          "quantidade": 2,
+          "quantidade": 1,
           "exemplos": [
-            "f***@gmail.com",
             "f***@ftc.edu.br"
           ]
         }

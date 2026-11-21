@@ -107,10 +107,12 @@ CATALOGO: List[Dict[str, Any]] = [
     {"area": "Configurações", "funcionalidades": [
         {"id": "config.alertas", "nome": "Ver e alterar os e-mails que recebem os alertas diários",
          "rotas": [("GET", "/api/configuracoes/alertas"), ("PUT", "/api/configuracoes/alertas")]},
+        {"id": "config.email_faturas", "nome": "Ver e alterar os remetentes da busca de faturas no Gmail",
+         "rotas": [("GET", "/api/configuracoes/email-faturas"), ("PUT", "/api/configuracoes/email-faturas")]},
     ]},
 ]
 # Leitura que sempre exige chave, mesmo com a leitura aberta (dados pessoais e administração).
-LEITURA_PROTEGIDA = {"admin", "config.alertas"}
+LEITURA_PROTEGIDA = {"admin", "config.alertas", "config.email_faturas"}
 ROTAS_PUBLICAS = {("GET", "/api/health"), ("POST", "/api/auth/verify"), ("GET", "/api/acesso/eu"), ("GET", "/api/auth/estado"),
                   ("POST", "/api/auth/primeiro-admin"), ("POST", "/api/auth/login"), ("POST", "/api/auth/sair"),
                   ("POST", "/api/auth/trocar-senha")}

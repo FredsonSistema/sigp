@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import acesso, assistente, avisos_provedor, base_conhecimento, correcoes_cadastro, config_alertas, fatura_esperada, identificadores, marcadores, metricas_llm, notas_disponiveis, saude_banco, sessoes
+from backend import acesso, assistente, avisos_provedor, base_conhecimento, correcoes_cadastro, config_alertas, config_email_faturas, fatura_esperada, identificadores, marcadores, metricas_llm, notas_disponiveis, saude_banco, sessoes
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -3124,6 +3124,23 @@ def config_alertas_salvar_route():
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     return jsonify({"ok": True, **dados, "maximo": config_alertas.MAX_EMAILS})
+
+
+@app.get("/api/configuracoes/email-faturas")
+def config_email_faturas_route():
+    """Remetentes da busca de faturas e a busca pronta do Gmail (lida pelo WF-08 antes de cada leitura)."""
+    return jsonify({"ok": True, **config_email_faturas.ler()})
+
+
+@app.put("/api/configuracoes/email-faturas")
+def config_email_faturas_salvar_route():
+    payload = request.get_json(silent=True) or {}
+    quem = (getattr(g, "acesso", None) or {}).get("nome") or "Administrador"
+    try:
+        dados = config_email_faturas.salvar(payload.get("remetentes"), quem, datetime.now(timezone.utc).isoformat(timespec="seconds"))
+    except ValueError as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 400
+    return jsonify({"ok": True, **dados})
 
 
 @app.get("/api/integracao/estado")

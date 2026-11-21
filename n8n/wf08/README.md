@@ -7,14 +7,14 @@ Fonte do workflow `n8n_workflow_wf08_gmail_inbox.json` (raiz do projeto). Não e
 | `prompt_classificacao.md` | Instruções do Qwen (prompt de sistema). |
 | `schema_classificacao.json` | JSON Schema da resposta, enviado ao Ollama em `format`. |
 | `wf08_lib.js` | Destinatário pela empresa do grupo, pedido à IA e regra de decisão. A extração por regras vem de `n8n/lib/extrator.js` (a mesma do WF-03 e do SIGp), colada antes desta lib pelo build. |
-| `build_wf08.ps1` | Gera o JSON do workflow; também guarda a lista de remetentes da busca no Gmail. |
+| `build_wf08.ps1` | Gera o JSON do workflow. Os remetentes e a busca do Gmail não ficam aqui: vêm do SIGp a cada leitura. |
 | `testes_wf08.js` | Testes da `wf08_lib.js` com dados fictícios. |
 | `verificar_sintaxe.js` | Confere a sintaxe dos nós Code e as conexões do JSON gerado. |
 
 ## Fluxo
 
 ```text
-Gmail (gatilho a cada 5 min | busca histórica manual, 20 por vez)
+A cada 5 min: busca do SIGp → Gmail (só o que chegou desde a última leitura) | busca histórica manual (busca do SIGp, 20 por vez)
   → Preparar anexos PDF (um item por PDF; sem PDF → etiqueta SIGp/Sem-anexo)
   → OCR local → Regras do SIGp (/classificar) → Extrair campos por regras
   → Qwen 2.5 3B no Ollama local (JSON Schema, temperatura 0)
@@ -43,7 +43,7 @@ Regras de decisão (`consolidar` em `wf08_lib.js`):
    docker exec sigp_ollama_academic ollama pull qwen2.5:3b
    ```
    Opcional no `.env`: `SIGP_OLLAMA_URL` (padrão `http://ollama:11434`) e `SIGP_OLLAMA_MODEL` (padrão `qwen2.5:3b`).
-3. Cadastre no SIGp o **e-mail remetente** de cada provedor (campo e-mail; aceita endereço ou domínio, separados por vírgula).
+3. Remetentes da busca: no SIGp, **Configurações > E-mail das faturas** (domínio do provedor ou e-mail; o padrão são os domínios dos provedores, em `backend/config_email_faturas.py`). O WF-08 pede a busca pronta em `GET /api/configuracoes/email-faturas` a cada leitura: trocar na tela vale em até 5 minutos, sem abrir o n8n. E-mail pessoal (de teste) fica só no banco, nunca neste repositório.
 4. Gere, teste e importe:
    ```powershell
    pwsh -File n8n\wf08\build_wf08.ps1

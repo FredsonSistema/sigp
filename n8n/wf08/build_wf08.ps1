@@ -1,4 +1,4 @@
-﻿# Gera n8n_workflow_wf08_gmail_inbox.json a partir dos arquivos desta pasta.
+# Gera n8n_workflow_wf08_gmail_inbox.json a partir dos arquivos desta pasta.
 # Uso (na raiz do projeto): pwsh -File n8n\wf08\build_wf08.ps1
 $ErrorActionPreference = 'Stop'
 $dir = $PSScriptRoot
@@ -15,19 +15,43 @@ $header = "// Gerado por n8n/wf08/build_wf08.ps1 - edite os arquivos de n8n/wf08
   "const SCHEMA = $(($schema | ConvertFrom-Json) | ConvertTo-Json -Depth 10 -Compress);`n"
 $libCode = $header + $lib
 
-# Remetentes conhecidos (domínio ou endereço). Mantenha igual ao campo e-mail dos provedores no SIGp.
-$remetentes = @(
-  'henet.com.br', 'brisanet.com.br', 'ixnet.com.br', 'itsbrasil.net', 'kasatech.net',
-  'tinettecnologia.com.br', 'netplacetelecom.net', 'proxxima.net', 'minasonline.net.br',
-  'minhaclaro.com.br', 'netcanes.com.br', 'sigaonmais.net.br', 'mma.net.br', 'internetvox.com.br',
-  'infortel.net.br', 'infotecprovedor.net', 'voanet.com.br', 'fsonline.com.br', 'opix.com.br',
-  'removido@exemplo.invalid'
-)
-$consulta = '-label:sigp-importado -label:sigp-ignorado -label:sigp-sem-anexo {' +
-  'from:(' + ($remetentes -join ' OR ') + ') ' +
-  'subject:(fatura OR boleto OR "nota fiscal" OR "conta digital" OR nfcom OR "segunda via") ' +
-  '(has:attachment filename:pdf (fatura OR boleto OR "nota fiscal")) ' +
-  '(has:attachment filename:xml ("nota fiscal" OR nfse OR "nfs-e" OR nfe OR nfcom))}'
+# Remetentes e busca do Gmail: vêm do SIGp (Configurações > E-mail das faturas, backend/config_email_faturas.py) a cada
+# leitura. Nenhum endereço fica neste arquivo nem no JSON gerado.
+$codeJanela = @'
+// Leitura automática: busca do SIGp + mensagens recebidas desde a última leitura (5 min de sobreposição;
+// as repetidas saem no nó "Retirar mensagens já lidas"). Sem busca válida, nada é lido.
+const estado = $getWorkflowStaticData('global');
+const agora = Math.floor(Date.now() / 1000);
+const desde = Number(estado.ultimaLeitura) || (agora - 600);
+const consulta = String($json.consulta || '');
+if (!consulta.startsWith('-label:sigp-importado')) {
+  throw new Error('O SIGp não devolveu a busca do Gmail. Confira Configurações > E-mail das faturas e a SIGP_API_KEY do n8n.');
+}
+return [{ json: { q: `${consulta} after:${desde - 300}`, inicio: agora } }];
+'@
+$codeRetirar = @'
+// Guarda a hora desta leitura e as mensagens já entregues (últimas 500), para a sobreposição não repetir nada.
+// Só vale nas execuções do workflow ativo (o n8n não grava este estado em execução manual).
+const estado = $getWorkflowStaticData('global');
+const vistas = new Set(Array.isArray(estado.vistas) ? estado.vistas : []);
+const novas = $input.all().filter((item) => item.json && item.json.id && !vistas.has(String(item.json.id)));
+novas.forEach((item) => vistas.add(String(item.json.id)));
+estado.ultimaLeitura = $('Janela desde a última leitura').first().json.inicio;
+estado.vistas = [...vistas].slice(-500);
+return novas;
+'@
+$buscaSigp = {
+  param([string]$id, [string]$nome, [int]$x, [int]$y)
+  @{
+    parameters = @{
+      method = 'GET'; url = "={{ `$env.SIGP_API_URL + '/api/configuracoes/email-faturas' }}"
+      sendHeaders = $true; headerParameters = $apiHeaders; options = @{ timeout = 15000 }
+    }
+    id = $id; name = $nome; type = 'n8n-nodes-base.httpRequest'; typeVersion = 4.2; position = @($x, $y)
+    retryOnFail = $true; maxTries = 3; waitBetweenTries = 5000
+    notes = 'Remetentes e busca do Gmail definidos no SIGp (Configurações > E-mail das faturas). Sem resposta, nada é lido.'
+  }
+}
 
 $gmailCred = @{ gmailOAuth2 = @{ id = '6w8cHAuUwpPVa6tb'; name = 'Gmail account' } }
 $apiHeaders = @{ parameters = @(@{ name = 'X-API-Key'; value = '={{ $env.SIGP_API_KEY }}' }) }
@@ -254,25 +278,40 @@ function Add-Label($id, $name, $x, $y, $msgExpr, $labelExpr, $notes) {
 
 $nodes = @(
   @{
+    parameters = @{ rule = @{ interval = @(@{ field = 'minutes'; minutesInterval = 5 }) } }
+    id = 'wf08_schedule'; name = 'A cada 5 minutos'; type = 'n8n-nodes-base.scheduleTrigger'; typeVersion = 1.2
+    position = @(-440, 300)
+    notes = 'Substitui o gatilho do Gmail, que só aceita busca fixa: assim os remetentes mudam pelo SIGp. Gerado por n8n/wf08/build_wf08.ps1.'
+  },
+  (& $buscaSigp 'wf08_busca_sigp' 'Busca do SIGp' -220 300),
+  @{
+    parameters = @{ mode = 'runOnceForAllItems'; jsCode = $codeJanela }
+    id = 'wf08_janela'; name = 'Janela desde a última leitura'; type = 'n8n-nodes-base.code'; typeVersion = 2; position = @(0, 300)
+  },
+  @{
     parameters = @{
-      pollTimes = @{ item = @(@{ mode = 'everyX'; value = 5; unit = 'minutes' }) }
-      simple = $false
-      filters = @{ q = $consulta; readStatus = 'both' }
+      resource = 'message'; operation = 'getAll'; returnAll = $false; limit = 50; simple = $false
+      filters = @{ q = '={{ $json.q }}'; readStatus = 'both' }
       options = @{ downloadAttachments = $true; dataPropertyAttachmentsPrefixName = 'attachment_' }
     }
-    id = 'wf08_gmail_trigger'; name = 'Gmail - novas faturas'; type = 'n8n-nodes-base.gmailTrigger'; typeVersion = 1.4
-    position = @(0, 300); credentials = $gmailCred
-    notes = 'Lidas e não lidas. A consulta exclui as etiquetas SIGp/Importado, SIGp/Ignorado e SIGp/Sem-anexo. Gerado por n8n/wf08/build_wf08.ps1.'
+    id = 'wf08_gmail_novas'; name = 'Gmail - novas faturas'; type = 'n8n-nodes-base.gmail'; typeVersion = 2.2
+    position = @(220, 300); credentials = $gmailCred; alwaysOutputData = $true
+    notes = 'Lidas e não lidas, sem as etiquetas SIGp/Importado, SIGp/Ignorado e SIGp/Sem-anexo. Até 50 por leitura; o excedente entra pela busca histórica.'
+  },
+  @{
+    parameters = @{ mode = 'runOnceForAllItems'; jsCode = $codeRetirar }
+    id = 'wf08_retirar_lidas'; name = 'Retirar mensagens já lidas'; type = 'n8n-nodes-base.code'; typeVersion = 2; position = @(440, 300)
   },
   @{
     parameters = @{}; id = 'wf08_manual_backfill'; name = 'Executar busca histórica manual'
-    type = 'n8n-nodes-base.manualTrigger'; typeVersion = 1; position = @(0, 520)
+    type = 'n8n-nodes-base.manualTrigger'; typeVersion = 1; position = @(-220, 520)
     notes = 'Processa 20 mensagens por execução. Como cada mensagem recebe etiqueta, a próxima execução avança no histórico.'
   },
+  (& $buscaSigp 'wf08_busca_sigp_historico' 'Busca do SIGp (histórico)' 0 520),
   @{
     parameters = @{
       resource = 'message'; operation = 'getAll'; returnAll = $false; limit = 20; simple = $false
-      filters = @{ q = $consulta; readStatus = 'both' }
+      filters = @{ q = '={{ $json.consulta }}'; readStatus = 'both' }
       options = @{ downloadAttachments = $true; dataPropertyAttachmentsPrefixName = 'attachment_' }
     }
     id = 'wf08_gmail_search_history'; name = 'Gmail - buscar histórico'; type = 'n8n-nodes-base.gmail'; typeVersion = 2.2
@@ -455,8 +494,13 @@ $conn = {
   @{ main = @(, @($targets | ForEach-Object { @{ node = $_; type = 'main'; index = 0 } })) }
 }
 $connections = [ordered]@{
-  'Gmail - novas faturas' = (& $conn 'Preparar anexos PDF')
-  'Executar busca histórica manual' = (& $conn 'Gmail - buscar histórico')
+  'A cada 5 minutos' = (& $conn 'Busca do SIGp')
+  'Busca do SIGp' = (& $conn 'Janela desde a última leitura')
+  'Janela desde a última leitura' = (& $conn 'Gmail - novas faturas')
+  'Gmail - novas faturas' = (& $conn 'Retirar mensagens já lidas')
+  'Retirar mensagens já lidas' = (& $conn 'Preparar anexos PDF')
+  'Executar busca histórica manual' = (& $conn 'Busca do SIGp (histórico)')
+  'Busca do SIGp (histórico)' = (& $conn 'Gmail - buscar histórico')
   'Gmail - buscar histórico' = (& $conn 'Identificar busca retroativa')
   'Identificar busca retroativa' = (& $conn 'Preparar anexos PDF')
   'Reprocessamento (chamado pelo utilitário)' = (& $conn 'Identificar reprocessamento')

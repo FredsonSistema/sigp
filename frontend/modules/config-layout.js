@@ -7,6 +7,7 @@
     { id: 'preferencias', grupo: 'Geral', titulo: 'Preferências', desc: 'Alertas, arquivamento e caminhos usados pelo sistema.', secoes: ['Preferências'] },
     { id: 'empresa', grupo: 'Geral', titulo: 'Empresa prestadora', desc: 'Aparecem no PDF das Ordens de Serviço.', secoes: ['Dados da Empresa Prestadora'] },
     { id: 'alertas', grupo: 'Geral', titulo: 'Alertas por e-mail', secoes: ['Alertas por e-mail'] },
+    { id: 'email-faturas', grupo: 'Geral', titulo: 'E-mail das faturas', desc: 'Remetentes que o sistema procura no Gmail. Muda aqui, vale no n8n em até 5 minutos.', secoes: ['E-mail das faturas'] },
     // nu: o módulo desenha os próprios cartões (o layout não embrulha a seção num cartão).
     { id: 'marcadores', grupo: 'Cadastros', titulo: 'Marcadores e grupos', nu: true,
       desc: 'Marcadores são postos à mão em cada local. Grupos são automáticos pela regra do cadastro.', secoes: ['Marcadores e grupos'] },
