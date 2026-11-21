@@ -71,8 +71,8 @@ def tabela(cab, linhas, larguras, destaque=None):
     t = Table(dados_t, colWidths=[w * mm for w in larguras], repeatRows=1)
     estilo = [("BACKGROUND", (0, 0), (-1, 0), NAVY), ("VALIGN", (0, 0), (-1, -1), "TOP"),
               ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, PALE]), ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#C9D6E0")),
-              ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4), ("TOPPADDING", (0, 0), (-1, -1), 1.8),
-              ("BOTTOMPADDING", (0, 0), (-1, -1), 1.8)]
+              ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4), ("TOPPADDING", (0, 0), (-1, -1), 1.4),
+              ("BOTTOMPADDING", (0, 0), (-1, -1), 1.4)]
     for linha in destaque or []:
         estilo.append(("BACKGROUND", (0, linha), (-1, linha), MINT))
     t.setStyle(TableStyle(estilo))

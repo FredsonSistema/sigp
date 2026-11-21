@@ -37,6 +37,7 @@ no repositório.
 | H-23 | 20/11 | Segurança (teste) | Primeiras execuções do teste da trilha e da conferência de acentos | ERRO DO TESTE (coluna curta descartou o T1b; conferência sem diferenciar maiúsculas) | Colunas maiores; comparação binária | Resultado certo | `6e4ffa1` |
 | H-24 | 20/11 | Segurança (teste) | Matriz de permissões gerada do banco e prova do DENY | ERRO DO TESTE (controle exigia leitura; "não" ilegível) | Controle sem WHERE; saída do sqlcmd em arquivo | APROVADO (5/5) | `9e7ef70` |
 | H-25 | 20/11 | Integração | Nenhum segredo nos fluxos do n8n exportados | **REPROVADO** (cabeçalho `apikey` literal num modelo) | Modelo usa `$env`; texto de exemplo vira aviso | APROVADO (0 falhas em 35 arquivos) | `9e7ef70` |
+| H-26 | 21/11 | IA (desempenho) | Latência da análise de uma fatura nova (revisão externa: "35 s na demonstração") | **REPROVADO** (31,3 s em média; dois terços do prompt eram 20 linhas de contexto sem uso) | Prompt 3.1: 3 linhas de contexto, 3 documentos ao modelo, fatura por último | APROVADO (3,1 s, p95 4,8 s; decisões iguais) | `3b6bf2d` |
 
 ## Detalhes
 
@@ -200,6 +201,15 @@ Reteste: matriz gerada com os acentos certos e prova do DENY APROVADA, 5/5. Docu
   - o verificador trata texto de exemplo como AVISO.
 - **Reteste:** APROVADO, com 0 falhas. Avisos que ficam: um Gmail no filtro de busca do WF-08, e o e-mail da conta dona do n8n nos metadados da exportação ao vivo, que é temporária e não vai para o Git. Documento: [`ia/segredos-n8n.md`](ia/segredos-n8n.md).
 
+### H-26 · Latência da análise de uma fatura nova — REPROVADO → APROVADO
+- **Teste:** [`ia/medir_latencia_final.py`](ia/medir_latencia_final.py), 16 faturas com vencimento único por pedido (sem cache de prompt), com a máquina dividida com outros programas.
+- **Falha:** 31,3 s em média (p95 36,1 s) no prompt 3.0. Uma revisão externa leu os tempos (mínimo 5,1 s, mediana 34,6 s) como fila. A medição desmentiu: as 16 chamadas foram em sequência e o tempo do servidor era igual ao do cliente. Os dois casos de 5 s (IA-005 e IA-016) eram os sem contexto do banco.
+- **Causa:** o prompt de cerca de 8.000 caracteres tinha 5.319 de contexto do banco: 20 notas sintéticas de carga, que a regra não usa. O modelo processava tudo na CPU antes de responder.
+- **Correção (prompt 3.1, mesmo texto de instruções):**
+  - 3 linhas de contexto, só com descrição, valor, vencimento e situação (a IA também passa a ler menos do banco);
+  - o modelo recebe os 3 primeiros documentos; a regra continua avaliando os 5;
+  - o contexto vai antes e a fatura por último, para o Ollama reaproveitar o começo do prompt.
+- **Reteste:** 3,1 s em média (mediana 2,9 s, p95 4,8 s), com 44–46% da CPU ocupada. 1.000 usos: 51 min de CPU, contra 522. Pior caso, com o modelo descarregado depois de 30 min parado: 11,7 s na primeira análise e 1,0 s na seguinte. As decisões não mudaram: 16/16 nos casos, 13/13 ataques detectados, a mesma validação cega (4/8, com as mesmas 4 falhas) e o modelo sozinho respondendo REVISAR nos 16. Evidências: `latencia-custo-prompt-v31.json`, `latencia-partida-fria.json` e `ia-avaliacao-prompt-v31.json`; comparação em [`ia/finetuning/comparacao-final.md`](ia/finetuning/comparacao-final.md).
 ## Como manter
 
 A cada etapa nova, acrescentar uma linha no resumo e um bloco nos detalhes, com o resultado da 1ª execução, a causa, a correção, o reteste e o caminho da evidência. Não apagar uma falha depois de corrigida: o histórico é o registro de como o sistema chegou ao estado atual.
