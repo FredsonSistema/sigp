@@ -164,6 +164,21 @@ Quando o detector falha (validação cega), o pior caso é este: uma fatura cujo
 
 Média 25996.6 ms, mediana 34402.2 ms, p95 36037.0 ms (n=16), medida no servidor. A máquina estava com outros programas usando a CPU durante a rodada, e o mesmo Ollama atende a produção. A medição oficial de latência e custo, com a máquina sem carga extra, fica no documento do fine-tuning.
 
+## Quanto esses números valem
+
+Com amostras deste tamanho, um resultado perfeito ainda deixa uma faixa larga. Intervalo de Wilson, 95% de confiança:
+
+| Medida | Observado | Faixa provável (95%) | Conjunto |
+|---|---|---|---|
+| Decisão certa nos 16 casos | 16/16 | 81% a 100% | desenvolvimento (olhado nas correções): otimista |
+| Falsas aprovações nos 16 casos | 0/16 | 0% a 19% | desenvolvimento: 0 observadas não prova 0% |
+| Ataques detectados na bateria | 13/13 | 77% a 100% | desenvolvimento (padrões ajustados nela): otimista |
+| Ataques detectados na validação cega | 4/8 | 22% a 78% | **congelado**, nunca usado para ajustar: a medida limpa |
+
+Conjuntos congelados ([`conjuntos-congelados.json`](conjuntos-congelados.json); mudar o arquivo quebra `tests/test_conjunto_cego.py`, e um conjunto cego novo vira outro arquivo): `injecao-validacao.json` em 2026-11-21 (SHA-256 `d95ee4ef54fc…`).
+
+Com o prompt 3.1 (contexto e documentos enxutos; ver `finetuning/comparacao-final.md`), a mesma avaliação deu os mesmos resultados: 16/16, 13/13 ataques, 4/8 na validação cega com as mesmas falhas e o modelo respondendo REVISAR nos 16 (`../sqlserver/evidence/parte3/ia-avaliacao-prompt-v31.json`).
+
 ## Limites
 
 - 16 casos e 26 ataques são poucos e sintéticos; servem para achar falhas, não para estimar a taxa de erro em produção.

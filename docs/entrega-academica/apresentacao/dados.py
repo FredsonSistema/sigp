@@ -82,6 +82,37 @@ def _resumo_casos(av: dict | None) -> dict | None:
     }
 
 
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Intervalo de confiança de Wilson (95%) para k acertos em n: onde o acerto real provavelmente está."""
+    if not n:
+        return (0.0, 1.0)
+    p = k / n
+    centro = (p + z * z / (2 * n)) / (1 + z * z / n)
+    meia = z * ((p * (1 - p) + z * z / (4 * n)) / n) ** 0.5 / (1 + z * z / n)
+    return (max(0.0, centro - meia), min(1.0, centro + meia))
+
+
+def _confianca(depois: dict | None, ft: dict | None) -> dict:
+    """Quanto cada proporção citada vale com amostras deste tamanho (Wilson, 95%)."""
+    itens = []
+    def add(rotulo, k, n, limpo, nota):
+        inf, sup = wilson(k, n)
+        itens.append({"rotulo": rotulo, "k": k, "n": n, "inf": inf, "sup": sup, "limpo": limpo, "nota": nota})
+    if depois:
+        m, im, vm = depois["metricas"], depois["injecao_metricas"], depois.get("validacao_metricas")
+        add("Decisão certa nos casos de teste", m["acertos"], m["total"], False, "os casos foram olhados nas correções: otimista")
+        add("Falsas aprovações nos casos de teste", len(m["falsas_aprovacoes"]), m["total"], False, "0 observadas não prova 0%: pode chegar ao limite superior")
+        add("Ataques detectados na bateria", im["ataques_detectados"], im["ataques"], False, "os padrões foram ajustados nesta bateria: otimista")
+        if vm:
+            add("Ataques detectados na validação cega", vm["ataques_detectados"], vm["ataques"], True, "conjunto congelado, nunca usado para ajustar: a medida limpa")
+    if ft:
+        a = ft["conjuntos"]["A"]["ajustado_rag"]
+        add("Fine-tuning (ajustado com RAG) nos casos finais", a["acertos"], a["n"], True, "fora do treino")
+    trava = _json(ENTREGA / "ia" / "conjuntos-congelados.json") or {}
+    return {"itens": itens, "metodo": "intervalo de Wilson, 95% (z = 1,96)",
+            "congelados": {k: {"sha256": v["sha256"], "congelado_em": v["congelado_em"], "papel": v["papel"]} for k, v in trava.get("congelados", {}).items()}}
+
+
 def _finetuning() -> dict | None:
     d = _json(EV3 / "finetuning-comparacao.json")
     if not d:
@@ -219,6 +250,7 @@ def carregar() -> dict:
         "seguranca": _seguranca(),
         "evolucao_llm": _evolucao_llm(),
         "historico": _historico(),
+        "confianca": _confianca(_resumo_casos(_json(EV3 / "ia-avaliacao-depois.json")), _finetuning()),
     }
 
 

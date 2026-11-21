@@ -52,6 +52,12 @@ E = {
 }
 
 
+def faixa(k: int, n: int) -> str:
+    """Intervalo de Wilson (95%) em texto, ex.: "81% a 100%"."""
+    inf, sup = dados.wilson(k, n)
+    return f"{inf * 100:.0f}% a {sup * 100:.0f}%"
+
+
 def br(v, casas=1):
     if v is None or v == "":
         return "—"
@@ -159,7 +165,8 @@ def limitacoes(d):
         f"para {br(float(cg[('uma_a_uma', 'com')]['por_nota_us']) / 1000, 2)} ms; o custo somado com o gatilho de auditoria ainda não foi medido.",
         "<b>Falha fechada tem custo:</b> se o modelo demorar mais de 140 s (fila do Ollama), a análise volta 503 e precisa ser repetida.",
         "<b>Falso positivo do detector:</b> uma fatura legítima com frase parecida com ataque vai para revisão humana (erro do lado seguro).",
-        "<b>Evidência pequena e sintética:</b> 16 casos, 26 ataques e 100.020 notas fictícias. Servem para achar falhas e comparar "
+        f"<b>Evidência pequena e sintética:</b> 16 casos, 26 ataques e 100.020 notas fictícias. Com 95% de confiança, 16/16 quer dizer "
+        f"{faixa(B['metricas']['acertos'], 16)} de acerto, e os 4/8 da validação cega, {faixa(B['validacao_metricas']['ataques_detectados'], B['validacao_metricas']['ataques'])}. Servem para achar falhas e comparar "
         "configurações, não para estimar a taxa de erro com faturas reais.",
     ])
     h += [P("3. O que o grupo faria a seguir", "h")] + itens([
@@ -171,7 +178,7 @@ def limitacoes(d):
         "nos 16 casos finais.",
         "Levar a trilha de gravações a pagamentos, conciliações e itens; auditar as leituras da chave fiscal; ligar TDE e backup criptografado.",
         "Avaliar com faturas reais anonimizadas e mais volume, e medir a latência num servidor sem outra carga.",
-    ] + ([] if SEPARACAO_CONCLUIDA else ["Concluir a separação do repositório e o pacote de instalação em um comando."]))
+    ])  # a separação do repositório já aparece na seção 1 enquanto SEPARACAO_CONCLUIDA for False
     return h
 
 
@@ -192,7 +199,10 @@ def apresentacao(d):
         ["1 min 30", "Demonstração: IA", n(1), "Casos de teste · Prompt injection", "Trocar antes/depois (12/16 → 16/16); abrir IA-015 (a falsa aprovação corrigida); bateria 13/13 e validação cega 4/8."],
         ["1 min 30", "Demonstração: segurança", n(2), "Segurança", "Escalonamento (falha reproduzida e barrada), trilha (antes 9 falhas, depois 12/12), matriz e prova do DENY."],
         ["1 min", "Demonstração: integração", n(3), "Segurança → IA por perfil", "A mesma IA com cada credencial: só o próprio local; a injeção não vaza nada; a IA não falsifica a trilha."],
-        ["2 min", "Resultados e medições", n(3), "Fine-tuning · Otimização · Latência", "4 configurações (o ajuste não compensou e por quê); consultas 168,7 → 25,3 ms e 54,4 → 10,7 ms; 31 s por fatura nova e o custo por 1.000 usos."],
+        ["2 min", "Resultados e medições", n(3), "Fine-tuning · Otimização · Latência", "4 configurações (o ajuste não compensou e por quê); consultas 168,7 → 25,3 ms e 54,4 → 10,7 ms; "
+         + (f"fatura nova {br(LA['fatura_nova_com_carga']['latencia']['media'] / 1000, 1)} s → {br(LA['prompt31_fatura_nova']['latencia']['media'] / 1000, 1)} s (prompt 3.1)"
+            if LA.get('prompt31_fatura_nova') and LA.get('fatura_nova_com_carga') else "latência por fatura nova")
+         + " e o custo por 1.000 usos; o intervalo de 95% dos casos."],
         ["1 min", "Limitações e aprendizados", "todos", "Histórico", "Filtrar por REPROVADO e ERRO DO TESTE: testar antes de corrigir, medir sem cache, desconfiar do próprio teste."],
     ], [15, 30, 24, 33, 72]))
 
@@ -201,10 +211,14 @@ def apresentacao(d):
     tr_a = sum(1 for x in S["trilha"]["antes"] if x["veredito"] == "FALHA")
     tr_d = sum(1 for x in S["trilha"]["depois"] if x["veredito"] == "OK")
     h.append(tabela(["Tema", "Antes", "Depois", "Evidência"], [
-        ["Decisão certa nos 16 casos", f"{A['metricas']['acertos']}/16 (F1 {br(A['metricas']['f1_macro'], 3)})", f"{B['metricas']['acertos']}/16 (F1 {br(B['metricas']['f1_macro'], 3)})", "ia-avaliacao-antes/depois.json"],
+        ["Decisão certa nos 16 casos", f"{A['metricas']['acertos']}/16 (F1 {br(A['metricas']['f1_macro'], 3)})",
+         f"{B['metricas']['acertos']}/16 (F1 {br(B['metricas']['f1_macro'], 3)}; 95%: {faixa(B['metricas']['acertos'], 16)})", "ia-avaliacao-antes/depois.json"],
         ["Falsas aprovações", ", ".join(A["metricas"]["falsas_aprovacoes"]) or "0", ", ".join(B["metricas"]["falsas_aprovacoes"]) or "0", "ia-avaliacao-*.json"],
         ["Injeção detectada (bateria)", f"{A['injecao_metricas']['ataques_detectados']}/{A['injecao_metricas']['ataques']}", f"{B['injecao_metricas']['ataques_detectados']}/{B['injecao_metricas']['ataques']}", "injecao-casos.json"],
-        ["Injeção detectada (validação cega)", "não medida", f"{B['validacao_metricas']['ataques_detectados']}/{B['validacao_metricas']['ataques']}", "injecao-validacao.json"],
+        ["Injeção detectada (validação cega, congelada)", "não medida",
+         f"{B['validacao_metricas']['ataques_detectados']}/{B['validacao_metricas']['ataques']} (95%: {faixa(B['validacao_metricas']['ataques_detectados'], B['validacao_metricas']['ataques'])})", "injecao-validacao.json"],
+        ["Análise de fatura nova (média)", f"{br(LA['fatura_nova_com_carga']['latencia']['media'] / 1000, 1)} s (prompt 3.0)" if LA.get('fatura_nova_com_carga') else "—",
+         f"{br(LA['prompt31_fatura_nova']['latencia']['media'] / 1000, 1)} s (prompt 3.1)" if LA.get('prompt31_fatura_nova') else "—", "latencia-custo-*.json"],
         ["Escalonamento de privilégio", f"{esc_a} ataques passaram", "todos barrados (33504)", "escalonamento.txt"],
         ["Trilha de auditoria", f"{tr_a} falhas", f"{tr_d}/{len(S['trilha']['depois'])} OK", "auditoria/trilha-*.txt"],
         ["Consulta 1 (mediana)", f"{br(q[('A', 1)]['mediana'])} ms · {br(q[('A', 1)]['leituras'], 0)} leituras", f"{br(q[('D', 1)]['mediana'])} ms · {br(q[('D', 1)]['leituras'], 0)} leituras", "otimizacao/"],

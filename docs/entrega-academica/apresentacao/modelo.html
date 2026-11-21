@@ -120,7 +120,11 @@ details.item .corpo b{color:var(--txt);font-weight:600}
     <div class="tw"><table><thead><tr><th>Caso</th><th>Tipo</th><th>Esperado</th><th>Obtido</th><th>Modelo</th></tr></thead><tbody id="tabCasos"></tbody></table></div>
     <div class="card"><h3 style="margin-top:0">Matriz de confusão (esperado × obtido)</h3><div id="matrizConf"></div><div id="detalheCaso" class="nota" style="margin-top:14px">Clique num caso para ver o detalhe.</div></div>
   </div>
-  <div class="fonte">Fonte: <code>sqlserver/evidence/parte3/ia-avaliacao-antes.json</code> e <code>ia-avaliacao-depois.json</code></div>
+  <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Quanto esses números valem (intervalo de 95%)</h3>
+    <p class="sub" style="margin:0 0 8px">Com 16 casos ou 8 ataques, um resultado perfeito ainda deixa uma faixa larga. Onde o acerto real provavelmente está:</p>
+    <div class="tw"><table><thead><tr><th>Medida</th><th>Observado</th><th>Faixa provável (95%)</th><th>Conjunto</th></tr></thead><tbody id="tabConf"></tbody></table></div>
+    <div class="nota" id="notaConf" style="margin-top:8px"></div></div>
+  <div class="fonte">Fonte: <code>sqlserver/evidence/parte3/ia-avaliacao-antes.json</code>, <code>ia-avaliacao-depois.json</code> e <code>ia/conjuntos-congelados.json</code></div>
 </section>
 
 <section id="injecao" data-titulo="Prompt injection">
@@ -392,6 +396,15 @@ $('#custoGravacao').innerHTML = `<table><thead><tr><th>Gravação</th><th>Sem ga
   <tr><td>Uma nota por vez (como a API)</td><td>${br(cg('uma_a_uma', 'sem').por_nota_us / 1000, 2)} ms</td><td>${br(cg('uma_a_uma', 'com').por_nota_us / 1000, 2)} ms</td></tr></tbody></table>
   <p class="nota">Chegam poucas notas por dia e o relatório é lido muitas vezes: menos de 1 ms a mais por nota gravada compensa.</p>`;
 
+/* ---------- intervalos de confiança */
+const CF = D.confianca;
+if (CF) {
+  const pct = (v) => `${br(v * 100, 0)}%`;
+  $('#tabConf').innerHTML = CF.itens.map((x) => `<tr><td>${esc(x.rotulo)}</td><td class="mono">${x.k}/${x.n}</td><td class="mono">${pct(x.inf)} a ${pct(x.sup)}</td>
+    <td>${x.limpo ? pill('limpo', 'ok') : pill('ajustado', 'warn')} <span class="nota">${esc(x.nota)}</span></td></tr>`).join('');
+  const cg = Object.entries(CF.congelados || {}).map(([n, v]) => `<code>${esc(n)}</code> congelado em ${esc(v.congelado_em)} (SHA-256 ${esc(v.sha256.slice(0, 12))}…)`).join('; ');
+  $('#notaConf').innerHTML = `${esc(CF.metodo)}. ${cg ? cg + ': mudar o arquivo quebra um teste automático.' : ''}`;
+}
 /* ---------- latência */
 const LA = D.latencia;
 const cartaoLat = (rot, x, nota) => x ? kpi(rot, null, `${br(x.latencia.media / 1000, 2)} s`, `${nota} · p95 ${br(x.latencia.p95 / 1000, 2)} s${x.custo && x.custo.reais_15w !== undefined ? ` · 1.000 usos: R$ ${br(x.custo.reais_15w, 2)} a ${br(x.custo.reais_55w, 2)}` : ''}`) : '';

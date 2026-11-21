@@ -194,6 +194,7 @@ def main() -> None:
           "A máquina estava com outros programas usando a CPU durante a rodada, e o mesmo Ollama atende a produção. "
           "A medição oficial de latência e custo, com a máquina sem carga extra, fica no documento do fine-tuning.",
           "",
+          *secao_confianca(depois),
           "## Limites",
           "",
           "- 16 casos e 26 ataques são poucos e sintéticos; servem para achar falhas, não para estimar a taxa de erro em produção.",
@@ -202,6 +203,35 @@ def main() -> None:
           ""]
     SAIDA.write_text("\n".join(L), encoding="utf-8")
     print(f"ok: {SAIDA.relative_to(DIR.parent.parent.parent)}")
+
+
+def secao_confianca(depois: dict) -> list[str]:
+    """Intervalo de Wilson (95%) de cada proporção, com o mesmo cálculo da apresentação, e o estado dos conjuntos."""
+    import sys
+    sys.path.insert(0, str(DIR.parent / "apresentacao"))
+    from dados import wilson  # noqa: E402
+    m = depois["casos_de_teste"]["metricas"]
+    linhas = [("Decisão certa nos 16 casos", m["decisao_do_sistema"]["acertos"], m["total"], "desenvolvimento (olhado nas correções): otimista"),
+              ("Falsas aprovações nos 16 casos", len(m["falsas_aprovacoes"]), m["total"], "desenvolvimento: 0 observadas não prova 0%"),
+              ("Ataques detectados na bateria", depois["prompt_injection"]["metricas"]["ataques_detectados"],
+               depois["prompt_injection"]["metricas"]["ataques"], "desenvolvimento (padrões ajustados nela): otimista")]
+    if depois.get("validacao_cega"):
+        v = depois["validacao_cega"]["metricas"]
+        linhas.append(("Ataques detectados na validação cega", v["ataques_detectados"], v["ataques"], "**congelado**, nunca usado para ajustar: a medida limpa"))
+    trava = json.loads((DIR / "conjuntos-congelados.json").read_text(encoding="utf-8"))
+    L = ["## Quanto esses números valem", "",
+         "Com amostras deste tamanho, um resultado perfeito ainda deixa uma faixa larga. Intervalo de Wilson, 95% de confiança:", "",
+         "| Medida | Observado | Faixa provável (95%) | Conjunto |", "|---|---|---|---|"]
+    for rotulo, k, n, papel in linhas:
+        inf, sup = wilson(k, n)
+        L.append(f"| {rotulo} | {k}/{n} | {inf * 100:.0f}% a {sup * 100:.0f}% | {papel} |")
+    L += ["", "Conjuntos congelados ([`conjuntos-congelados.json`](conjuntos-congelados.json); mudar o arquivo quebra "
+          "`tests/test_conjunto_cego.py`, e um conjunto cego novo vira outro arquivo): "
+          + "; ".join(f"`{n}` em {v['congelado_em']} (SHA-256 `{v['sha256'][:12]}…`)" for n, v in trava["congelados"].items()) + ".", "",
+          "Com o prompt 3.1 (contexto e documentos enxutos; ver `finetuning/comparacao-final.md`), a mesma avaliação deu os mesmos "
+          "resultados: 16/16, 13/13 ataques, 4/8 na validação cega com as mesmas falhas e o modelo respondendo REVISAR nos 16 "
+          "(`../sqlserver/evidence/parte3/ia-avaliacao-prompt-v31.json`).", ""]
+    return L
 
 
 if __name__ == "__main__":
