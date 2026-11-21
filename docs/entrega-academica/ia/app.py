@@ -21,7 +21,7 @@ from flask import Flask, jsonify, request
 
 
 ROOT = Path(__file__).resolve().parent
-PROMPT_PATH = ROOT / "prompts" / "v3.md"
+PROMPT_PATH = ROOT / "prompts" / "v3.1.md"
 CORPUS_PATH = ROOT / "rag_documents.json"
 PROVIDER_IDS = {
     "conecta alfa ficticia": "PROV-001",
@@ -45,7 +45,14 @@ MODEL_PROFILE = os.environ.get("MODEL_PROFILE", "baseline")
 # (140 s: abaixo dos 150 s do nó HTTP do n8n, para a API responder antes do n8n desistir).
 OLLAMA_TIMEOUT_SECONDS = int(os.environ.get("OLLAMA_TIMEOUT_SECONDS", "140"))
 OLLAMA_KEEP_ALIVE = os.environ.get("OLLAMA_KEEP_ALIVE", "30m")
-PROMPT_VERSION = "3.0"
+PROMPT_VERSION = "3.1"
+# v3.1: o prompt do modelo caiu de ~8.000 para ~2.900 caracteres sem mudar a decisão (que é da regra).
+# - contexto do banco: 3 linhas (eram 20 notas de carga que a regra não usa) e só os campos úteis;
+# - documentos: o modelo recebe os 3 primeiros; a regra continua avaliando os 5 recuperados;
+# - ordem: contexto (estável por provedor) primeiro e a fatura por último, para o Ollama reaproveitar o prefixo.
+CONTEXT_TAKE = 3
+MODEL_DOCUMENTS = 3
+CONTEXT_FIELDS = ("descricao", "valor", "vencimento", "status")
 ALLOWED_CLASSIFICATIONS = {"CONTRATADO", "DIVERGENTE", "REVISAR"}
 MODEL_OUTPUT_SCHEMA = {
     "type": "object",
@@ -349,7 +356,7 @@ def get_authorized_context(provider_id: str, correlation_id: str) -> list[dict]:
         "SET NOCOUNT ON; EXEC ai.usp_get_context "
         f"@local_id={_sql_literal(LOCAL_ID)}, "
         f"@correlation_id='{correlation_id}', "
-        f"@provider_id={_sql_literal(provider_id)}, @take=20, @return_json=1, "
+        f"@provider_id={_sql_literal(provider_id)}, @take={CONTEXT_TAKE}, @return_json=1, "
         f"@requested_by={_sql_literal(REQUESTER)};"
     )
     return _json_from_sql_output(_sqlcmd(query))
@@ -621,10 +628,12 @@ def analyze():
         log_retrieved_sources(correlation_id, [item["id"] for item in retrieved])
         assessment = _classify_from_evidence({**invoice, "amount": amount_value}, retrieved)
         prompt = json.dumps({
-            "invoice": invoice,
-            "authorized_database_context": database_context,
-            "retrieved_documents": retrieved,
+            "authorized_database_context": [
+                {campo: linha.get(campo) for campo in CONTEXT_FIELDS} for linha in database_context
+            ],
+            "retrieved_documents": retrieved[:MODEL_DOCUMENTS],
             "evidence_assessment": assessment,
+            "invoice": invoice,
         }, ensure_ascii=False)
         model_result, model_name = ask_model(prompt)
         model_classification = _validate_model_classification(model_result)

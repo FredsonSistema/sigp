@@ -49,7 +49,7 @@ def test_five_synthetic_cases_have_contract_expected_shape(monkeypatch):
         assert response.status_code == 200
         result = response.get_json()
         assert result["classification"] == case["expected"]["classification"]
-        assert result["prompt_version"] == "3.0"
+        assert result["prompt_version"] == "3.1"
         assert result["model_profile"] == academic_ai.MODEL_PROFILE
         assert result["automatic_payment"] is False
         assert result["local_id"] == "LOC-001"

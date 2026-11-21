@@ -103,11 +103,16 @@ def _finetuning() -> dict | None:
 def _latencia() -> dict:
     out = {}
     for nome, arq in (("fatura_nova_sem_carga", "latencia-custo-final.json"), ("fatura_nova_com_carga", "latencia-custo-final-sob-carga.json"),
-                      ("faturas_ja_vistas_cache", "latencia-custo-final-cache.json")):
+                      ("faturas_ja_vistas_cache", "latencia-custo-final-cache.json"),
+                      ("prompt31_fatura_nova", "latencia-custo-prompt-v31.json")):
         d = _json(EV3 / arq)
         if d:
             out[nome] = {"latencia": d["latencia_servidor_ms"], "custo": d["custo_por_1000_usos"], "cpu": d.get("cpu_maquina_percent"),
                          "fonte": f"sqlserver/evidence/parte3/{arq}"}
+    fria = _json(EV3 / "latencia-partida-fria.json")
+    if fria:
+        out["partida_fria"] = {"primeira_ms": fria["primeira_apos_descarregar"]["cliente_ms"], "seguinte_ms": fria["logo_depois"]["cliente_ms"],
+                               "prompt_version": fria["prompt_version"], "fonte": "sqlserver/evidence/parte3/latencia-partida-fria.json"}
     rep = _json(EV3 / "latencia-custo-sob-carga.json")
     if rep:
         out["mesma_fatura_repetida"] = {"latencia": rep["api_academica_ponta_a_ponta"]["total_ms"], "fonte": "sqlserver/evidence/parte3/latencia-custo-sob-carga.json",

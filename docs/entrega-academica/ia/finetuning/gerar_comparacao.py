@@ -61,6 +61,8 @@ def main() -> None:
     regra = ler("ia-avaliacao-depois.json")
     limpa, carga, repetida = ler("latencia-custo-final.json"), ler("latencia-custo-final-sob-carga.json"), ler("latencia-custo-sob-carga.json")
     cache = ler("latencia-custo-final-cache.json")
+    v31, fria = ler("latencia-custo-prompt-v31.json"), ler("latencia-partida-fria.json")
+    aval31 = ler("ia-avaliacao-prompt-v31.json")
     a, b = comp["conjunto_a_casos_finais"], comp["conjunto_b_teste_do_treino"]
     ma = {k: a["configuracoes"][k]["metricas"] for k in ORDEM}
     mb = {k: b["configuracoes"][k]["metricas"] for k in ORDEM}
@@ -147,8 +149,9 @@ def main() -> None:
         "| Medição | Chamadas | CPU da máquina | Média | Mediana | p95 | 1.000 usos: CPU · energia |",
         "|---|---|---|---|---|---|---|",
     ]
-    for titulo, d in (("**Fatura nova**, máquina sem carga extra", limpa), ("**Fatura nova**, máquina com outros programas", carga),
-                      ("As mesmas 16 faturas de novo (prompt no cache do Ollama)", cache)):
+    for titulo, d in (("Prompt 3.0 · **fatura nova**, máquina sem carga extra", limpa), ("Prompt 3.0 · **fatura nova**, máquina com outros programas", carga),
+                      ("Prompt 3.0 · as mesmas 16 faturas de novo (prompt no cache do Ollama)", cache),
+                      ("**Prompt 3.1 · fatura nova**, máquina com outros programas", v31)):
         if not d:
             continue
         s, c, cpu = d["latencia_servidor_ms"], d["custo_por_1000_usos"], d["cpu_maquina_percent"]
@@ -163,10 +166,24 @@ def main() -> None:
         "",
         "**O número que vale para o uso real é o da fatura nova**: cada fatura que chega é diferente, e o prompt não está no cache. O Ollama "
         "guarda os últimos 16 prompts; repetir faturas já vistas (ou a mesma fatura) mede só o cache. "
-        "A diferença mostra onde está o tempo: quase todo ele é o modelo processando o prompt da API (instruções, até 20 linhas "
-        "de contexto do banco, 5 documentos e a avaliação da regra, perto de 3.200 tokens) numa CPU de notebook. O caso IA-016, de um provedor sem "
-        "notas no local, tem prompt menor e responde bem mais rápido. Para baixar a latência: mandar menos linhas de contexto ao modelo, cortar o "
-        "texto dos documentos ou chamar o modelo só quando a regra pede REVISAR. A decisão (a regra) não depende do modelo e sai em milissegundos.",
+        "A diferença mostra onde está o tempo: quase todo ele é o modelo processando o prompt da API numa CPU de notebook. "
+        "No prompt 3.0, dois terços do prompt eram 20 linhas de contexto do banco (notas de carga que a regra não usa); os casos IA-005 e IA-016, "
+        "sem contexto, respondiam em cerca de 5 s contra mais de 30 s nos outros.",
+        "",
+        "**Prompt 3.1 (correção):** 3 linhas de contexto, só com descrição, valor, vencimento e situação; o modelo recebe os 3 primeiros documentos "
+        "(a regra continua avaliando os 5); a parte estável (contexto do provedor) vai antes e a fatura por último, para o Ollama reaproveitar o prefixo. "
+        + (f"Resultado na mesma situação de carga: média {num(v31['latencia_servidor_ms']['media'] / 1000, 2)} s e p95 "
+           f"{num(v31['latencia_servidor_ms']['p95'] / 1000, 2)} s, contra {num(carga['latencia_servidor_ms']['media'] / 1000, 2)} s e "
+           f"{num(carga['latencia_servidor_ms']['p95'] / 1000, 2)} s no 3.0; {num(v31['custo_por_1000_usos']['tempo_cpu_min'])} min de CPU por 1.000 usos. "
+           if v31 and carga else "")
+        + (f"Pior caso (modelo descarregado, depois de 30 min sem uso): {num(fria['primeira_apos_descarregar']['cliente_ms'] / 1000, 1)} s na primeira "
+           f"análise, que inclui carregar o modelo, e {num(fria['logo_depois']['cliente_ms'] / 1000, 1)} s na seguinte (`latencia-partida-fria.json`). "
+           if fria else "")
+        + (f"As decisões não mudaram (`ia-avaliacao-prompt-v31.json`): "
+           f"{aval31['casos_de_teste']['metricas']['decisao_do_sistema']['acertos']}/{aval31['casos_de_teste']['metricas']['decisao_do_sistema']['total']} "
+           "nos casos, os mesmos ataques detectados e o mesmo resultado na validação cega. "
+           if aval31 else "")
+        + "A decisão (a regra) não depende do modelo e sai em milissegundos.",
         "",
         "## Limites",
         "",

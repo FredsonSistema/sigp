@@ -66,11 +66,14 @@ Caminho: API → SQL Server (RLS) → RAG → Qwen 0,5B no Ollama (CPU, quantiza
 
 | Medição | Chamadas | CPU da máquina | Média | Mediana | p95 | 1.000 usos: CPU · energia |
 |---|---|---|---|---|---|---|
-| **Fatura nova**, máquina com outros programas | 16 | 45,2% → 43,6% | 31,31 s | 34,57 s | 36,13 s | 521,9 min · R$ 0,162 a 0,594 |
-| As mesmas 16 faturas de novo (prompt no cache do Ollama) | 16 | 40,6% → 33,6% | 0,77 s | 0,76 s | 0,91 s | 12,9 min · R$ 0,004 a 0,015 |
+| Prompt 3.0 · **fatura nova**, máquina com outros programas | 16 | 45,2% → 43,6% | 31,31 s | 34,57 s | 36,13 s | 521,9 min · R$ 0,162 a 0,594 |
+| Prompt 3.0 · as mesmas 16 faturas de novo (prompt no cache do Ollama) | 16 | 40,6% → 33,6% | 0,77 s | 0,76 s | 0,91 s | 12,9 min · R$ 0,004 a 0,015 |
+| **Prompt 3.1 · fatura nova**, máquina com outros programas | 16 | 43,9% → 46,1% | 3,09 s | 2,86 s | 4,82 s | 51,4 min · R$ 0,016 a 0,059 |
 | A mesma fatura repetida (o Ollama reaproveita o prompt) | 20 | — | 0,83 s | 0,81 s | 1,02 s | — |
 
-**O número que vale para o uso real é o da fatura nova**: cada fatura que chega é diferente, e o prompt não está no cache. O Ollama guarda os últimos 16 prompts; repetir faturas já vistas (ou a mesma fatura) mede só o cache. A diferença mostra onde está o tempo: quase todo ele é o modelo processando o prompt da API (instruções, até 20 linhas de contexto do banco, 5 documentos e a avaliação da regra, perto de 3.200 tokens) numa CPU de notebook. O caso IA-016, de um provedor sem notas no local, tem prompt menor e responde bem mais rápido. Para baixar a latência: mandar menos linhas de contexto ao modelo, cortar o texto dos documentos ou chamar o modelo só quando a regra pede REVISAR. A decisão (a regra) não depende do modelo e sai em milissegundos.
+**O número que vale para o uso real é o da fatura nova**: cada fatura que chega é diferente, e o prompt não está no cache. O Ollama guarda os últimos 16 prompts; repetir faturas já vistas (ou a mesma fatura) mede só o cache. A diferença mostra onde está o tempo: quase todo ele é o modelo processando o prompt da API numa CPU de notebook. No prompt 3.0, dois terços do prompt eram 20 linhas de contexto do banco (notas de carga que a regra não usa); os casos IA-005 e IA-016, sem contexto, respondiam em cerca de 5 s contra mais de 30 s nos outros.
+
+**Prompt 3.1 (correção):** 3 linhas de contexto, só com descrição, valor, vencimento e situação; o modelo recebe os 3 primeiros documentos (a regra continua avaliando os 5); a parte estável (contexto do provedor) vai antes e a fatura por último, para o Ollama reaproveitar o prefixo. Resultado na mesma situação de carga: média 3,09 s e p95 4,82 s, contra 31,31 s e 36,13 s no 3.0; 51,4 min de CPU por 1.000 usos. Pior caso (modelo descarregado, depois de 30 min sem uso): 11,7 s na primeira análise, que inclui carregar o modelo, e 1,0 s na seguinte (`latencia-partida-fria.json`). As decisões não mudaram (`ia-avaliacao-prompt-v31.json`): 16/16 nos casos, os mesmos ataques detectados e o mesmo resultado na validação cega. A decisão (a regra) não depende do modelo e sai em milissegundos.
 
 ## Limites
 

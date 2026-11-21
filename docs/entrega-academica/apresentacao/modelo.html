@@ -175,8 +175,8 @@ details.item .corpo b{color:var(--txt);font-weight:600}
   <h2>Latência e custo do sistema no ar</h2>
   <p class="sub">API → SQL Server (RLS) → RAG → Qwen 0,5B (Ollama, CPU) → regra → auditoria. O modelo é local: não há cobrança por token.</p>
   <div class="grade g3" id="kpiLat"></div>
-  <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Por que a fatura nova é lenta</h3>
-    <p class="sub" style="margin:0">O prompt da API tem perto de 3.200 tokens (instruções, até 20 linhas de contexto do banco, 5 documentos e a avaliação da regra), processados na CPU de um notebook. O Ollama guarda os últimos 16 prompts em cache: repetir faturas já vistas mede só o cache. O número que vale para o uso real é o da fatura nova.</p></div>
+  <div class="card" style="margin-top:14px"><h3 style="margin-top:0">Por que a fatura nova era lenta, e o que mudou</h3>
+    <p class="sub" style="margin:0">No prompt 3.0, dois terços do que ia ao modelo eram 20 linhas de contexto do banco (notas de carga que a regra não usa). O prompt 3.1 manda 3 linhas, só com os campos úteis, os 3 primeiros documentos e a fatura por último, para o Ollama reaproveitar o começo do prompt. As decisões não mudaram: 16/16 nos casos e os mesmos resultados de injeção e da validação cega. O Ollama guarda os últimos 16 prompts em cache: repetir faturas já vistas mede só o cache. O número que vale para o uso real é o da fatura nova.</p></div>
 </section>
 
 <section id="hist" data-titulo="Histórico">
@@ -396,7 +396,9 @@ $('#custoGravacao').innerHTML = `<table><thead><tr><th>Gravação</th><th>Sem ga
 const LA = D.latencia;
 const cartaoLat = (rot, x, nota) => x ? kpi(rot, null, `${br(x.latencia.media / 1000, 2)} s`, `${nota} · p95 ${br(x.latencia.p95 / 1000, 2)} s${x.custo && x.custo.reais_15w !== undefined ? ` · 1.000 usos: R$ ${br(x.custo.reais_15w, 2)} a ${br(x.custo.reais_55w, 2)}` : ''}`) : '';
 $('#kpiLat').innerHTML = [
-  cartaoLat('Fatura nova (uso real)', LA.fatura_nova_sem_carga || LA.fatura_nova_com_carga, LA.fatura_nova_sem_carga ? 'máquina sem carga extra' : `CPU ${br((LA.fatura_nova_com_carga.cpu || {}).antes, 0)}% ocupada por outros programas`),
+  cartaoLat('Fatura nova, prompt 3.1 (uso real)', LA.prompt31_fatura_nova, `CPU ${br(((LA.prompt31_fatura_nova || {}).cpu || {}).antes, 0)}% ocupada por outros programas`),
+  cartaoLat('Fatura nova, prompt 3.0 (antes)', LA.fatura_nova_sem_carga || LA.fatura_nova_com_carga, LA.fatura_nova_sem_carga ? 'máquina sem carga extra' : `CPU ${br((LA.fatura_nova_com_carga.cpu || {}).antes, 0)}% ocupada por outros programas`),
+  LA.partida_fria ? kpi('Modelo descarregado (pior caso)', null, `${br(LA.partida_fria.primeira_ms / 1000, 1)} s`, `primeira análise depois de 30 min parado · a seguinte ${br(LA.partida_fria.seguinte_ms / 1000, 1)} s`) : '',
   cartaoLat('Faturas já vistas (cache do Ollama)', LA.faturas_ja_vistas_cache, 'mesmas 16 faturas de novo'),
   LA.mesma_fatura_repetida ? kpi('A mesma fatura repetida', null, `${br(LA.mesma_fatura_repetida.latencia.media / 1000, 2)} s`, 'medição antiga: só mede o cache') : '',
 ].join('');
