@@ -31,7 +31,7 @@ from backend.campos import (
     motivo_chave_invalida, motivo_numero_invalido,
 )
 from backend.provedores import competencia, marca_provedor, mesma_empresa
-from backend import acesso, assistente, avisos_provedor, base_conhecimento, correcoes_cadastro, config_alertas, config_email_faturas, fatura_esperada, identificadores, marcadores, metricas_llm, notas_disponiveis, saude_banco, sessoes
+from backend import acesso, assistente, avisos_provedor, base_conhecimento, cofre, correcoes_cadastro, config_alertas, config_email_faturas, fatura_esperada, identificadores, marcadores, metricas_llm, notas_disponiveis, saude_banco, sessoes
 from backend import database as _database
 from backend.database import (
     aplicar_fatura_no_local, descartar_nota_recebida, registrar_feedback_extracao, restaurar_nota_recebida,
@@ -2970,7 +2970,7 @@ def metricas_llm_route():
 
 
 # Variáveis de integração do servidor: só o estado. Segredos aparecem como "definida/não definida", nunca o valor.
-_INTEGRACAO_SEGREDOS = ("SIGP_API_KEY", "SIGP_N8N_TOKEN")
+_INTEGRACAO_SEGREDOS = ("SIGP_API_KEY", "SIGP_N8N_TOKEN", "SIGP_COFRE_CHAVE")
 _INTEGRACAO_VALORES = ("SIGP_CORS_ORIGINS", "SIGP_N8N_EVENTOS_URL", "SIGP_EXIGIR_FATURA", "SIGP_PUBLIC_API_URL", "SIGP_PUBLIC_N8N_URL")
 
 
@@ -3141,6 +3141,30 @@ def config_email_faturas_salvar_route():
     except ValueError as exc:
         return jsonify({"ok": False, "error": str(exc)}), 400
     return jsonify({"ok": True, **dados})
+
+
+# Cofre de chaves (backend/cofre.py): grava e apaga; nunca devolve o valor.
+@app.get("/api/cofre")
+def cofre_estado_route():
+    return jsonify({"ok": True, **cofre.estado()})
+
+
+@app.put("/api/cofre/<nome>")
+def cofre_salvar_route(nome: str):
+    payload = request.get_json(silent=True) or {}
+    quem = (getattr(g, "acesso", None) or {}).get("nome") or "Administrador"
+    try:
+        return jsonify({"ok": True, **cofre.salvar(nome, payload.get("valor"), quem)})
+    except cofre.CofreErro as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404 if str(exc) == "Segredo desconhecido." else 400
+
+
+@app.delete("/api/cofre/<nome>")
+def cofre_apagar_route(nome: str):
+    try:
+        return jsonify({"ok": True, **cofre.apagar(nome)})
+    except cofre.CofreErro as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 404
 
 
 @app.get("/api/integracao/estado")

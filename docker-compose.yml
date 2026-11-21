@@ -73,6 +73,8 @@ services:
       - SIGP_EXIGIR_FATURA=${SIGP_EXIGIR_FATURA:-1}
       - SIGP_N8N_EVENTOS_URL=${SIGP_N8N_EVENTOS_URL:-http://n8n:5678/webhook/sigp-eventos}
       - SIGP_N8N_TOKEN=${SIGP_N8N_TOKEN:-}
+      # Chave mestra do cofre (backend/cofre.py). Sem ela, o cofre não grava.
+      - SIGP_COFRE_CHAVE=${SIGP_COFRE_CHAVE:-}
       # Só para mostrar em Configurações > Integração (quem usa é o serviço web).
       - SIGP_PUBLIC_API_URL=${SIGP_PUBLIC_API_URL:-http://127.0.0.1:5001}
       - SIGP_PUBLIC_N8N_URL=${SIGP_PUBLIC_N8N_URL:-http://127.0.0.1:5678}

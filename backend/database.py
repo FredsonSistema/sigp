@@ -380,6 +380,9 @@ def init_db() -> None:
     # Marcadores e grupos de localidades (backend/marcadores.py): catálogo e migração dos marcadores antigos.
     from backend import marcadores
     marcadores.garantir_tabelas()
+    # Cofre de chaves (backend/cofre.py): segredos de integração criptografados.
+    from backend import cofre
+    cofre.garantir_tabelas()
 
 
 def _now() -> str:
