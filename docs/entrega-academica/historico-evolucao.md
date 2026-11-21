@@ -12,31 +12,31 @@ no repositório.
 
 | # | Data | Área | O que foi testado | 1ª execução | Correção | Reteste | Commit |
 |---|---|---|---|---|---|---|---|
-| H-01 | 20/11 | Segurança | Escalonamento horizontal: operador do LOC-001 grava/move nota para o LOC-002 | **REPROVADO** (ataque passou) | Predicados BLOCK na RLS | APROVADO (erro 33504) | `df5f3ee` |
-| H-02 | 20/11 | Segurança (teste) | Primeira versão do teste de escalonamento | ERRO DO TESTE (atacante tinha escopo nos 3 locais) | Operador de teste com escopo só no LOC-001 | Falha reproduzida e barrada | `df5f3ee` |
-| H-03 | 20/11 | Segurança (teste) | Ataques depois de uma personificação negada | ERRO DO TESTE (todos "barrados" por erro 3930) | Só erros de permissão contam como barrado | APROVADO com os códigos certos | `df5f3ee` |
-| H-04 | 20/11 | Instalação | `01_schema_seed.sql` no banco com índice filtrado | **REPROVADO** (erro 1934) | `setup-academic.ps1` passa `-I` | Roda sem erro | `df5f3ee` |
-| H-05 | 20/11 | IA (teste) | Teste unitário do tempo limite do Ollama | **REPROVADO** (esperava 120 s; o serviço usa 140 s) | Teste lê o valor do módulo | 21/21 passam | `e2e23f5` |
-| H-06 | 20/11 | Integração | Auditoria registra o que a IA respondeu | **REPROVADO** (requisito não atendido) | `ai.usp_log_response`, falha fechada | APROVADO | `e2e23f5` |
-| H-07 | 20/11 | Integração (teste) | Leitura da trilha pelo teste | ERRO DO TESTE (acentos ilegíveis) | `sqlcmd -f 65001` | Texto certo | `e2e23f5` |
-| H-08 | 20/11 | IA | Injeção em português (IA-009) e no XML da NF-e (IA-015) | **REPROVADO** (IA-015: falsa aprovação) | Detector com famílias de ataque em PT e EN | APROVADO (REVISAR) | `9b2d94b` |
-| H-09 | 20/11 | IA | Valor com vírgula decimal (IA-011) | **REPROVADO** (HTTP 400) | `_parse_amount` | APROVADO | `9b2d94b` |
-| H-10 | 20/11 | IA | Provedor com razão social "LTDA" (IA-013) | **REPROVADO** (provedor desconhecido) | `_provider_key` | APROVADO | `9b2d94b` |
-| H-11 | 20/11 | IA | Bateria de 13 ataques de prompt injection | **REPROVADO** (2/13 detectados) | Mesmo detector de H-08 | 13/13 | `9b2d94b` |
+| H-01 | 20/11 | Segurança | Escalonamento horizontal: operador do LOC-001 grava/move nota para o LOC-002 | **REPROVADO** (ataque passou) | Predicados BLOCK na RLS | APROVADO (erro 33504) | `abcf782` |
+| H-02 | 20/11 | Segurança (teste) | Primeira versão do teste de escalonamento | ERRO DO TESTE (atacante tinha escopo nos 3 locais) | Operador de teste com escopo só no LOC-001 | Falha reproduzida e barrada | `abcf782` |
+| H-03 | 20/11 | Segurança (teste) | Ataques depois de uma personificação negada | ERRO DO TESTE (todos "barrados" por erro 3930) | Só erros de permissão contam como barrado | APROVADO com os códigos certos | `abcf782` |
+| H-04 | 20/11 | Instalação | `01_schema_seed.sql` no banco com índice filtrado | **REPROVADO** (erro 1934) | `setup-academic.ps1` passa `-I` | Roda sem erro | `abcf782` |
+| H-05 | 20/11 | IA (teste) | Teste unitário do tempo limite do Ollama | **REPROVADO** (esperava 120 s; o serviço usa 140 s) | Teste lê o valor do módulo | 21/21 passam | `d323a68` |
+| H-06 | 20/11 | Integração | Auditoria registra o que a IA respondeu | **REPROVADO** (requisito não atendido) | `ai.usp_log_response`, falha fechada | APROVADO | `d323a68` |
+| H-07 | 20/11 | Integração (teste) | Leitura da trilha pelo teste | ERRO DO TESTE (acentos ilegíveis) | `sqlcmd -f 65001` | Texto certo | `d323a68` |
+| H-08 | 20/11 | IA | Injeção em português (IA-009) e no XML da NF-e (IA-015) | **REPROVADO** (IA-015: falsa aprovação) | Detector com famílias de ataque em PT e EN | APROVADO (REVISAR) | `9741806` |
+| H-09 | 20/11 | IA | Valor com vírgula decimal (IA-011) | **REPROVADO** (HTTP 400) | `_parse_amount` | APROVADO | `9741806` |
+| H-10 | 20/11 | IA | Provedor com razão social "LTDA" (IA-013) | **REPROVADO** (provedor desconhecido) | `_provider_key` | APROVADO | `9741806` |
+| H-11 | 20/11 | IA | Bateria de 13 ataques de prompt injection | **REPROVADO** (2/13 detectados) | Mesmo detector de H-08 | 13/13 | `9741806` |
 | H-12 | 20/11 | IA | Validação cega: 8 ataques escritos depois da correção | 4/8 detectados | Nenhuma, de propósito | — | LIMITAÇÃO |
-| H-13 | 20/11 | IA (teste) | Varredura de vazamento no IA-016 | ERRO DO TESTE (falso alarme) | Ignorar o `provider_id` que o próprio cliente enviou | Sem vazamento | `9b2d94b` |
-| H-14 | 20/11 | IA (teste) | Primeira análise depois de reiniciar o serviço | ERRO DO TESTE (503 por modelo frio) | Chamada de aquecimento, fora da conta | 16/16 respondidas | `9b2d94b` |
-| H-15 | 20/11 | IA | Revisão do detector antes de publicar | 4 padrões marcariam faturas legítimas | Padrões restritos e 8 controles legítimos nos testes | 0 falsos positivos | `9b2d94b` |
-| H-16 | 20/11 | IA (medição) | Latência do sistema no ar | ERRO DO TESTE (0,8 s otimista, por cache) | Prompt novo a cada chamada | 31,3 s (fatura nova) | `ccdaa84` |
-| H-17 | 20/11 | IA (medição) | Carga de CPU da máquina | ERRO DO TESTE (0,0%) | Contador com o nome em português | 44% registrado | `ccdaa84` |
+| H-13 | 20/11 | IA (teste) | Varredura de vazamento no IA-016 | ERRO DO TESTE (falso alarme) | Ignorar o `provider_id` que o próprio cliente enviou | Sem vazamento | `9741806` |
+| H-14 | 20/11 | IA (teste) | Primeira análise depois de reiniciar o serviço | ERRO DO TESTE (503 por modelo frio) | Chamada de aquecimento, fora da conta | 16/16 respondidas | `9741806` |
+| H-15 | 20/11 | IA | Revisão do detector antes de publicar | 4 padrões marcariam faturas legítimas | Padrões restritos e 8 controles legítimos nos testes | 0 falsos positivos | `9741806` |
+| H-16 | 20/11 | IA (medição) | Latência do sistema no ar | ERRO DO TESTE (0,8 s otimista, por cache) | Prompt novo a cada chamada | 31,3 s (fatura nova) | `4968264` |
+| H-17 | 20/11 | IA (medição) | Carga de CPU da máquina | ERRO DO TESTE (0,0%) | Contador com o nome em português | 44% registrado | `4968264` |
 | H-18 | 20/11 | IA | Fine-tuning nos casos reais (4 configurações) | Ajuste não compensou (7/16) | Nenhuma: é resultado | — | LIMITAÇÃO |
-| H-19 | 20/11 | Otimização | Consulta 1 (total por local, provedor e mês) | **REPROVADO** (índice só tirou 20%) | Desnormalização: resumo diário com gatilho e RLS | 168,7 → 25,3 ms | `62d0283` |
-| H-20 | 20/11 | Otimização (teste) | Testes do resumo diário | ERRO DO TESTE (abortou com 3930; depois esperado escrito errado) | Erro guardado no CATCH; texto do esperado | APROVADO | `62d0283` |
-| H-21 | 20/11 | Segurança | Trilha de auditoria: quem gravou, alterou ou apagou notas; trilha protegida | **REPROVADO** (9 falhas: nada registrado; operador forjava evento) | Gatilho de auditoria, SQL Server Audit e DENY INSERT na trilha | APROVADO (12/12) | `1dbd7f7` |
-| H-22 | 20/11 | Banco | Acentos nos dados e nas mensagens do banco | **REPROVADO** (acentos trocados, "Agência" gravada como "AgÃªncia", em 200 mil linhas e nas mensagens) | Marca UTF-8 nos scripts, `-f 65001` no setup e reparo dos dados | 0 linhas quebradas | `1dbd7f7` |
-| H-23 | 20/11 | Segurança (teste) | Primeiras execuções do teste da trilha e da conferência de acentos | ERRO DO TESTE (coluna curta descartou o T1b; conferência sem diferenciar maiúsculas) | Colunas maiores; comparação binária | Resultado certo | `1dbd7f7` |
-| H-24 | 20/11 | Segurança (teste) | Matriz de permissões gerada do banco e prova do DENY | ERRO DO TESTE (controle exigia leitura; "não" ilegível) | Controle sem WHERE; saída do sqlcmd em arquivo | APROVADO (5/5) | `2a2009b` |
-| H-25 | 20/11 | Integração | Nenhum segredo nos fluxos do n8n exportados | **REPROVADO** (cabeçalho `apikey` literal num modelo) | Modelo usa `$env`; texto de exemplo vira aviso | APROVADO (0 falhas em 35 arquivos) | `2a2009b` |
+| H-19 | 20/11 | Otimização | Consulta 1 (total por local, provedor e mês) | **REPROVADO** (índice só tirou 20%) | Desnormalização: resumo diário com gatilho e RLS | 168,7 → 25,3 ms | `3103fe3` |
+| H-20 | 20/11 | Otimização (teste) | Testes do resumo diário | ERRO DO TESTE (abortou com 3930; depois esperado escrito errado) | Erro guardado no CATCH; texto do esperado | APROVADO | `3103fe3` |
+| H-21 | 20/11 | Segurança | Trilha de auditoria: quem gravou, alterou ou apagou notas; trilha protegida | **REPROVADO** (9 falhas: nada registrado; operador forjava evento) | Gatilho de auditoria, SQL Server Audit e DENY INSERT na trilha | APROVADO (12/12) | `6e4ffa1` |
+| H-22 | 20/11 | Banco | Acentos nos dados e nas mensagens do banco | **REPROVADO** (acentos trocados, "Agência" gravada como "AgÃªncia", em 200 mil linhas e nas mensagens) | Marca UTF-8 nos scripts, `-f 65001` no setup e reparo dos dados | 0 linhas quebradas | `6e4ffa1` |
+| H-23 | 20/11 | Segurança (teste) | Primeiras execuções do teste da trilha e da conferência de acentos | ERRO DO TESTE (coluna curta descartou o T1b; conferência sem diferenciar maiúsculas) | Colunas maiores; comparação binária | Resultado certo | `6e4ffa1` |
+| H-24 | 20/11 | Segurança (teste) | Matriz de permissões gerada do banco e prova do DENY | ERRO DO TESTE (controle exigia leitura; "não" ilegível) | Controle sem WHERE; saída do sqlcmd em arquivo | APROVADO (5/5) | `9e7ef70` |
+| H-25 | 20/11 | Integração | Nenhum segredo nos fluxos do n8n exportados | **REPROVADO** (cabeçalho `apikey` literal num modelo) | Modelo usa `$env`; texto de exemplo vira aviso | APROVADO (0 falhas em 35 arquivos) | `9e7ef70` |
 
 ## Detalhes
 
