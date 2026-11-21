@@ -37,3 +37,4 @@ auxiliar/
 *.csv
 !tests/**/*.csv
 !docs/**/*.csv
+ajustes_tela
