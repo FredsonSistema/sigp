@@ -75,6 +75,10 @@ def main() -> None:
         "✓ = permitido; ✗ = recusado (403 = perfil sem permissão; 401 = sem chave). 400/404/409 contam como permitido: a API aceitou o perfil e recusou só os dados de teste.", "",
         cab, sep, *linhas, "",
         f"Auditoria: {len(auditoria)} registros, {len(negados)} recusas (quem, ação, funcionalidade, resultado). Ver `evidence/permissoes-perfis.json`.", "",
+        "Diferença para a Entrega 2: a versão daquela entrega (`sqlserver/evidence/parte2/demo-parte2-saida.txt`) mostrava "
+        "\"Sem chave\" com 200 em Ver locais e Ver caixa de notas recebidas, e a leitura sem chave estava listada como pendente. "
+        "Desde o login no servidor (commit `041fee2`), toda rota exige chave ou sessão, menos `/api/health`; "
+        "`SIGP_EXIGIR_CHAVE_LEITURA=0` reabre a leitura só para diagnóstico. A linha \"Sem chave\" acima é a medida atual.", "",
     ])
     (PASTA / "permissoes-perfis.md").write_text(md, encoding="utf-8")
     print(md)

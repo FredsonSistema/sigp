@@ -1,5 +1,5 @@
 {
-  "executado_em_utc": "2026-11-16T14:43:55+00:00",
+  "executado_em_utc": "2026-11-21T16:41:22+00:00",
   "observacao": "403 = perfil sem permissão; 401 = sem chave; 400/404/409 = permitido, mas os dados de teste são incompletos.",
   "matriz": [
     {
@@ -231,14 +231,14 @@
       "perfil": "Sem chave",
       "acoes": {
         "Ver locais": {
-          "status": 200,
-          "pode": true,
-          "mensagem": ""
+          "status": 401,
+          "pode": false,
+          "mensagem": "Chave de API ausente ou inválida (cabeçalho X-API-Key)."
         },
         "Ver caixa de notas recebidas": {
-          "status": 200,
-          "pode": true,
-          "mensagem": ""
+          "status": 401,
+          "pode": false,
+          "mensagem": "Chave de API ausente ou inválida (cabeçalho X-API-Key)."
         },
         "Criar local": {
           "status": 401,
@@ -275,7 +275,7 @@
   ],
   "auditoria": [
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "admin",
       "id": 33,
       "metodo": "GET",
@@ -285,7 +285,7 @@
       "usuario": "Leitura + ordens de serviço (ajuste individual)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "banco.manter",
       "id": 32,
       "metodo": "POST",
@@ -295,7 +295,7 @@
       "usuario": "Leitura + ordens de serviço (ajuste individual)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "os.usar",
       "id": 31,
       "metodo": "PUT",
@@ -305,7 +305,7 @@
       "usuario": "Leitura + ordens de serviço (ajuste individual)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "sig.decidir",
       "id": 30,
       "metodo": "POST",
@@ -315,7 +315,7 @@
       "usuario": "Leitura + ordens de serviço (ajuste individual)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "notas.lancar",
       "id": 29,
       "metodo": "POST",
@@ -325,7 +325,7 @@
       "usuario": "Leitura + ordens de serviço (ajuste individual)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "locais.editar",
       "id": 28,
       "metodo": "POST",
@@ -335,7 +335,7 @@
       "usuario": "Leitura + ordens de serviço (ajuste individual)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "admin",
       "id": 27,
       "metodo": "GET",
@@ -345,7 +345,7 @@
       "usuario": "Leitura (auditoria)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "banco.manter",
       "id": 26,
       "metodo": "POST",
@@ -355,7 +355,7 @@
       "usuario": "Leitura (auditoria)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "os.usar",
       "id": 25,
       "metodo": "PUT",
@@ -365,7 +365,7 @@
       "usuario": "Leitura (auditoria)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "sig.decidir",
       "id": 24,
       "metodo": "POST",
@@ -375,7 +375,7 @@
       "usuario": "Leitura (auditoria)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "notas.lancar",
       "id": 23,
       "metodo": "POST",
@@ -385,7 +385,7 @@
       "usuario": "Leitura (auditoria)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "locais.editar",
       "id": 22,
       "metodo": "POST",
@@ -395,7 +395,7 @@
       "usuario": "Leitura (auditoria)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "admin",
       "id": 21,
       "metodo": "GET",
@@ -405,7 +405,7 @@
       "usuario": "Operador (Jonata)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "banco.manter",
       "id": 20,
       "metodo": "POST",
@@ -415,7 +415,7 @@
       "usuario": "Operador (Jonata)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "os.usar",
       "id": 19,
       "metodo": "PUT",
@@ -425,7 +425,7 @@
       "usuario": "Operador (Jonata)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "sig.decidir",
       "id": 18,
       "metodo": "POST",
@@ -435,7 +435,7 @@
       "usuario": "Operador (Jonata)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "notas.lancar",
       "id": 17,
       "metodo": "POST",
@@ -445,7 +445,7 @@
       "usuario": "Operador (Jonata)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "locais.editar",
       "id": 16,
       "metodo": "POST",
@@ -455,7 +455,7 @@
       "usuario": "Operador (Jonata)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "admin",
       "id": 15,
       "metodo": "GET",
@@ -465,7 +465,7 @@
       "usuario": "Gerente (Maciel)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "banco.manter",
       "id": 14,
       "metodo": "POST",
@@ -475,7 +475,7 @@
       "usuario": "Gerente (Maciel)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "os.usar",
       "id": 13,
       "metodo": "PUT",
@@ -485,7 +485,7 @@
       "usuario": "Gerente (Maciel)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "sig.decidir",
       "id": 12,
       "metodo": "POST",
@@ -495,7 +495,7 @@
       "usuario": "Gerente (Maciel)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "notas.lancar",
       "id": 11,
       "metodo": "POST",
@@ -505,7 +505,7 @@
       "usuario": "Gerente (Maciel)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "locais.editar",
       "id": 10,
       "metodo": "POST",
@@ -515,7 +515,7 @@
       "usuario": "Gerente (Maciel)"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "banco.manter",
       "id": 9,
       "metodo": "POST",
@@ -525,7 +525,7 @@
       "usuario": "Administrador"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "os.usar",
       "id": 8,
       "metodo": "PUT",
@@ -535,7 +535,7 @@
       "usuario": "Administrador"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "sig.decidir",
       "id": 7,
       "metodo": "POST",
@@ -545,7 +545,7 @@
       "usuario": "Administrador"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "notas.lancar",
       "id": 6,
       "metodo": "POST",
@@ -555,7 +555,7 @@
       "usuario": "Administrador"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "locais.editar",
       "id": 5,
       "metodo": "POST",
@@ -565,7 +565,7 @@
       "usuario": "Administrador"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "admin",
       "id": 4,
       "metodo": "POST",
@@ -575,7 +575,7 @@
       "usuario": "Administrador"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:22+00:00",
       "funcionalidade": "admin",
       "id": 3,
       "metodo": "POST",
@@ -585,7 +585,7 @@
       "usuario": "Administrador"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:21+00:00",
       "funcionalidade": "admin",
       "id": 2,
       "metodo": "POST",
@@ -595,7 +595,7 @@
       "usuario": "Administrador"
     },
     {
-      "em": "2026-11-16T14:43:55+00:00",
+      "em": "2026-11-21T16:41:21+00:00",
       "funcionalidade": "admin",
       "id": 1,
       "metodo": "POST",

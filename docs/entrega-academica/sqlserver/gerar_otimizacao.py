@@ -112,6 +112,15 @@ def main() -> None:
         "(arquivos `.sqlplan`, que abrem no SSMS ou no Azure Data Studio). Todas as configurações rodaram na mesma rodada; "
         "a máquina tinha outros programas usando a CPU, então vale a comparação entre elas, não o tempo absoluto.",
         "",
+        "**Por que a configuração A mudou desde a Entrega 2** (consulta 1: 82,7 → 168,7 ms; consulta 2: 33,1 → 54,4 ms): as duas "
+        "rodadas usaram as mesmas consultas, com `OPTION (RECOMPILE)`, mas não as mesmas condições. A Entrega 2 mediu 15 execuções "
+        "(`evidence/parte2/benchmark-tempos.txt`); a final mediu 30, em 20/11 à tarde, com o notebook dividido com outros programas "
+        "(na mesma tarde, a medida de latência da IA registrou 45% da CPU ocupada). As leituras lógicas da configuração A, que não "
+        "dependem da máquina, ficaram iguais na tabela Notas (3.277 na Entrega 2 e 3.279 na final), e nas duas houve 0 leituras físicas "
+        "(cache quente): os dados e o plano são os mesmos, "
+        "e a diferença está no tempo de CPU disponível. Por isso cada ganho é calculado só dentro da mesma rodada, e a mediana "
+        "vem sempre com o p95.",
+        "",
         "## Consulta 1: total faturado por local, provedor e mês nos últimos 12 meses",
         "",
         "```sql",
