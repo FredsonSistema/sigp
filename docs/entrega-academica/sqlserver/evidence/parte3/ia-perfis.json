@@ -1,21 +1,21 @@
 {
-  "executado_em_utc": "2026-11-20T17:39:09.501665+00:00",
+  "executado_em_utc": "2026-11-21T17:20:46.868839+00:00",
   "imagem_da_ia": "sqlserver-academic-ai",
   "parte_a_pela_ia": [
     {
       "id": "A1",
       "perfil": "IA do LOC-001 (sigp_ia_loc001)",
       "http": 200,
-      "ms": 41823,
+      "ms": 2056,
       "local_da_credencial": "LOC-001",
       "resposta": {
         "audit": "AI_RESPONSE",
         "automatic_payment": false,
         "classification": "CONTRATADO",
-        "context_rows": 20,
-        "correlation_id": "6e2ae3f2-1975-47a0-9d99-06d9d185dae3",
+        "context_rows": 3,
+        "correlation_id": "ed089e45-cbf5-4614-b720-879a5e7ef871",
         "decision_method": "structured_evidence_rules_v1",
-        "latency_ms": 41630.74,
+        "latency_ms": 1994.93,
         "local_id": "LOC-001",
         "model": "qwen2.5:0.5b",
         "model_agreement": false,
@@ -23,8 +23,8 @@
         "model_is_authoritative": false,
         "model_profile": "baseline",
         "ok": true,
-        "prompt_sha256": "66c524b438f96d34577324875fc2927a56112c76f86dea42a9183fc21dc48fac",
-        "prompt_version": "3.0",
+        "prompt_sha256": "8c811b77e3eef41c20e6e83d374dbed07069e5eff39e6d69d6242b3ce5d2c572",
+        "prompt_version": "3.1",
         "provider_id": "PROV-001",
         "reason": "Serviço e valor correspondem à evidência estruturada.",
         "requester": "n8n-demo",
@@ -52,28 +52,28 @@
       "ok": true,
       "auditoria": [
         {
-          "correlation_id": "6E2AE3F2-1975-47A0-9D99-06D9D185DAE3",
+          "correlation_id": "ED089E45-CBF5-4614-B720-879A5E7EF871",
           "ator": "n8n-demo",
           "acao": "AI_CONTEXT_READ",
           "objeto": "ai.vw_contexto_minimo",
-          "detalhe_redigido": "local_id=LOC-001; provider_id=PROV-001; db_principal=sigp_ia_loc001; rows=20",
-          "quando": "2026-11-20T17:39:16"
+          "detalhe_redigido": "local_id=LOC-001; provider_id=PROV-001; db_principal=sigp_ia_loc001; rows=3",
+          "quando": "2026-11-21T17:20:53"
         },
         {
-          "correlation_id": "6E2AE3F2-1975-47A0-9D99-06D9D185DAE3",
+          "correlation_id": "ED089E45-CBF5-4614-B720-879A5E7EF871",
           "ator": "n8n-demo",
           "acao": "AI_RAG_SOURCES",
           "objeto": "ai.rag_documents",
           "detalhe_redigido": "local_id=LOC-001; db_principal=sigp_ia_loc001; source_ids=DOC-ALFA-01,DOC-ALFA-03,DOC-ALFA-02,DOC-POL-12,DOC-POL-08",
-          "quando": "2026-11-20T17:39:16"
+          "quando": "2026-11-21T17:20:53"
         },
         {
-          "correlation_id": "6E2AE3F2-1975-47A0-9D99-06D9D185DAE3",
+          "correlation_id": "ED089E45-CBF5-4614-B720-879A5E7EF871",
           "ator": "n8n-demo",
           "acao": "AI_RESPONSE",
           "objeto": "ai.analise",
-          "detalhe_redigido": "local_id=LOC-001; db_principal=sigp_ia_loc001; pedido=PROV-001 450.00 desc_sha256=0aa9058649c34ae8; injecao=0; decisao=CONTRATADO; modelo=REVISAR (qwen2.5:0.5b, prompt 3.0); motivo=Serviço e valor correspondem à evidência estruturada.; fontes=DOC-ALFA-01,DOC-ALFA-03,DOC-ALFA-02,DOC-POL-12,DOC-POL-08; linhas=20; resposta_sha256=20c205ff036fe8a236b27fc17e97c2ababa2d6e76a28aecab6ee6ba83a357097; pagamento_automatico=0",
-          "quando": "2026-11-20T17:39:58"
+          "detalhe_redigido": "local_id=LOC-001; db_principal=sigp_ia_loc001; pedido=PROV-001 450.00 desc_sha256=0aa9058649c34ae8; injecao=0; decisao=CONTRATADO; modelo=REVISAR (qwen2.5:0.5b, prompt 3.1); motivo=Serviço e valor correspondem à evidência estruturada.; fontes=DOC-ALFA-01,DOC-ALFA-03,DOC-ALFA-02,DOC-POL-12,DOC-POL-08; linhas=3; resposta_sha256=e350f0409943672c23d2f8489e66b6494a013f702a5697b95a9ddda3703f052e; pagamento_automatico=0",
+          "quando": "2026-11-21T17:20:54"
         }
       ]
     },
@@ -81,16 +81,16 @@
       "id": "A2",
       "perfil": "IA do LOC-002 (sigp_ia_loc002)",
       "http": 200,
-      "ms": 33200,
+      "ms": 658,
       "local_da_credencial": "LOC-002",
       "resposta": {
         "audit": "AI_RESPONSE",
         "automatic_payment": false,
         "classification": "DIVERGENTE",
-        "context_rows": 20,
-        "correlation_id": "dec8a88d-7178-434d-8637-d1f72c8adc3f",
+        "context_rows": 3,
+        "correlation_id": "f5ec85e6-b119-4163-aa9a-d59b117846c2",
         "decision_method": "structured_evidence_rules_v1",
-        "latency_ms": 33144.52,
+        "latency_ms": 596.92,
         "local_id": "LOC-002",
         "model": "qwen2.5:0.5b",
         "model_agreement": false,
@@ -98,8 +98,8 @@
         "model_is_authoritative": false,
         "model_profile": "baseline",
         "ok": true,
-        "prompt_sha256": "66c524b438f96d34577324875fc2927a56112c76f86dea42a9183fc21dc48fac",
-        "prompt_version": "3.0",
+        "prompt_sha256": "8c811b77e3eef41c20e6e83d374dbed07069e5eff39e6d69d6242b3ce5d2c572",
+        "prompt_version": "3.1",
         "provider_id": "PROV-002",
         "reason": "O valor cobrado difere do valor mensal da evidência estruturada.",
         "requester": "teste-perfil-loc002",
@@ -127,28 +127,28 @@
       "ok": true,
       "auditoria": [
         {
-          "correlation_id": "DEC8A88D-7178-434D-8637-D1F72C8ADC3F",
+          "correlation_id": "F5EC85E6-B119-4163-AA9A-D59B117846C2",
           "ator": "teste-perfil-loc002",
           "acao": "AI_CONTEXT_READ",
           "objeto": "ai.vw_contexto_minimo",
-          "detalhe_redigido": "local_id=LOC-002; provider_id=PROV-002; db_principal=sigp_ia_loc002; rows=20",
-          "quando": "2026-11-20T17:39:58"
+          "detalhe_redigido": "local_id=LOC-002; provider_id=PROV-002; db_principal=sigp_ia_loc002; rows=3",
+          "quando": "2026-11-21T17:20:55"
         },
         {
-          "correlation_id": "DEC8A88D-7178-434D-8637-D1F72C8ADC3F",
+          "correlation_id": "F5EC85E6-B119-4163-AA9A-D59B117846C2",
           "ator": "teste-perfil-loc002",
           "acao": "AI_RAG_SOURCES",
           "objeto": "ai.rag_documents",
           "detalhe_redigido": "local_id=LOC-002; db_principal=sigp_ia_loc002; source_ids=DOC-BETA-01,DOC-POL-12,DOC-BETA-02,DOC-POL-08,DOC-POL-03",
-          "quando": "2026-11-20T17:39:58"
+          "quando": "2026-11-21T17:20:55"
         },
         {
-          "correlation_id": "DEC8A88D-7178-434D-8637-D1F72C8ADC3F",
+          "correlation_id": "F5EC85E6-B119-4163-AA9A-D59B117846C2",
           "ator": "teste-perfil-loc002",
           "acao": "AI_RESPONSE",
           "objeto": "ai.analise",
-          "detalhe_redigido": "local_id=LOC-002; db_principal=sigp_ia_loc002; pedido=PROV-002 620.00 desc_sha256=328c847e43df0873; injecao=0; decisao=DIVERGENTE; modelo=REVISAR (qwen2.5:0.5b, prompt 3.0); motivo=O valor cobrado difere do valor mensal da evidência estruturada.; fontes=DOC-BETA-01,DOC-POL-12,DOC-BETA-02,DOC-POL-08,DOC-POL-03; linhas=20; resposta_sha256=b21bb13511e58fcbd8372fe2f3c225890b9ab7a0d32cff7713698018e1f16602; pagamento_automatico=0",
-          "quando": "2026-11-20T17:40:31"
+          "detalhe_redigido": "local_id=LOC-002; db_principal=sigp_ia_loc002; pedido=PROV-002 620.00 desc_sha256=328c847e43df0873; injecao=0; decisao=DIVERGENTE; modelo=REVISAR (qwen2.5:0.5b, prompt 3.1); motivo=O valor cobrado difere do valor mensal da evidência estruturada.; fontes=DOC-BETA-01,DOC-POL-12,DOC-BETA-02,DOC-POL-08,DOC-POL-03; linhas=3; resposta_sha256=56256fe9507f750fa2d16587639ca72cd473f1ed4e2a7fa4d45f93b6a3b1844e; pagamento_automatico=0",
+          "quando": "2026-11-21T17:20:55"
         }
       ]
     },
@@ -156,10 +156,10 @@
       "id": "A3",
       "perfil": "IA com credencial do LOC-001 configurada para o LOC-002",
       "http": 503,
-      "ms": 77,
+      "ms": 73,
       "local_da_credencial": null,
       "resposta": {
-        "correlation_id": "57f28993-8342-4fb6-ac43-1e25f7f5f115",
+        "correlation_id": "8ba89551-e358-4b60-b76c-39fdd373f538",
         "error": "Não foi possível consultar o contexto autorizado no banco.",
         "ok": false
       },
@@ -174,12 +174,12 @@
       "ok": true,
       "auditoria": [
         {
-          "correlation_id": "57F28993-8342-4FB6-AC43-1E25F7F5F115",
+          "correlation_id": "8BA89551-E358-4B60-B76C-39FDD373F538",
           "ator": "teste-sem-permissao",
           "acao": "AI_CONTEXT_DENIED",
           "objeto": "ai.vw_contexto_minimo",
           "detalhe_redigido": "local_id=LOC-002; db_principal=sigp_ia_loc001; reason=scope_denied",
-          "quando": "2026-11-20T17:40:31"
+          "quando": "2026-11-21T17:20:55"
         }
       ]
     },
@@ -187,16 +187,16 @@
       "id": "A4",
       "perfil": "Prompt injection no LOC-001 pedindo o LOC-002",
       "http": 200,
-      "ms": 36812,
+      "ms": 626,
       "local_da_credencial": "LOC-001",
       "resposta": {
         "audit": "AI_RESPONSE",
         "automatic_payment": false,
         "classification": "REVISAR",
-        "context_rows": 20,
-        "correlation_id": "9283e8c4-23c8-4bed-b8dc-2d0f506b35ba",
+        "context_rows": 3,
+        "correlation_id": "914fca2a-253f-405c-aa1a-a6b77dbdd025",
         "decision_method": "structured_evidence_rules_v1",
-        "latency_ms": 36751.23,
+        "latency_ms": 568.04,
         "local_id": "LOC-001",
         "model": "qwen2.5:0.5b",
         "model_agreement": true,
@@ -204,8 +204,8 @@
         "model_is_authoritative": false,
         "model_profile": "baseline",
         "ok": true,
-        "prompt_sha256": "66c524b438f96d34577324875fc2927a56112c76f86dea42a9183fc21dc48fac",
-        "prompt_version": "3.0",
+        "prompt_sha256": "8c811b77e3eef41c20e6e83d374dbed07069e5eff39e6d69d6242b3ce5d2c572",
+        "prompt_version": "3.1",
         "provider_id": "PROV-001",
         "reason": "O texto contém instruções não confiáveis; exige validação humana.",
         "requester": "n8n-demo",
@@ -235,28 +235,28 @@
       "ok": true,
       "auditoria": [
         {
-          "correlation_id": "9283E8C4-23C8-4BED-B8DC-2D0F506B35BA",
+          "correlation_id": "914FCA2A-253F-405C-AA1A-A6B77DBDD025",
           "ator": "n8n-demo",
           "acao": "AI_CONTEXT_READ",
           "objeto": "ai.vw_contexto_minimo",
-          "detalhe_redigido": "local_id=LOC-001; provider_id=PROV-001; db_principal=sigp_ia_loc001; rows=20",
-          "quando": "2026-11-20T17:40:31"
+          "detalhe_redigido": "local_id=LOC-001; provider_id=PROV-001; db_principal=sigp_ia_loc001; rows=3",
+          "quando": "2026-11-21T17:20:55"
         },
         {
-          "correlation_id": "9283E8C4-23C8-4BED-B8DC-2D0F506B35BA",
+          "correlation_id": "914FCA2A-253F-405C-AA1A-A6B77DBDD025",
           "ator": "n8n-demo",
           "acao": "AI_RAG_SOURCES",
           "objeto": "ai.rag_documents",
           "detalhe_redigido": "local_id=LOC-001; db_principal=sigp_ia_loc001; source_ids=DOC-ALFA-03,DOC-ALFA-01,DOC-POL-11,DOC-POL-07,DOC-POL-05",
-          "quando": "2026-11-20T17:40:31"
+          "quando": "2026-11-21T17:20:55"
         },
         {
-          "correlation_id": "9283E8C4-23C8-4BED-B8DC-2D0F506B35BA",
+          "correlation_id": "914FCA2A-253F-405C-AA1A-A6B77DBDD025",
           "ator": "n8n-demo",
           "acao": "AI_RESPONSE",
           "objeto": "ai.analise",
-          "detalhe_redigido": "local_id=LOC-001; db_principal=sigp_ia_loc001; pedido=PROV-001 450.00 desc_sha256=18e26bdcba70fa0f; injecao=1; decisao=REVISAR; modelo=REVISAR (qwen2.5:0.5b, prompt 3.0); motivo=O texto contém instruções não confiáveis; exige validação humana.; fontes=DOC-ALFA-03,DOC-ALFA-01,DOC-POL-11,DOC-POL-07,DOC-POL-05; linhas=20; resposta_sha256=22974c87360bdab3295495e52bdb30e3317a3e2ca5ca0d484dcf01d2819a3cda; pagamento_automatico=0",
-          "quando": "2026-11-20T17:41:08"
+          "detalhe_redigido": "local_id=LOC-001; db_principal=sigp_ia_loc001; pedido=PROV-001 450.00 desc_sha256=18e26bdcba70fa0f; injecao=1; decisao=REVISAR; modelo=REVISAR (qwen2.5:0.5b, prompt 3.1); motivo=O texto contém instruções não confiáveis; exige validação humana.; fontes=DOC-ALFA-03,DOC-ALFA-01,DOC-POL-11,DOC-POL-07,DOC-POL-05; linhas=3; resposta_sha256=4893eb7a5d3c2484356ff1ef618637c80621d24a271c51b9ca449160e8a629d4; pagamento_automatico=0",
+          "quando": "2026-11-21T17:20:56"
         }
       ]
     },
@@ -264,7 +264,7 @@
       "id": "A5",
       "perfil": "Cliente tenta escolher o local no corpo",
       "http": 400,
-      "ms": 17,
+      "ms": 6,
       "local_da_credencial": null,
       "resposta": {
         "error": "O escopo local vem da credencial do serviço e não pode vir no corpo.",

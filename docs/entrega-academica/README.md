@@ -5,6 +5,13 @@
 **Grupo e integrantes:** ver [`identificacao.json`](identificacao.json) (a mesma identificação de todos os PDFs).  
 **Disciplinas:** Projeto de Inteligência Artificial; Segurança e Otimização de Banco de Dados.
 
+## Entrega final (01/12/2026)
+- **Apresentação (10 min):** roteiro com quem fala, tempos, falas, lista de conferência, plano B e perguntas prováveis em [`roteiro-apresentacao.md`](roteiro-apresentacao.md); demonstração ao vivo passo a passo em [`demo-final.ps1`](demo-final.ps1) (`pwsh -File docs/entrega-academica/demo-final.ps1`; com `-SemPausa` grava `sqlserver/evidence/parte3/demo-final-saida.txt`); página interativa dos resultados em [`apresentacao.html`](apresentacao.html) (abre sem internet).
+- **Relatórios:** [`relatorio-apresentacao.pdf`](relatorio-apresentacao.pdf) e [`relatorio-limitacoes.pdf`](relatorio-limitacoes.pdf). Histórico de cada falha, correção e reteste: [`historico-evolucao.md`](historico-evolucao.md).
+- **IA:** [`ia/casos-de-teste-final.md`](ia/casos-de-teste-final.md) (16 casos, injeção, validação cega congelada e intervalos de 95%), [`ia/finetuning/comparacao-final.md`](ia/finetuning/comparacao-final.md) (4 configurações, custo e latência), [`ia/segredos-n8n.md`](ia/segredos-n8n.md) e [`ia/prompts/CHANGELOG.md`](ia/prompts/CHANGELOG.md).
+- **Segurança e otimização:** [`seguranca/matriz-permissoes.md`](seguranca/matriz-permissoes.md), [`seguranca/protecao-dados-sensiveis.md`](seguranca/protecao-dados-sensiveis.md), [`seguranca/otimizacao-consultas.md`](seguranca/otimizacao-consultas.md), [`seguranca/ataque-escalonamento.md`](seguranca/ataque-escalonamento.md), [`seguranca/trilha-auditoria.md`](seguranca/trilha-auditoria.md) e [`seguranca/auditoria-e-ia-por-perfil.md`](seguranca/auditoria-e-ia-por-perfil.md).
+- Evidências: [`sqlserver/evidence/parte3/`](sqlserver/evidence/parte3/). Nenhum número dos documentos foi digitado à mão: os geradores leem esses arquivos.
+
 ## Parte 2 (16/11/2026)
 
 - **[Relatório de andamento da parte 2](relatorio-parte2.pdf)**: o que foi feito desde a parte 1, limites, evidências e contribuição individual (gerado por `gerar_parte2.py`).
